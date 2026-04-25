@@ -1,0 +1,8 @@
+{
+    "enable": true,
+    "display": {
+        "type": "text",
+        "text": "❤",
+        "color": "#FF5555"
+    }
+}
