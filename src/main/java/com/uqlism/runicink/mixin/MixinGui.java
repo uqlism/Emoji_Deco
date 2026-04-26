@@ -1,11 +1,17 @@
 package com.uqlism.runicink.mixin;
 
-import com.uqlism.runicink.text.ComponentTransformer;
-import net.minecraft.client.gui.Gui;
-import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+import com.uqlism.runicink.Config;
+import com.uqlism.runicink.text.ComponentTransformer;
+import com.uqlism.runicink.text.RichTextParser;
+
+import net.minecraft.client.gui.Gui;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 @Mixin(Gui.class)
 public abstract class MixinGui {
@@ -27,4 +33,21 @@ public abstract class MixinGui {
     private Component runicink$transformOverlay(Component component) {
         return ComponentTransformer.transform(component);
     }
+
+@Redirect(
+    method = "renderSelectedItemName",
+    at = @At(
+        value = "INVOKE",
+        target = "Lnet/minecraft/world/item/ItemStack;m_41786_()Lnet/minecraft/network/chat/Component;"
+    ),
+    remap = false,
+    require = 1
+)
+private Component runicink$transformHotbarName(ItemStack stack) {
+    Component original = stack.getHoverName();
+    if (!Config.enableItemNames) return original;
+    String raw = original.getString();
+    if (raw.isBlank()) return original;
+    return RichTextParser.parse(raw);
+}
 }

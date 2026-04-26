@@ -44,9 +44,6 @@ public class SpriteGlyphInfo implements GlyphInfo {
             return null;
         }
 
-        LOGGER.info("[RunicInk] Sprite found: {} uv=[{},{},{},{}]",
-                sprite.contents().name(),
-                sprite.getU0(), sprite.getU1(), sprite.getV0(), sprite.getV1());
         GlyphRenderTypes renderTypes = GlyphRenderTypes.createForColorTexture(atlasRL);
         return new BakedGlyph(
                 renderTypes,

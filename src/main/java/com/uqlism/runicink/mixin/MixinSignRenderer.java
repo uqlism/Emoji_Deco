@@ -15,28 +15,27 @@ import java.util.function.Function;
 @Mixin(SignRenderer.class)
 public class MixinSignRenderer {
 
-    // renderSignText calls getRenderMessages(filtered, lineConverter), not getMessage directly
-    @Redirect(
-        method = "renderSignText",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/level/block/entity/SignText;getRenderMessages(ZLjava/util/function/Function;)[Lnet/minecraft/util/FormattedCharSequence;"
-        ),
-        remap = false,
-        require = 0
-    )
-    private FormattedCharSequence[] runicink$parseSignText(
-            SignText signText, boolean filtered, Function<Component, FormattedCharSequence> lineConverter) {
-        if (!Config.enableSigns) {
-            return signText.getRenderMessages(filtered, lineConverter);
-        }
-        FormattedCharSequence[] result = new FormattedCharSequence[4];
-        for (int i = 0; i < 4; i++) {
-            Component original = signText.getMessage(i, filtered);
-            String raw = original.getString();
-            Component parsed = raw.isBlank() ? original : RichTextParser.parse(raw);
-            result[i] = lineConverter.apply(parsed);
-        }
-        return result;
+@Redirect(
+    method = "m_278841_",
+    at = @At(
+        value = "INVOKE",
+        target = "Lnet/minecraft/world/level/block/entity/SignText;m_277130_(ZLjava/util/function/Function;)[Lnet/minecraft/util/FormattedCharSequence;"
+    ),
+    remap = false,
+    require = 1
+)
+private FormattedCharSequence[] runicink$parseSignText(
+        SignText signText, boolean filtered, Function<Component, FormattedCharSequence> lineConverter) {
+    if (!Config.enableSigns) {
+        return signText.getRenderMessages(filtered, lineConverter);
     }
+    FormattedCharSequence[] result = new FormattedCharSequence[4];
+    for (int i = 0; i < 4; i++) {
+        Component original = signText.getMessage(i, filtered);
+        String raw = original.getString();
+        Component parsed = raw.isBlank() ? original : RichTextParser.parse(raw);
+        result[i] = lineConverter.apply(parsed);
+    }
+    return result;
+}
 }

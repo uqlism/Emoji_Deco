@@ -1,8 +1,19 @@
 package com.uqlism.runicink.text;
 
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+
+import org.slf4j.Logger;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -13,15 +24,6 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.slf4j.Logger;
-
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 
 public class ShortcodeManager implements PreparableReloadListener {
 
@@ -126,4 +128,17 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static Component resolve(String code) {
         return REGISTRY.getOrDefault(code, Component.literal(":" + code + ":"));
     }
+
+public static boolean hasAnyShortcode(String text) {
+    int start = text.indexOf(':');
+    while (start >= 0) {
+        int end = text.indexOf(':', start + 1);
+        if (end > start + 1) {
+            String code = text.substring(start + 1, end);
+            if (REGISTRY.containsKey(code)) return true;
+        }
+        start = text.indexOf(':', start + 1);
+    }
+    return false;
+}
 }

@@ -42,16 +42,13 @@ public abstract class MixinFontSet {
                                             CallbackInfoReturnable<BakedGlyph> cir) {
         if (this.f_95052_ == null) return;
         if (!this.f_95052_.getNamespace().equals("runicink")) return;
-        LOGGER.info("[RunicInk] getGlyph fired: font={} cp=U+{}", this.f_95052_, Integer.toHexString(codePoint));
         if (!this.f_95052_.equals(new ResourceLocation("runicink", "sprite"))) return;
         SpriteRegistry.SpriteKey spriteKey = SpriteRegistry.getTexture(codePoint);
         if (spriteKey == null) {
             LOGGER.warn("[RunicInk] No texture mapped for cp=U+{}", Integer.toHexString(codePoint));
             return;
         }
-        LOGGER.info("[RunicInk] Baking glyph for {} (cp=U+{})", spriteKey.sprite(), Integer.toHexString(codePoint));
         BakedGlyph glyph = new SpriteGlyphInfo(spriteKey.atlas(), spriteKey.sprite()).bake(null);
-        LOGGER.info("[RunicInk] bake() returned: {}", glyph);
         if (glyph != null) cir.setReturnValue(glyph);
     }
 }
