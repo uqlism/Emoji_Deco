@@ -1,5 +1,5 @@
 {
     "enable": true,
-    "display": ["これは石です",{"translate": "runicink:sprite","with": ["minecraft:blocks","block/stone"]
+    "display": ["これは石です",{"translate": "runicink:sprite","with": ["minecraft:textures/atlas/blocks.png","block/stone"]
     }]
 }

@@ -49,8 +49,8 @@ public class ComponentTransformer {
 
     private static MutableComponent resolveRunicComponent(TranslatableContents tc) {
         Object[] args = tc.getArgs();
-        if (args.length == 0) return Component.empty();
-
+        if (args.length < 2) return Component.empty();
+        
         String atlasName;
         if (args[0] instanceof String s) {
             atlasName = s;
