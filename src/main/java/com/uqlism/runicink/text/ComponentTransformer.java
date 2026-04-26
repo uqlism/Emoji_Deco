@@ -23,6 +23,12 @@ public class ComponentTransformer {
             return base;
         }
 
+        if (contents instanceof TranslatableContents tc && tc.getKey().equals("runicink:head")) {
+            MutableComponent base = resolveHeadComponent(tc);
+            for (Component sibling : siblings) base.append(walk(sibling));
+            return base;
+        }
+
         if (contents instanceof TranslatableContents tc) {
             Object[] args = tc.getArgs();
             Object[] newArgs = new Object[args.length];
@@ -71,4 +77,15 @@ public class ComponentTransformer {
 
         return SpriteRegistry.createComponent(atlasName,textureName).copy();
     }
+
+    private static MutableComponent resolveHeadComponent(TranslatableContents tc) {
+    Object[] args = tc.getArgs();
+    if (args.length == 0) return Component.empty();
+
+    String username = args[0] instanceof String s ? s
+                    : args[0] instanceof Component c ? c.getString()
+                    : args[0].toString();
+
+    return SpriteRegistry.createHeadComponent(username).copy();
+}
 }

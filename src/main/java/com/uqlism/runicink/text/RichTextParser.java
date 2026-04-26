@@ -1,6 +1,5 @@
 package com.uqlism.runicink.text;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -15,7 +14,8 @@ public class RichTextParser {
             int level = 0;
             while (level < raw.length() && raw.charAt(level) == '#') level++;
             if (level <= 6 && level < raw.length() && raw.charAt(level) == ' ') {
-                return parseInline(raw.substring(level + 1), headerStyle(level));
+                MutableComponent content = parseInline(raw.substring(level + 1), Style.EMPTY);
+                return HeaderRegistry.createMarker(level).append(content);
             }
         }
 
@@ -128,15 +128,4 @@ public class RichTextParser {
         return true;
     }
 
-    private static Style headerStyle(int level) {
-        return switch (level) {
-            case 1 -> Style.EMPTY.withBold(true).withUnderlined(true).withColor(ChatFormatting.GOLD);
-            case 2 -> Style.EMPTY.withBold(true).withColor(ChatFormatting.YELLOW);
-            case 3 -> Style.EMPTY.withBold(true).withColor(ChatFormatting.WHITE);
-            case 4 -> Style.EMPTY.withBold(true).withColor(ChatFormatting.GRAY);
-            case 5 -> Style.EMPTY.withColor(ChatFormatting.DARK_GRAY);
-            case 6 -> Style.EMPTY.withItalic(true).withColor(ChatFormatting.DARK_GRAY);
-            default -> Style.EMPTY;
-        };
-    }
 }

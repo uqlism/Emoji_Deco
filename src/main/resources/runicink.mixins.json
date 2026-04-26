@@ -11,6 +11,7 @@
     "MixinFontSet",
     "MixinGui",
     "MixinSignRenderer",
+    "MixinAbstractSignEditScreen",
     "MixinEntityRenderer",
     "MixinWrittenBookAccess"
   ],

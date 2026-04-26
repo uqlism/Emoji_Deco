@@ -2,8 +2,11 @@ package com.uqlism.runicink.mixin;
 
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.logging.LogUtils;
+import com.uqlism.runicink.text.HeadGlyphInfo;
 import com.uqlism.runicink.text.SpriteGlyphInfo;
 import com.uqlism.runicink.text.SpriteRegistry;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import net.minecraft.resources.ResourceLocation;
@@ -50,5 +53,41 @@ public abstract class MixinFontSet {
         }
         BakedGlyph glyph = new SpriteGlyphInfo(spriteKey.atlas(), spriteKey.sprite()).bake(null);
         if (glyph != null) cir.setReturnValue(glyph);
+    }
+
+
+        // runicink:head フォント用
+    @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
+    private void runicink$injectHeadGlyphInfo(int codePoint, boolean filterFishyGlyphs,
+                                            CallbackInfoReturnable<GlyphInfo> cir) {
+        if (!new ResourceLocation("runicink", "head").equals(this.f_95052_)) return;
+        String username = SpriteRegistry.getUsername(codePoint);
+        if (username == null) return;
+        ResourceLocation skinTexture = getSkinTexture(username);
+        if (skinTexture == null) return;
+        cir.setReturnValue(new HeadGlyphInfo(skinTexture));
+    }
+
+    @Inject(method = "m_95078_", at = @At("HEAD"), cancellable = true, remap = false)
+    private void runicink$injectHeadGlyph(int codePoint,
+                                        CallbackInfoReturnable<BakedGlyph> cir) {
+        if (!new ResourceLocation("runicink", "head").equals(this.f_95052_)) return;
+        String username = SpriteRegistry.getUsername(codePoint);
+        if (username == null) return;
+        ResourceLocation skinTexture = getSkinTexture(username);
+        if (skinTexture == null) return;
+        BakedGlyph glyph = new HeadGlyphInfo(skinTexture).bake(null);
+        if (glyph != null) cir.setReturnValue(glyph);
+    }
+
+    private static ResourceLocation getSkinTexture(String username) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return null;
+        for (var player : mc.level.players()) {
+            if (player.getName().getString().equalsIgnoreCase(username)) {
+                return mc.getSkinManager().getInsecureSkinLocation(player.getGameProfile());
+            }
+        }
+        return null;
     }
 }
