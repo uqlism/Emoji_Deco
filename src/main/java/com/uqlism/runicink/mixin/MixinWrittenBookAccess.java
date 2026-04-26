@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinWrittenBookAccess {
 
     @Inject(
-        method = "getPageRaw",
+        method = "m_7303_",
         at = @At("RETURN"),
         cancellable = true,
         remap = false
