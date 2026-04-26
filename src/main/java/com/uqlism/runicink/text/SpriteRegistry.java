@@ -71,7 +71,7 @@ public class SpriteRegistry {
         int baseCp = allocateHead(username);
         String chars = new String(Character.toChars(baseCp))
                      + new String(Character.toChars(baseCp + 1));
-        return Component.literal(chars).withStyle(Style.EMPTY.withFont(HEAD_FONT));
+        return Component.literal(chars).withStyle(Style.EMPTY.withFont(HEAD_FONT).withColor(0xFFFFFF));
     }
 
     /** Placeholder until player-head sprite rendering is implemented. */
