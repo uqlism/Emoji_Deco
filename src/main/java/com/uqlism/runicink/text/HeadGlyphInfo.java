@@ -35,7 +35,7 @@ public class HeadGlyphInfo implements GlyphInfo {
         float v1 = 16f / 64f;
 
         GlyphRenderTypes renderTypes = GlyphRenderTypes.createForColorTexture(skinTexture);
-        float expand = overlay ? 1.0f : 0.0f;
+        float expand = overlay ? 0.5f : 0.0f;
         return new BakedGlyph(
                 renderTypes,
                 u0, u1,
