@@ -13,7 +13,7 @@ public abstract class MixinAbstractSignEditScreen {
 
     // SRG field names from joined.tsrg
     @Shadow(remap = false) private String[] f_244359_;   // messages
-    @Shadow(remap = false) private int f_244564_;        // currentRow
+    @Shadow(remap = false) private int f_244562_;        // currentRow
 
     // SRG: m_276998_ = setMessage(String)
     @Shadow(remap = false)
@@ -28,7 +28,7 @@ public abstract class MixinAbstractSignEditScreen {
     // SRG: m_5534_ = charTyped(char, int)
     @Inject(method = "m_5534_", at = @At("RETURN"), remap = false)
     private void runicink$onCharTyped(char c, int modifiers, CallbackInfoReturnable<Boolean> cir) {
-        SuggestionState.update(f_244359_[f_244564_]);
+        SuggestionState.update(f_244359_[f_244562_]);
     }
 
     // SRG: m_7933_ = keyPressed(int, int, int)
@@ -47,7 +47,7 @@ public abstract class MixinAbstractSignEditScreen {
         } else if (keyCode == 258) {    // TAB
             SuggestionState.Entry entry = SuggestionState.getSelected();
             if (entry != null) {
-                m_276998_(SuggestionState.applyTo(f_244359_[f_244564_], entry));
+                m_276998_(SuggestionState.applyTo(f_244359_[f_244562_], entry));
                 SuggestionState.clear();
             }
             cir.setReturnValue(true);
@@ -60,6 +60,6 @@ public abstract class MixinAbstractSignEditScreen {
                                               CallbackInfoReturnable<Boolean> cir) {
         // Guard: don't reset selectedIndex if HEAD already handled suggestion navigation
         if (SuggestionState.hasSuggestions() && (keyCode == 265 || keyCode == 264 || keyCode == 258)) return;
-        SuggestionState.update(f_244359_[f_244564_]);
+        SuggestionState.update(f_244359_[f_244562_]);
     }
 }
