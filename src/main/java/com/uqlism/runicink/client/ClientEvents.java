@@ -2,6 +2,7 @@ package com.uqlism.runicink.client;
 
 import com.uqlism.runicink.Config;
 import com.uqlism.runicink.RunicInk;
+import com.uqlism.runicink.text.ComponentTransformer;
 import com.uqlism.runicink.text.RichTextParser;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
@@ -18,8 +19,7 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onChatMessage(ClientChatReceivedEvent event) {
         if (!Config.enableChat) return;
-        String raw = event.getMessage().getString();
-        event.setMessage(RichTextParser.parse(raw));
+        event.setMessage(ComponentTransformer.transform(event.getMessage()));
     }
 
     @SubscribeEvent
