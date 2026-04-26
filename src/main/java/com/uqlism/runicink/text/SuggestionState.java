@@ -74,7 +74,7 @@ public class SuggestionState {
         ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
             String alias = e.getKey();
             String canonical = e.getValue();
-            results.add(new Entry(":" + alias + ":", ShortcodeManager.resolve(canonical), canonical, TriggerType.SHORTCODE));
+            results.add(new Entry(":" + canonical + ":", ShortcodeManager.resolve(canonical), canonical, TriggerType.SHORTCODE));
         });
 
         return results;

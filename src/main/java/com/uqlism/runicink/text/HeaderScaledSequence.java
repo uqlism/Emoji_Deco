@@ -19,5 +19,6 @@ public final class HeaderScaledSequence implements FormattedCharSequence {
         return inner.accept(sink);
     }
 
+    public FormattedCharSequence inner() { return inner; }
     public float scale() { return scale; }
 }

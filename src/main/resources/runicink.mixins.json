@@ -8,9 +8,10 @@
     "MixinChatScreen"
   ],
   "client": [
+    "MixinFont",
     "MixinFontSet",
     "MixinGui",
-    "MixinSignRenderer",
+    "MixinSignText",
     "MixinAbstractSignEditScreen",
     "MixinEntityRenderer",
     "MixinWrittenBookAccess"
