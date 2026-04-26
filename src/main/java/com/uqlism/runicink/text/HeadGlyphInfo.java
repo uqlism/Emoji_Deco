@@ -7,6 +7,7 @@ import com.mojang.blaze3d.font.SheetGlyphInfo;
 
 import net.minecraft.client.gui.font.GlyphRenderTypes;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 
 public class HeadGlyphInfo implements GlyphInfo {
@@ -34,7 +35,13 @@ public class HeadGlyphInfo implements GlyphInfo {
         float v0 = 8f  / 64f;
         float v1 = 16f / 64f;
 
-        GlyphRenderTypes renderTypes = GlyphRenderTypes.createForColorTexture(skinTexture);
+        // オーバーレイはpolygon offsetレンダータイプでベースとのZファイティングを防ぐ
+        GlyphRenderTypes renderTypes = overlay
+                ? new GlyphRenderTypes(
+                        RenderType.textPolygonOffset(skinTexture),
+                        RenderType.textPolygonOffset(skinTexture),
+                        RenderType.textPolygonOffset(skinTexture))
+                : GlyphRenderTypes.createForColorTexture(skinTexture);
         float expand = overlay ? 0.5f : 0.0f;
         return new BakedGlyph(
                 renderTypes,
