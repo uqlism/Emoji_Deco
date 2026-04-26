@@ -1,5 +1,9 @@
 {
     "enable": true,
+    "aliases": [
+        "石",
+        "テスト"
+    ],
     "display": [
         "これは石です",
         {

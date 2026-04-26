@@ -64,13 +64,20 @@ public class SuggestionState {
 
     private static List<Entry> buildShortcodeSuggestions(String prefix) {
         if (prefix.isEmpty()) return Collections.emptyList();
-        return ShortcodeManager.getSuggestions(prefix).stream()
-                .map(code -> new Entry(
-                        ":" + code + ":",
-                        ShortcodeManager.resolve(code),
-                        code,
-                        TriggerType.SHORTCODE))
-                .collect(Collectors.toList());
+        List<Entry> results = new java.util.ArrayList<>();
+
+        // Canonical name matches
+        ShortcodeManager.getSuggestions(prefix).forEach(code ->
+                results.add(new Entry(":" + code + ":", ShortcodeManager.resolve(code), code, TriggerType.SHORTCODE)));
+
+        // Alias matches — label shows the alias, insertion uses the canonical name
+        ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
+            String alias = e.getKey();
+            String canonical = e.getValue();
+            results.add(new Entry(":" + alias + ":", ShortcodeManager.resolve(canonical), canonical, TriggerType.SHORTCODE));
+        });
+
+        return results;
     }
 
     private static List<Entry> buildUsernameSuggestions(String prefix) {

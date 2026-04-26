@@ -31,6 +31,10 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static final ShortcodeManager INSTANCE = new ShortcodeManager();
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, Component> REGISTRY = new ConcurrentHashMap<>();
+    /** alias text → canonical shortcode name */
+    private static final Map<String, String> ALIASES = new ConcurrentHashMap<>();
+
+    private record LoadResult(Map<String, Component> registry, Map<String, String> aliases) {}
 
     @Override
     public CompletableFuture<Void> reload(
@@ -44,15 +48,19 @@ public class ShortcodeManager implements PreparableReloadListener {
         return CompletableFuture
                 .supplyAsync(() -> loadAll(resourceManager), backgroundExecutor)
                 .thenCompose(stage::wait)
-                .thenAcceptAsync(loaded -> {
+                .thenAcceptAsync(result -> {
                     REGISTRY.clear();
-                    REGISTRY.putAll(loaded);
-                    LOGGER.info("[RunicInk] Loaded {} shortcode(s)", REGISTRY.size());
+                    REGISTRY.putAll(result.registry());
+                    ALIASES.clear();
+                    ALIASES.putAll(result.aliases());
+                    LOGGER.info("[RunicInk] Loaded {} shortcode(s), {} alias(es)",
+                            REGISTRY.size(), ALIASES.size());
                 }, gameExecutor);
     }
 
-    private static Map<String, Component> loadAll(ResourceManager resourceManager) {
+    private static LoadResult loadAll(ResourceManager resourceManager) {
         Map<String, Component> loaded = new HashMap<>();
+        Map<String, String> loadedAliases = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "shortcodes", path -> path.getPath().endsWith(".json"));
 
@@ -72,11 +80,18 @@ public class ShortcodeManager implements PreparableReloadListener {
 
                 Component component = parseDisplay(json.get("display"));
                 loaded.put(name, component);
+
+                if (json.has("aliases") && json.get("aliases").isJsonArray()) {
+                    for (JsonElement alias : json.getAsJsonArray("aliases")) {
+                        String aliasStr = alias.getAsString().trim();
+                        if (!aliasStr.isEmpty()) loadedAliases.put(aliasStr, name);
+                    }
+                }
             } catch (Exception e) {
                 LOGGER.error("[RunicInk] Failed to load shortcode {}: {}", location, e.getMessage());
             }
         }
-        return loaded;
+        return new LoadResult(loaded, loadedAliases);
     }
 
     private static Component parseDisplay(JsonElement displayElement) {
@@ -147,6 +162,14 @@ public static List<String> getSuggestions(String prefix) {
     return REGISTRY.keySet().stream()
         .filter(key -> key.startsWith(prefix))
         .sorted()
+        .collect(java.util.stream.Collectors.toList());
+}
+
+/** Returns alias→canonical pairs whose alias starts with prefix, sorted by alias. */
+public static List<Map.Entry<String, String>> getAliasSuggestions(String prefix) {
+    return ALIASES.entrySet().stream()
+        .filter(e -> e.getKey().startsWith(prefix))
+        .sorted(Map.Entry.comparingByKey())
         .collect(java.util.stream.Collectors.toList());
 }
 }
