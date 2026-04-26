@@ -1,4 +1,19 @@
 {
     "enable": true,
-    "display": ["これは石です",{"translate": "runicink:sprite","with": ["minecraft:textures/atlas/blocks.png","block/stone"],"color": "#ffffff"}]
+    "display": [
+        "これは石です",
+        {
+            "text": "",
+            "color": "#ffffff",
+            "extra": [
+                {
+                    "translate": "runicink:sprite",
+                    "with": [
+                        "minecraft:textures/atlas/blocks.png",
+                        "block/stone"
+                    ]
+                }
+            ]
+        }
+    ]
 }

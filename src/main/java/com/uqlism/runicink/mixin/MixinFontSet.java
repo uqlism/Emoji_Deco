@@ -5,7 +5,6 @@ import com.mojang.logging.LogUtils;
 import com.uqlism.runicink.text.HeadGlyphInfo;
 import com.uqlism.runicink.text.SpriteGlyphInfo;
 import com.uqlism.runicink.text.SpriteRegistry;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
@@ -22,66 +21,54 @@ public abstract class MixinFontSet {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    // SRG: f_95052_
     @Shadow(remap = false)
     private ResourceLocation f_95052_;
 
     // SRG: m_243128_ -> getGlyphInfo(int, boolean)
-    // advance を返すことでテキストレイアウト(改行計算)に正しい幅を伝える
     @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$injectBlockSpriteInfo(int codePoint, boolean filterFishyGlyphs,
-                                                CallbackInfoReturnable<GlyphInfo> cir) {
+    private void runicink$injectGlyphInfo(int codePoint, boolean filterFishyGlyphs,
+                                          CallbackInfoReturnable<GlyphInfo> cir) {
         if (this.f_95052_ == null) return;
-        if (!this.f_95052_.getNamespace().equals("runicink")) return;
-        if (!this.f_95052_.equals(new ResourceLocation("runicink", "sprite"))) return;
-        SpriteRegistry.SpriteKey spriteKey = SpriteRegistry.getTexture(codePoint);
-        if (spriteKey == null) return;
-        cir.setReturnValue(new SpriteGlyphInfo(spriteKey.atlas(), spriteKey.sprite()));
+        if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
+            SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
+            if (key != null) cir.setReturnValue(new SpriteGlyphInfo(key.atlas(), key.sprite()));
+        } else if (SpriteRegistry.HEAD_FONT.equals(this.f_95052_)) {
+            String username = SpriteRegistry.getUsername(codePoint);
+            if (username == null) return;
+            ResourceLocation skin = getSkinTexture(username);
+            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, SpriteRegistry.isOverlay(codePoint)));
+        }
     }
 
     // SRG: m_95078_ -> getGlyph(int)
     @Inject(method = "m_95078_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$injectBlockSprite(int codePoint,
-                                            CallbackInfoReturnable<BakedGlyph> cir) {
+    private void runicink$injectGlyph(int codePoint,
+                                      CallbackInfoReturnable<BakedGlyph> cir) {
         if (this.f_95052_ == null) return;
-        if (!this.f_95052_.getNamespace().equals("runicink")) return;
-        if (!this.f_95052_.equals(new ResourceLocation("runicink", "sprite"))) return;
-        SpriteRegistry.SpriteKey spriteKey = SpriteRegistry.getTexture(codePoint);
-        if (spriteKey == null) {
-            LOGGER.warn("[RunicInk] No texture mapped for cp=U+{}", Integer.toHexString(codePoint));
-            return;
+        if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
+            SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
+            if (key == null) {
+                LOGGER.warn("[RunicInk] No texture mapped for cp=U+{}", Integer.toHexString(codePoint));
+                return;
+            }
+            BakedGlyph glyph = new SpriteGlyphInfo(key.atlas(), key.sprite()).bake(null);
+            if (glyph != null) cir.setReturnValue(glyph);
+        } else if (SpriteRegistry.HEAD_FONT.equals(this.f_95052_)) {
+            String username = SpriteRegistry.getUsername(codePoint);
+            if (username == null) return;
+            ResourceLocation skin = getSkinTexture(username);
+            if (skin == null) return;
+            BakedGlyph glyph = new HeadGlyphInfo(skin, SpriteRegistry.isOverlay(codePoint)).bake(null);
+            if (glyph != null) cir.setReturnValue(glyph);
         }
-        BakedGlyph glyph = new SpriteGlyphInfo(spriteKey.atlas(), spriteKey.sprite()).bake(null);
-        if (glyph != null) cir.setReturnValue(glyph);
-    }
-
-
-        // runicink:head フォント用
-    @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$injectHeadGlyphInfo(int codePoint, boolean filterFishyGlyphs,
-                                            CallbackInfoReturnable<GlyphInfo> cir) {
-        if (!new ResourceLocation("runicink", "head").equals(this.f_95052_)) return;
-        String username = SpriteRegistry.getUsername(codePoint);
-        if (username == null) return;
-        ResourceLocation skinTexture = getSkinTexture(username);
-        if (skinTexture == null) return;
-        cir.setReturnValue(new HeadGlyphInfo(skinTexture));
-    }
-
-    @Inject(method = "m_95078_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$injectHeadGlyph(int codePoint,
-                                        CallbackInfoReturnable<BakedGlyph> cir) {
-        if (!new ResourceLocation("runicink", "head").equals(this.f_95052_)) return;
-        String username = SpriteRegistry.getUsername(codePoint);
-        if (username == null) return;
-        ResourceLocation skinTexture = getSkinTexture(username);
-        if (skinTexture == null) return;
-        BakedGlyph glyph = new HeadGlyphInfo(skinTexture).bake(null);
-        if (glyph != null) cir.setReturnValue(glyph);
     }
 
     private static ResourceLocation getSkinTexture(String username) {
         Minecraft mc = Minecraft.getInstance();
+        // Check local player first (always available)
+        if (mc.player != null && mc.player.getName().getString().equalsIgnoreCase(username)) {
+            return mc.getSkinManager().getInsecureSkinLocation(mc.player.getGameProfile());
+        }
         if (mc.level == null) return null;
         for (var player : mc.level.players()) {
             if (player.getName().getString().equalsIgnoreCase(username)) {

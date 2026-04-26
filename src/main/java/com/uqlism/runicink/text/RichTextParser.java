@@ -78,6 +78,19 @@ public class RichTextParser {
                 }
             }
 
+            // @username → player head glyph
+            if (c == '@') {
+                int end = pos + 1;
+                while (end < text.length() && isUsernameChar(text.charAt(end))) end++;
+                if (end > pos + 1) {
+                    flush(result, text, litStart, pos, base);
+                    result.append(SpriteRegistry.createHeadComponent(text.substring(pos + 1, end)));
+                    pos = end;
+                    litStart = pos;
+                    continue;
+                }
+            }
+
             // :shortcode:
             if (c == ':') {
                 int close = text.indexOf(':', pos + 1);
@@ -118,6 +131,10 @@ public class RichTextParser {
             }
         }
         return -1;
+    }
+
+    private static boolean isUsernameChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     private static boolean isValidShortcodeName(String code) {
