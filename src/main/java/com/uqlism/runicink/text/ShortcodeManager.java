@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -140,5 +141,12 @@ public static boolean hasAnyShortcode(String text) {
         start = text.indexOf(':', start + 1);
     }
     return false;
+}
+
+public static List<String> getSuggestions(String prefix) {
+    return REGISTRY.keySet().stream()
+        .filter(key -> key.startsWith(prefix))
+        .sorted()
+        .collect(java.util.stream.Collectors.toList());
 }
 }
