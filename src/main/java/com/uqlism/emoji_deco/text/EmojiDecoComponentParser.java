@@ -134,9 +134,10 @@ public final class EmojiDecoComponentParser {
         }
         if (obj.has("emoji_deco:glow")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:glow");
-            boolean applyGlow = !spec.has("glow") || spec.get("glow").getAsBoolean();
+            LightMode lightMode = (!spec.has("glow") || spec.get("glow").getAsBoolean())
+                    ? LightMode.GLOW : LightMode.AMBIENT;
             RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return applyGlow ? new RichNode.Glowing(List.of(contents)) : contents;
+            return new RichNode.Glowing(lightMode, List.of(contents));
         }
         if (obj.has("emoji_deco:sprite")) {
             JsonObject spec  = obj.getAsJsonObject("emoji_deco:sprite");

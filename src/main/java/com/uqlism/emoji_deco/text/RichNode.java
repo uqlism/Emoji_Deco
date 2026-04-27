@@ -28,7 +28,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
 
     record Text(String literal, Style style, List<RichNode> children) implements RichNode {}
     record Sized(float scale, List<RichNode> children)                 implements RichNode {}
-    record Glowing(List<RichNode> children)                            implements RichNode {}
+    record Glowing(LightMode lightMode, List<RichNode> children)       implements RichNode {}
     record Sprite(String atlas, String sprite)                         implements RichNode {}
     record Head(String username)                                       implements RichNode {}
 
@@ -70,39 +70,39 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
      */
     static FormattedCharSequence toSequence(Font font, RichNode root) {
         List<FormattedCharSequence> parts = new ArrayList<>();
-        collectSegments(font, root, 1.0f, false, Style.EMPTY, parts);
+        collectSegments(font, root, 1.0f, LightMode.BYPASS, Style.EMPTY, parts);
         if (parts.isEmpty()) return FormattedCharSequence.EMPTY;
         if (parts.size() == 1) return parts.get(0);
         return new ConcatSequence(parts);
     }
 
     private static void collectSegments(Font font, RichNode node,
-                                        float scale, boolean glow, Style inherited,
+                                        float scale, LightMode lightMode, Style inherited,
                                         List<FormattedCharSequence> out) {
         if (node instanceof Text t) {
             Style combined = t.style().applyTo(inherited);
             if (!t.literal().isEmpty())
-                addLeaf(font, Component.literal(t.literal()).withStyle(combined), scale, glow, out);
+                addLeaf(font, Component.literal(t.literal()).withStyle(combined), scale, lightMode, out);
             for (RichNode child : t.children())
-                collectSegments(font, child, scale, glow, combined, out);
+                collectSegments(font, child, scale, lightMode, combined, out);
         } else if (node instanceof Sized s) {
             for (RichNode child : s.children())
-                collectSegments(font, child, scale * s.scale(), glow, inherited, out);
+                collectSegments(font, child, scale * s.scale(), lightMode, inherited, out);
         } else if (node instanceof Glowing g) {
             for (RichNode child : g.children())
-                collectSegments(font, child, scale, true, inherited, out);
+                collectSegments(font, child, scale, g.lightMode(), inherited, out);
         } else if (node instanceof Sprite s) {
-            addLeaf(font, SpriteRegistry.createComponent(s.atlas(), s.sprite()), scale, glow, out);
+            addLeaf(font, SpriteRegistry.createComponent(s.atlas(), s.sprite()), scale, lightMode, out);
         } else if (node instanceof Head h) {
-            addLeaf(font, SpriteRegistry.createHeadComponent(h.username()), scale, glow, out);
+            addLeaf(font, SpriteRegistry.createHeadComponent(h.username()), scale, lightMode, out);
         }
     }
 
-    private static void addLeaf(Font font, Component c, float scale, boolean glow,
+    private static void addLeaf(Font font, Component c, float scale, LightMode lightMode,
                                  List<FormattedCharSequence> out) {
         List<FormattedCharSequence> lines = font.split(c, Integer.MAX_VALUE / 2);
         FormattedCharSequence fcs = lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
-        if (glow) fcs = new LightSequence(fcs, LightMode.GLOW);
+        if (!(lightMode instanceof LightMode.Bypass)) fcs = new LightSequence(fcs, lightMode);
         if (scale != 1.0f) fcs = new ScaledSequence(fcs, scale);
         out.add(fcs);
     }
