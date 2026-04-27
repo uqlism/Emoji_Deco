@@ -1,9 +1,11 @@
 {
   "enable": true,
   "display": {
-    "translate": "emoji_deco:glow",
-    "with": [
-      { "translate": "emoji_deco:slot" }
-    ]
+    "emoji_deco:glow": {
+      "glow": true,
+      "contents": {
+        "emoji_deco:slot": {}
+      }
+    }
   }
 }

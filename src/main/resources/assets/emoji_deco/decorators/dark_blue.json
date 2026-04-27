@@ -4,7 +4,7 @@
     "text": "",
     "color": "dark_blue",
     "extra": [
-      { "translate": "emoji_deco:slot" }
+      { "emoji_deco:slot": {} }
     ]
   }
 }

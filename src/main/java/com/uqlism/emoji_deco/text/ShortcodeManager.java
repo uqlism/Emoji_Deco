@@ -16,9 +16,6 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
@@ -95,46 +92,7 @@ public class ShortcodeManager implements PreparableReloadListener {
     }
 
     private static Component parseDisplay(JsonElement displayElement) {
-        // Custom format: {"type":"text","text":"...","font":"..."}
-        if (displayElement.isJsonObject()) {
-            JsonObject display = displayElement.getAsJsonObject();
-            if (display.has("type") && "text".equals(display.get("type").getAsString())) {
-                String text = display.has("text") ? display.get("text").getAsString() : "";
-                MutableComponent comp = Component.literal(text);
-                Style style = Style.EMPTY;
-
-                if (display.has("font")) {
-                    ResourceLocation fontLoc = ResourceLocation.tryParse(display.get("font").getAsString());
-                    if (fontLoc != null) style = style.withFont(fontLoc);
-                }
-                if (display.has("bold")) {
-                    style = style.withBold(display.get("bold").getAsBoolean());
-                }
-                if (display.has("italic")) {
-                    style = style.withItalic(display.get("italic").getAsBoolean());
-                }
-                if (display.has("underlined")) {
-                    style = style.withUnderlined(display.get("underlined").getAsBoolean());
-                }
-                if (display.has("color")) {
-                    TextColor color = TextColor.parseColor(display.get("color").getAsString());
-                    if (color != null) style = style.withColor(color);
-                }
-                return comp.withStyle(style);
-            }
-        }
-
-        // 標準Minecraft Component JSON（文字列・オブジェクト・配列に対応）
-        // ComponentTransformer.transform() で runicink:sprite 等を解決する
-        try {
-            Component parsed = Component.Serializer.fromJson(displayElement);
-            if (parsed != null) {
-                return ComponentTransformer.transform(parsed);
-            }
-        } catch (Exception e) {
-            LOGGER.error("[EmojiDeco] Failed to parse shortcode display: {}", e.getMessage());
-        }
-        return Component.literal(displayElement.toString());
+        return EmojiDecoComponentParser.parse(displayElement, null);
     }
 
     public static boolean has(String code) {

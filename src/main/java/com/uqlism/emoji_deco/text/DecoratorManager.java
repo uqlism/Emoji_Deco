@@ -20,29 +20,11 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
-
-/**
- * Loads decorator definitions from assets/emoji_deco/decorators/*.json in datapacks.
- *
- * JSON format:
- * {
- *   "enable": true,
- *   "display": {
- *     "text": "",
- *     "bold": true,
- *     "extra": [ { "translate": "emoji_deco:slot" } ]
- *   }
- * }
- *
- * The special translate key "emoji_deco:slot" is replaced at render time
- * with the content inside the brackets: #bold[content]
- */
 public class DecoratorManager implements PreparableReloadListener {
 
     public static final DecoratorManager INSTANCE = new DecoratorManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Raw JsonObject for each tag — we re-parse per invocation to inject slot content */
     private static final Map<String, JsonObject> REGISTRY = new ConcurrentHashMap<>();
 
     @Override
@@ -96,58 +78,15 @@ public class DecoratorManager implements PreparableReloadListener {
         return REGISTRY.containsKey(name);
     }
 
-    /**
-     * Resolves a decorator, substituting slotComponent for any "emoji_deco:slot" translate nodes.
-     * Returns null if the decorator is not found.
-     */
     public static Component resolve(String name, Component slotComponent) {
         JsonObject json = REGISTRY.get(name);
         if (json == null) return null;
-
         try {
-            com.google.gson.JsonElement display = json.get("display").deepCopy();
-            injectSlot(display, slotComponent);
-            Component parsed = Component.Serializer.fromJson(display);
-            if (parsed != null) {
-                return ComponentTransformer.transform(parsed);
-            }
+            return EmojiDecoComponentParser.parse(json.get("display"), slotComponent);
         } catch (Exception e) {
             LOGGER.error("[EmojiDeco] Failed to resolve style tag '{}': {}", name, e.getMessage());
         }
         return slotComponent;
-    }
-
-    /**
-     * Recursively walks the JsonElement tree and replaces any
-     * {"translate":"emoji_deco:slot"} object with the serialized slotComponent JSON.
-     */
-    private static void injectSlot(com.google.gson.JsonElement el, Component slotComponent) {
-        if (el.isJsonObject()) {
-            com.google.gson.JsonObject obj = el.getAsJsonObject();
-            if (obj.has("translate") && "emoji_deco:slot".equals(obj.get("translate").getAsString())) {
-                com.google.gson.JsonElement slotJson = Component.Serializer.toJsonTree(slotComponent);
-                com.google.gson.JsonObject slotObj;
-                if (slotJson.isJsonObject()) {
-                    slotObj = slotJson.getAsJsonObject();
-                } else if (slotJson.isJsonPrimitive()) {
-                    slotObj = new com.google.gson.JsonObject();
-                    slotObj.addProperty("text", slotJson.getAsString());
-                } else {
-                    slotObj = new com.google.gson.JsonObject();
-                    slotObj.addProperty("text", slotComponent.getString());
-                }
-                new java.util.ArrayList<>(obj.keySet()).forEach(obj::remove);
-                slotObj.entrySet().forEach(e -> obj.add(e.getKey(), e.getValue()));
-            } else {
-                for (Map.Entry<String, com.google.gson.JsonElement> entry : obj.entrySet()) {
-                    injectSlot(entry.getValue(), slotComponent);
-                }
-            }
-        } else if (el.isJsonArray()) {
-            for (com.google.gson.JsonElement child : el.getAsJsonArray()) {
-                injectSlot(child, slotComponent);
-            }
-        }
     }
 
     /** Returns all tag names that start with prefix, sorted. */

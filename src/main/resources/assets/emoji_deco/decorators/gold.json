@@ -4,7 +4,7 @@
     "text": "",
     "color": "gold",
     "extra": [
-      { "translate": "emoji_deco:slot" }
+      { "emoji_deco:slot": {} }
     ]
   }
 }

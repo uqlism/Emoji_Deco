@@ -11,11 +11,10 @@
             "color": "#ffffff",
             "extra": [
                 {
-                    "translate": "emoji_deco:sprite",
-                    "with": [
-                        "minecraft:textures/atlas/blocks.png",
-                        "block/stone"
-                    ]
+                    "emoji_deco:sprite": {
+                        "atlas": "minecraft:textures/atlas/blocks.png",
+                        "sprite": "block/stone"
+                    }
                 }
             ]
         }

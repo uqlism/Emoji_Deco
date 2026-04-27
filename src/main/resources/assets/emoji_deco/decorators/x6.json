@@ -1,12 +1,9 @@
 {
   "enable": true,
   "display": {
-    "translate": "emoji_deco:size",
-    "with": [
-      "6.0",
-      {
-        "translate": "emoji_deco:slot"
-      }
-    ]
+    "emoji_deco:size": {
+      "size": 6.0,
+      "contents": { "emoji_deco:slot": {} }
+    }
   }
 }
