@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.block;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -13,6 +14,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -25,6 +27,14 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock {
+
+    public static final SoundType GRAFFITI_SOUND_TYPE = new SoundType(
+            0.8f, 1.8f,
+            SoundEvents.SLIME_SQUISH_SMALL,
+            SoundEvents.SLIME_SQUISH_SMALL,
+            SoundEvents.SLIME_SQUISH_SMALL,
+            SoundEvents.SLIME_SQUISH_SMALL,
+            SoundEvents.SLIME_SQUISH_SMALL);
 
     private static final VoxelShape SHAPE_FLOOR   = Block.box(0, 0, 0, 16, 0.5, 16);
     private static final VoxelShape SHAPE_CEILING = Block.box(0, 15.5, 0, 16, 16, 16);

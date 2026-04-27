@@ -48,13 +48,10 @@ public class GraffitiEditScreen extends Screen {
             lineValues[i] = be.getLine(i);
         }
 
-        // Show all lines that already have content; always show at least 1
-        activeLines = 1;
-        for (int i = GraffitiBlockEntity.MAX_LINES - 1; i >= 0; i--) {
-            if (!lineValues[i].isEmpty()) {
-                activeLines = i + 1;
-                break;
-            }
+        // 保存時の行数を復元し、非空行がそれを超えていれば広げる
+        activeLines = be.getDisplayedLines();
+        for (int i = GraffitiBlockEntity.MAX_LINES - 1; i >= activeLines; i--) {
+            if (!lineValues[i].isEmpty()) { activeLines = i + 1; break; }
         }
         focusedLine = 0;
     }
@@ -291,8 +288,8 @@ public class GraffitiEditScreen extends Screen {
     private void save() {
         saveBoxValues();
         for (int i = activeLines; i < lineValues.length; i++) lineValues[i] = "";
-        Network.CHANNEL.sendToServer(new GraffitiUpdatePacket(target.getBlockPos(), lineValues, alignment));
-        target.applyUpdate(lineValues, alignment);
+        Network.CHANNEL.sendToServer(new GraffitiUpdatePacket(target.getBlockPos(), lineValues, alignment, activeLines));
+        target.applyUpdate(lineValues, alignment, activeLines);
         onClose();
     }
 

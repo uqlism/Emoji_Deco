@@ -15,6 +15,7 @@ public class GraffitiBlockEntity extends BlockEntity {
 
     private final String[] lines = new String[MAX_LINES];
     private GraffitiAlignment alignment = GraffitiAlignment.LEFT;
+    private int displayedLines = 1;
 
     public GraffitiBlockEntity(BlockPos pos, BlockState state) {
         super(Registration.GRAFFITI_BLOCK_ENTITY.get(), pos, state);
@@ -42,11 +43,16 @@ public class GraffitiBlockEntity extends BlockEntity {
         this.alignment = alignment;
     }
 
-    public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment) {
+    public int getDisplayedLines() {
+        return displayedLines;
+    }
+
+    public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {
         for (int i = 0; i < MAX_LINES; i++) {
             lines[i] = (i < newLines.length && newLines[i] != null) ? newLines[i] : "";
         }
         this.alignment = newAlignment == null ? GraffitiAlignment.LEFT : newAlignment;
+        this.displayedLines = Math.max(1, Math.min(newDisplayedLines, MAX_LINES));
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
@@ -60,6 +66,7 @@ public class GraffitiBlockEntity extends BlockEntity {
             tag.putString("line" + i, lines[i]);
         }
         tag.putString("align", alignment.getSerializedName());
+        tag.putInt("displayedLines", displayedLines);
     }
 
     @Override
@@ -69,6 +76,15 @@ public class GraffitiBlockEntity extends BlockEntity {
             lines[i] = tag.contains("line" + i) ? tag.getString("line" + i) : "";
         }
         alignment = GraffitiAlignment.byName(tag.getString("align"));
+        if (tag.contains("displayedLines")) {
+            displayedLines = Math.max(1, Math.min(tag.getInt("displayedLines"), MAX_LINES));
+        } else {
+            // 旧データ: 最後の非空行から推定
+            displayedLines = 1;
+            for (int i = MAX_LINES - 1; i >= 0; i--) {
+                if (!lines[i].isEmpty()) { displayedLines = i + 1; break; }
+            }
+        }
     }
 
     @Override

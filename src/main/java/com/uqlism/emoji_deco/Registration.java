@@ -33,7 +33,8 @@ public class Registration {
                     .mapColor(MapColor.NONE)
                     .strength(0.2f)
                     .noOcclusion()
-                    .noCollission()));
+                    .noCollission()
+                    .sound(GraffitiBlock.GRAFFITI_SOUND_TYPE)));
 
     public static final RegistryObject<Item> GRAFFITI_INK_ITEM = ITEMS.register("graffiti_ink",
             () -> new GraffitiInkItem(new Item.Properties().durability(8)));
