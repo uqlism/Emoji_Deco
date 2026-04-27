@@ -1,6 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.HeaderScaledSequence;
+import com.uqlism.emoji_deco.text.CompositeScaledSequence;
+import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -27,12 +28,32 @@ public class MixinFont {
             Matrix4f matrix, MultiBufferSource buffers,
             Font.DisplayMode mode, int bgColor, int packedLight,
             CallbackInfoReturnable<Integer> cir) {
-        if (!(text instanceof HeaderScaledSequence hss)) return;
-        float s = hss.scale();
-        Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
+
         Font self = (Font)(Object)this;
-        // Pass hss.inner() (not hss) to avoid re-triggering this injection
-        cir.setReturnValue(self.drawInBatch(hss.inner(), x, y / s, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+
+        if (text instanceof ScaledSequence ss) {
+            float s = ss.scale();
+            Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
+            cir.setReturnValue(self.drawInBatch(ss.inner(), x, y / s, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+            return;
+        }
+
+        if (text instanceof CompositeScaledSequence css) {
+            float curX = x;
+            int retVal = 0;
+            for (var seg : css.segments()) {
+                float s = seg.scale();
+                FormattedCharSequence chars = seg.chars();
+                if (s == 1.0f) {
+                    retVal = self.drawInBatch(chars, curX, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight);
+                } else {
+                    Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
+                    retVal = self.drawInBatch(chars, curX / s, y / s, color, dropShadow, scaled, buffers, mode, bgColor, packedLight);
+                }
+                curX += self.width(chars) * s;
+            }
+            cir.setReturnValue(retVal);
+        }
     }
 
     // m_168645_ = drawInBatch8xOutline(FormattedCharSequence, float, float, int, int, Matrix4f, MultiBufferSource, int)
@@ -42,18 +63,35 @@ public class MixinFont {
             int color, int outlineColor,
             Matrix4f matrix, MultiBufferSource buffers, int packedLight,
             CallbackInfo ci) {
-        if (text instanceof HeaderScaledSequence hss) {
-            float s = hss.scale();
+
+        Font self = (Font)(Object)this;
+
+        if (text instanceof ScaledSequence ss) {
+            float s = ss.scale();
             Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
-            Font self = (Font)(Object)this;
-            self.drawInBatch8xOutline(hss.inner(), x, y / s, color, outlineColor, scaled, buffers, packedLight);
+            self.drawInBatch8xOutline(ss.inner(), x, y / s, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }
-        if (hasNoGlowFont(text)) {
-            Font self = (Font)(Object)this;
 
-            // Collect all char entries
+        if (text instanceof CompositeScaledSequence css) {
+            float curX = x;
+            for (var seg : css.segments()) {
+                float s = seg.scale();
+                FormattedCharSequence chars = seg.chars();
+                if (s == 1.0f) {
+                    self.drawInBatch8xOutline(chars, curX, y, color, outlineColor, matrix, buffers, packedLight);
+                } else {
+                    Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
+                    self.drawInBatch8xOutline(chars, curX / s, y / s, color, outlineColor, scaled, buffers, packedLight);
+                }
+                curX += self.width(chars) * s;
+            }
+            ci.cancel();
+            return;
+        }
+
+        if (hasNoGlowFont(text)) {
             List<int[]> cpEntries = new ArrayList<>();
             List<Style> styleEntries = new ArrayList<>();
             text.accept((idx, style, cp) -> {
@@ -62,7 +100,6 @@ public class MixinFont {
                 return true;
             });
 
-            // Split into runs: no-glow glyphs → drawInBatch, others → drawInBatch8xOutline
             float curX = x;
             int i = 0;
             while (i < cpEntries.size()) {
@@ -89,6 +126,18 @@ public class MixinFont {
             }
             ci.cancel();
         }
+    }
+
+    // m_92724_ = width(FormattedCharSequence) — returns visual (scaled) width for CompositeScaledSequence
+    @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
+    private void runicink$scaledWidth(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
+        if (!(text instanceof CompositeScaledSequence css)) return;
+        Font self = (Font)(Object)this;
+        int total = 0;
+        for (var seg : css.segments()) {
+            total += Math.round(self.width(seg.chars()) * seg.scale());
+        }
+        cir.setReturnValue(total);
     }
 
     private static boolean isNoGlowFont(Style style) {

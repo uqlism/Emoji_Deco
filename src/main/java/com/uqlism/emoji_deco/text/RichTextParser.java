@@ -8,17 +8,6 @@ public class RichTextParser {
 
     public static Component parse(String raw) {
         if (raw == null || raw.isEmpty()) return Component.empty();
-
-        // Header: lines starting with one or more '#' followed by a space
-        if (raw.startsWith("#")) {
-            int level = 0;
-            while (level < raw.length() && raw.charAt(level) == '#') level++;
-            if (level <= 6 && level < raw.length() && raw.charAt(level) == ' ') {
-                MutableComponent content = parseInline(raw.substring(level + 1), Style.EMPTY);
-                return HeaderRegistry.createMarker(level).append(content);
-            }
-        }
-
         return parseInline(raw, Style.EMPTY);
     }
 

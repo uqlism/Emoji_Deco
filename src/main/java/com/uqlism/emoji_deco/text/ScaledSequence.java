@@ -3,13 +3,13 @@ package com.uqlism.emoji_deco.text;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.FormattedCharSink;
 
-/** A {@link FormattedCharSequence} that carries a per-line render scale for header text. */
-public final class HeaderScaledSequence implements FormattedCharSequence {
+/** A {@link FormattedCharSequence} that carries a per-line render scale. */
+public final class ScaledSequence implements FormattedCharSequence {
 
     private final FormattedCharSequence inner;
     private final float scale;
 
-    public HeaderScaledSequence(FormattedCharSequence inner, float scale) {
+    public ScaledSequence(FormattedCharSequence inner, float scale) {
         this.inner = inner;
         this.scale = scale;
     }
