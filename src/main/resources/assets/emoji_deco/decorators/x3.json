@@ -1,9 +1,0 @@
-{
-  "enable": true,
-  "display": {
-    "emoji_deco:size": {
-      "size": 3.0,
-      "contents": { "emoji_deco:slot": {} }
-    }
-  }
-}
