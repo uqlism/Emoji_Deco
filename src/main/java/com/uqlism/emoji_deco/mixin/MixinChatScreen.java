@@ -1,8 +1,10 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.SuggestionState;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -11,10 +13,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatScreen.class)
 public class MixinChatScreen {
 
+    // SRG: f_95573_ = input (EditBox)
+    @Shadow(remap = false)
+    private EditBox f_95573_;
+
     // SRG: m_95610_ = onEdited(String)
     @Inject(method = "m_95610_", at = @At("HEAD"), remap = false)
     private void runicink$onTyped(String text, CallbackInfo ci) {
-        SuggestionState.update(text);
+        SuggestionState.update(text, f_95573_.getCursorPosition());
     }
 
     // SRG: m_7933_ = keyPressed(int, int, int)
@@ -40,6 +46,12 @@ public class MixinChatScreen {
                     m.setAccessible(true);
                     m.invoke((ChatScreen) (Object) this, completed);
                 } catch (Exception ignored) {}
+
+                int newCursor = SuggestionState.pendingCursor;
+                if (newCursor >= 0) {
+                    f_95573_.moveCursorTo(newCursor);
+                    f_95573_.setHighlightPos(newCursor);
+                }
                 SuggestionState.clear();
             }
             cir.setReturnValue(true);

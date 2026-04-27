@@ -30,54 +30,6 @@ public class RichTextParser {
         while (pos < text.length()) {
             char c = text.charAt(pos);
 
-            // **bold**
-            if (c == '*' && pos + 1 < text.length() && text.charAt(pos + 1) == '*') {
-                int close = text.indexOf("**", pos + 2);
-                if (close != -1) {
-                    flush(result, text, litStart, pos, base);
-                    result.append(parseInline(text.substring(pos + 2, close), base.withBold(true)));
-                    pos = close + 2;
-                    litStart = pos;
-                    continue;
-                }
-            }
-
-            // *italic* (not **)
-            if (c == '*' && (pos + 1 >= text.length() || text.charAt(pos + 1) != '*')) {
-                int close = findSingleStar(text, pos + 1);
-                if (close != -1) {
-                    flush(result, text, litStart, pos, base);
-                    result.append(parseInline(text.substring(pos + 1, close), base.withItalic(true)));
-                    pos = close + 1;
-                    litStart = pos;
-                    continue;
-                }
-            }
-
-            // ~~strikethrough~~
-            if (c == '~' && pos + 1 < text.length() && text.charAt(pos + 1) == '~') {
-                int close = text.indexOf("~~", pos + 2);
-                if (close != -1) {
-                    flush(result, text, litStart, pos, base);
-                    result.append(parseInline(text.substring(pos + 2, close), base.withStrikethrough(true)));
-                    pos = close + 2;
-                    litStart = pos;
-                    continue;
-                }
-            }
-
-            // __underline__
-            if (c == '_' && pos + 1 < text.length() && text.charAt(pos + 1) == '_') {
-                int close = text.indexOf("__", pos + 2);
-                if (close != -1) {
-                    flush(result, text, litStart, pos, base);
-                    result.append(parseInline(text.substring(pos + 2, close), base.withUnderlined(true)));
-                    pos = close + 2;
-                    litStart = pos;
-                    continue;
-                }
-            }
-
             // @username → player head glyph
             if (c == '@') {
                 int end = pos + 1;
@@ -106,6 +58,29 @@ public class RichTextParser {
                 }
             }
 
+            // #tagname[content] style tags
+            if (c == '#') {
+                int nameEnd = pos + 1;
+                while (nameEnd < text.length() && DecoratorManager.isValidTagName(String.valueOf(text.charAt(nameEnd)))) {
+                    nameEnd++;
+                }
+                if (nameEnd > pos + 1 && nameEnd < text.length() && text.charAt(nameEnd) == '[') {
+                    String tagName = text.substring(pos + 1, nameEnd);
+                    if (DecoratorManager.has(tagName)) {
+                        int bracketClose = findMatchingBracket(text, nameEnd);
+                        if (bracketClose != -1) {
+                            flush(result, text, litStart, pos, base);
+                            MutableComponent slotComponent = parseInline(text.substring(nameEnd + 1, bracketClose), base);
+                            Component resolved = DecoratorManager.resolve(tagName, slotComponent);
+                            result.append(resolved != null ? resolved : slotComponent);
+                            pos = bracketClose + 1;
+                            litStart = pos;
+                            continue;
+                        }
+                    }
+                }
+            }
+
             pos++;
         }
 
@@ -119,15 +94,12 @@ public class RichTextParser {
         }
     }
 
-    // Finds the next '*' that is not part of '**', starting from `from`
-    private static int findSingleStar(String text, int from) {
-        for (int i = from; i < text.length(); i++) {
-            if (text.charAt(i) == '*') {
-                if (i + 1 < text.length() && text.charAt(i + 1) == '*') {
-                    i++; // skip **
-                } else {
-                    return i;
-                }
+    private static int findMatchingBracket(String text, int openPos) {
+        int depth = 0;
+        for (int i = openPos; i < text.length(); i++) {
+            if (text.charAt(i) == '[') depth++;
+            else if (text.charAt(i) == ']') {
+                if (--depth == 0) return i;
             }
         }
         return -1;

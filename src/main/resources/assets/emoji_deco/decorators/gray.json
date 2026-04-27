@@ -1,0 +1,10 @@
+{
+  "enable": true,
+  "display": {
+    "text": "",
+    "color": "gray",
+    "extra": [
+      { "translate": "emoji_deco:slot" }
+    ]
+  }
+}

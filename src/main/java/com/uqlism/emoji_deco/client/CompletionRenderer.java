@@ -8,41 +8,53 @@ import java.util.List;
 
 public class CompletionRenderer {
 
-    private static final int ITEM_HEIGHT  = 12;
-    private static final int MAX_VISIBLE  = 5;
-    private static final int MIN_WIDTH    = 100;
+    public static final int ITEM_HEIGHT = 12;
+    public static final int MAX_VISIBLE = 10;
+    private static final int PADDING_H   = 4;  // horizontal inner padding
+    private static final int PADDING_TOP = 2;  // text top offset within row
+
+    private static final int COLOR_SELECTED = 0xFFFF55; // vanilla yellow (§e)
+    private static final int COLOR_NORMAL   = 0xFFFFFF;
+    private static final int BG_COLOR       = 0x80000000;
 
     public static void render(GuiGraphics graphics, Font font,
                                List<SuggestionState.Entry> suggestions,
-                               int selectedIndex, int x, int baseY) {
+                               int selectedIndex, int x, int baseY, int maxX) {
         if (suggestions.isEmpty()) return;
 
-        int maxVisible = Math.min(suggestions.size(), MAX_VISIBLE);
+        int visible = Math.min(suggestions.size(), MAX_VISIBLE);
 
-        int maxWidth = 0;
-        for (int i = 0; i < maxVisible; i++) {
-            SuggestionState.Entry e = suggestions.get(i);
-            int w = font.width(e.preview()) + 4 + font.width(e.label());
-            maxWidth = Math.max(maxWidth, w);
+        // Measure box width from all visible entries
+        int innerWidth = 0;
+        for (SuggestionState.Entry e : suggestions) {
+            int w = font.width(e.label());
+            int pw = font.width(e.preview());
+            if (pw > 0) w += pw + 2;
+            innerWidth = Math.max(innerWidth, w);
         }
-        maxWidth = Math.max(maxWidth + 8, MIN_WIDTH);
+        int boxWidth = innerWidth + PADDING_H * 2;
 
-        int totalHeight = ITEM_HEIGHT * maxVisible;
-        graphics.fill(x - 2, baseY - 2, x + maxWidth, baseY + totalHeight + 2, 0xB0000000);
+        // Clamp X so box stays on screen
+        x = Math.min(x, maxX - boxWidth);
+        x = Math.max(x, 0);
 
-        for (int i = 0; i < maxVisible; i++) {
-            int idx = (selectedIndex - (maxVisible / 2) + i + suggestions.size()) % suggestions.size();
+        int totalHeight = ITEM_HEIGHT * visible;
+        graphics.fill(x, baseY, x + boxWidth, baseY + totalHeight, BG_COLOR);
+
+        for (int i = 0; i < visible; i++) {
+            // Selected item at top; wrap-around for short lists
+            int idx = (selectedIndex + i) % suggestions.size();
             SuggestionState.Entry e = suggestions.get(idx);
-            int y = baseY + i * ITEM_HEIGHT;
+            int y = baseY + i * ITEM_HEIGHT + PADDING_TOP;
+            int color = (i == 0) ? COLOR_SELECTED : COLOR_NORMAL;
 
-            boolean selected = (idx == selectedIndex);
-            if (selected) {
-                graphics.fill(x - 2, y - 1, x + maxWidth, y + ITEM_HEIGHT - 1, 0x60FFFFFF);
+            int tx = x + PADDING_H;
+            int pw = font.width(e.preview());
+            if (pw > 0) {
+                graphics.drawString(font, e.preview(), tx, y, color, false);
+                tx += pw + 2;
             }
-
-            int color = selected ? 0xFFFFFF : 0xAAAAAA;
-            graphics.drawString(font, e.preview(), x, y, color, false);
-            graphics.drawString(font, e.label(), x + font.width(e.preview()) + 4, y, color, false);
+            graphics.drawString(font, e.label(), tx, y, color, false);
         }
     }
 }

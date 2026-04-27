@@ -46,16 +46,24 @@ public class ClientEvents {
 
         Minecraft mc = Minecraft.getInstance();
         GuiGraphics graphics = event.getGuiGraphics();
+        int screenWidth  = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
 
-        int maxVisible  = Math.min(SuggestionState.suggestions.size(), 5);
-        int totalHeight = 12 * maxVisible;
-        int baseY       = screenHeight - 45 - totalHeight;
+        int visible     = Math.min(SuggestionState.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
+        int totalHeight = CompletionRenderer.ITEM_HEIGHT * visible;
+        // Position just above the chat input bar (input is 12px tall at the bottom)
+        int baseY = screenHeight - 14 - totalHeight;
+
+        // Align X to the trigger character in the EditBox.
+        // EditBox starts at x=2 with 4px inner padding; text renders from x=6.
+        // triggerPos is the index of ':' / '@' / '#' in lastInput.
+        int triggerPos = Math.min(SuggestionState.triggerPos, SuggestionState.lastInput.length());
+        int x = 2 + 4 + mc.font.width(SuggestionState.lastInput.substring(0, triggerPos));
 
         CompletionRenderer.render(
                 graphics, mc.font,
                 SuggestionState.suggestions, SuggestionState.selectedIndex,
-                2, baseY);
+                x, baseY, screenWidth - 2);
     }
 
     @SubscribeEvent

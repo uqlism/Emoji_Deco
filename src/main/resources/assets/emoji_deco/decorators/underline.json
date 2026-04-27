@@ -1,0 +1,10 @@
+{
+  "enable": true,
+  "display": {
+    "text": "",
+    "underlined": true,
+    "extra": [
+      { "translate": "emoji_deco:slot" }
+    ]
+  }
+}

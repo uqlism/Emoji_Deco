@@ -10,33 +10,49 @@ import java.util.stream.Collectors;
 
 public class SuggestionState {
 
-    public enum TriggerType { SHORTCODE, USERNAME }
+    public enum TriggerType { SHORTCODE, USERNAME, DECORATOR }
 
     public record Entry(String label, Component preview, String insertion, TriggerType type) {}
 
     public static String lastInput = "";
+    public static int lastCursor = 0;
+    public static int pendingCursor = -1;
     public static List<Entry> suggestions = Collections.emptyList();
     public static int selectedIndex = 0;
+    public static int triggerPos = 0; // screen-X anchor: index of the trigger char in lastInput
 
-    public static void update(String text) {
+    /** Called with cursor position so trigger detection only looks at text before the cursor. */
+    public static void update(String text, int cursor) {
         lastInput = text;
+        lastCursor = Math.min(cursor, text.length());
+        String active = text.substring(0, lastCursor);
 
-        int colonPos = findActiveColonPos(text);
-        int atPos    = findActiveAtPos(text);
+        int colonPos = findActiveColonPos(active);
+        int atPos    = findActiveAtPos(active);
+        int hashPos  = findActiveHashPos(active);
 
-        if (colonPos < 0 && atPos < 0) {
+        if (colonPos < 0 && atPos < 0 && hashPos < 0) {
             clear();
             return;
         }
 
-        if (atPos > colonPos) {
-            String prefix = text.substring(atPos + 1);
-            suggestions = buildUsernameSuggestions(prefix);
+        int maxPos = Math.max(Math.max(colonPos, atPos), hashPos);
+
+        if (maxPos == hashPos) {
+            triggerPos = hashPos;
+            suggestions = buildStyleTagSuggestions(active.substring(hashPos + 1));
+        } else if (maxPos == atPos) {
+            triggerPos = atPos;
+            suggestions = buildUsernameSuggestions(active.substring(atPos + 1));
         } else {
-            String prefix = text.substring(colonPos + 1);
-            suggestions = buildShortcodeSuggestions(prefix);
+            triggerPos = colonPos;
+            suggestions = buildShortcodeSuggestions(active.substring(colonPos + 1));
         }
         selectedIndex = 0;
+    }
+
+    public static void update(String text) {
+        update(text, text.length());
     }
 
     /** Returns the position of the last unclosed ':' trigger, or -1. */
@@ -58,8 +74,39 @@ public class SuggestionState {
         return pos;
     }
 
+    /**
+     * Returns the position of the last '#' trigger where all following chars are tag-name-safe
+     * (letters, digits, '_', '-') and the trigger is NOT followed by a space (which would be a header).
+     * Returns -1 if no active '#' trigger found.
+     */
+    private static int findActiveHashPos(String text) {
+        int pos = text.lastIndexOf('#');
+        if (pos < 0) return -1;
+        String after = text.substring(pos + 1);
+        // Must not be a header (# followed by space or another #)
+        if (after.isEmpty()) return pos; // just typed '#', show all suggestions
+        if (after.charAt(0) == ' ' || after.charAt(0) == '#') return -1;
+        // All chars after '#' must be valid tag-name chars
+        for (char c : after.toCharArray()) {
+            if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') return -1;
+        }
+        return pos;
+    }
+
     private static boolean isUsernameChar(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private static List<Entry> buildStyleTagSuggestions(String prefix) {
+        // Show all tags when prefix is empty (just '#' was typed)
+        List<Entry> results = new java.util.ArrayList<>();
+        DecoratorManager.getSuggestions(prefix).forEach(name -> {
+            // preview: apply the tag to a sample content so user can see what it looks like
+            Component preview = DecoratorManager.resolve(name, Component.literal(name));
+            if (preview == null) preview = Component.literal("#" + name + "[]");
+            results.add(new Entry("#" + name + "[]", preview, name, TriggerType.DECORATOR));
+        });
+        return results;
     }
 
     private static List<Entry> buildShortcodeSuggestions(String prefix) {
@@ -96,17 +143,33 @@ public class SuggestionState {
     }
 
     /**
-     * Returns the text after applying the selected completion to the current input.
-     * Shortcode: replaces from the last ':' → "prefix:insertion:"
-     * Username:  replaces from the last '@' → "prefix@insertion"
+     * Applies the selected completion. Only text before lastCursor is used for trigger
+     * detection; text after lastCursor is preserved. Sets pendingCursor to the desired
+     * cursor position in the resulting string (-1 if no repositioning needed).
      */
     public static String applyTo(String text, Entry entry) {
+        int split = Math.min(lastCursor, text.length());
+        String before = text.substring(0, split);
+        String after  = text.substring(split);
+
         if (entry.type() == TriggerType.SHORTCODE) {
-            int pos = text.lastIndexOf(':');
-            return pos < 0 ? text : text.substring(0, pos + 1) + entry.insertion() + ":";
+            int pos = before.lastIndexOf(':');
+            if (pos < 0) { pendingCursor = -1; return text; }
+            String head = before.substring(0, pos + 1) + entry.insertion() + ":";
+            pendingCursor = head.length();
+            return head + after;
+        } else if (entry.type() == TriggerType.DECORATOR) {
+            int pos = before.lastIndexOf('#');
+            if (pos < 0) { pendingCursor = -1; return text; }
+            String head = before.substring(0, pos) + "#" + entry.insertion() + "[";
+            pendingCursor = head.length(); // cursor inside []
+            return head + "]" + after;
         } else {
-            int pos = text.lastIndexOf('@');
-            return pos < 0 ? text : text.substring(0, pos + 1) + entry.insertion();
+            int pos = before.lastIndexOf('@');
+            if (pos < 0) { pendingCursor = -1; return text; }
+            String head = before.substring(0, pos + 1) + entry.insertion();
+            pendingCursor = head.length();
+            return head + after;
         }
     }
 

@@ -1,0 +1,10 @@
+{
+  "enable": true,
+  "display": {
+    "text": "",
+    "strikethrough": true,
+    "extra": [
+      { "translate": "emoji_deco:slot" }
+    ]
+  }
+}
