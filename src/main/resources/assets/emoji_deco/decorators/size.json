@@ -1,0 +1,17 @@
+{
+  "enable": true,
+  "display": {
+    "emoji_deco:size": {
+      "size": {
+        "emoji_deco:arg": {
+          "index": 0,
+          "default": 1.0,
+          "type": "float"
+        }
+      },
+      "contents": {
+        "emoji_deco:slot": {}
+      }
+    }
+  }
+}
