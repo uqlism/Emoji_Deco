@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import net.minecraft.client.gui.screens.inventory.BookEditScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -42,7 +43,9 @@ public class ClientEvents {
     public static void onScreenRender(ScreenEvent.Render.Post event) {
         if (SuggestionState.suggestions.isEmpty()) return;
         var screen = event.getScreen();
-        if (!(screen instanceof ChatScreen) && !(screen instanceof AbstractSignEditScreen)) return;
+        if (!(screen instanceof ChatScreen)
+                && !(screen instanceof AbstractSignEditScreen)
+                && !(screen instanceof BookEditScreen)) return;
 
         Minecraft mc = Minecraft.getInstance();
         GuiGraphics graphics = event.getGuiGraphics();
@@ -51,14 +54,30 @@ public class ClientEvents {
 
         int visible     = Math.min(SuggestionState.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
         int totalHeight = CompletionRenderer.ITEM_HEIGHT * visible;
-        // Position just above the chat input bar (input is 12px tall at the bottom)
-        int baseY = screenHeight - 14 - totalHeight;
 
-        // Align X to the trigger character in the EditBox.
-        // EditBox starts at x=2 with 4px inner padding; text renders from x=6.
-        // triggerPos is the index of ':' / '@' / '#' in lastInput.
-        int triggerPos = Math.min(SuggestionState.triggerPos, SuggestionState.lastInput.length());
-        int x = 2 + 4 + mc.font.width(SuggestionState.lastInput.substring(0, triggerPos));
+        int x, baseY;
+        if (screen instanceof BookEditScreen) {
+            // Book text area: local origin is at (screenWidth-192)/2+36, y=32.
+            // Compute the trigger's line number and line-local X from '\n' splits.
+            int bookLeft = (screenWidth - 192) / 2 + 36;
+            String pageText = SuggestionState.lastInput;
+            int tp = Math.min(SuggestionState.triggerPos, pageText.length());
+            String beforeTrigger = pageText.substring(0, tp);
+            int lastNl = beforeTrigger.lastIndexOf('\n');
+            String lineText = lastNl >= 0 ? beforeTrigger.substring(lastNl + 1) : beforeTrigger;
+            int lineNum = (int) beforeTrigger.chars().filter(c -> c == '\n').count();
+            x = bookLeft + mc.font.width(lineText);
+            int cursorLineY = 32 + lineNum * 9;
+            // Show below cursor line when there is room; otherwise show above.
+            baseY = (cursorLineY + 9 + totalHeight <= screenHeight - 4)
+                    ? cursorLineY + 9
+                    : cursorLineY - totalHeight;
+        } else {
+            // Chat and sign: position just above the input bar at the bottom.
+            baseY = screenHeight - 14 - totalHeight;
+            int triggerPos = Math.min(SuggestionState.triggerPos, SuggestionState.lastInput.length());
+            x = 2 + 4 + mc.font.width(SuggestionState.lastInput.substring(0, triggerPos));
+        }
 
         CompletionRenderer.render(
                 graphics, mc.font,
