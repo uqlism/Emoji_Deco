@@ -31,6 +31,6 @@ public class MixinEntityRenderer {
         if (customName == null) return original;
         String raw = customName.getString();
         if (raw.isBlank()) return original;
-        return RichTextParser.parse(raw);
+        return RichTextParser.parse(raw).toComponent();
     }
 }

@@ -1,18 +1,19 @@
 package com.uqlism.emoji_deco.text;
 
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class RichTextParser {
 
-    public static Component parse(String raw) {
-        if (raw == null || raw.isEmpty()) return Component.empty();
+    public static RichNode parse(String raw) {
+        if (raw == null || raw.isEmpty()) return RichNode.empty();
         return parseInline(raw, Style.EMPTY);
     }
 
-    public static MutableComponent parseInline(String text, Style base) {
-        MutableComponent result = Component.empty();
+    public static RichNode parseInline(String text, Style base) {
+        List<RichNode> children = new ArrayList<>();
         int pos = 0;
         int litStart = 0;
 
@@ -28,8 +29,8 @@ public class RichTextParser {
                     String code = dot > 0 ? inner.substring(0, dot) : inner;
                     String[] args = dot > 0 ? inner.substring(dot + 1).split(",", -1) : new String[0];
                     if (isValidShortcodeName(code) && ShortcodeManager.has(code)) {
-                        flush(result, text, litStart, pos, base);
-                        result.append(ShortcodeManager.resolve(code, args));
+                        flush(children, text, litStart, pos, base);
+                        children.add(ShortcodeManager.resolve(code, args));
                         pos = close + 1;
                         litStart = pos;
                         continue;
@@ -45,7 +46,6 @@ public class RichTextParser {
                 }
                 if (nameEnd > pos + 1 && nameEnd < text.length()) {
                     String tagName = text.substring(pos + 1, nameEnd);
-                    // 引数ブロック: .arg1,arg2 の解析
                     String[] args = new String[0];
                     int contentStart = nameEnd;
                     if (text.charAt(nameEnd) == '.') {
@@ -58,10 +58,10 @@ public class RichTextParser {
                     if (text.charAt(contentStart) == '[' && DecoratorManager.has(tagName)) {
                         int bracketClose = findMatchingBracket(text, contentStart);
                         if (bracketClose != -1) {
-                            flush(result, text, litStart, pos, base);
-                            MutableComponent slotComponent = parseInline(text.substring(contentStart + 1, bracketClose), base);
-                            Component resolved = DecoratorManager.resolve(tagName, slotComponent, args);
-                            result.append(resolved != null ? resolved : slotComponent);
+                            flush(children, text, litStart, pos, base);
+                            RichNode slotNode = parseInline(text.substring(contentStart + 1, bracketClose), base);
+                            RichNode resolved = DecoratorManager.resolve(tagName, slotNode, args);
+                            children.add(resolved != null ? resolved : slotNode);
                             pos = bracketClose + 1;
                             litStart = pos;
                             continue;
@@ -73,13 +73,13 @@ public class RichTextParser {
             pos++;
         }
 
-        flush(result, text, litStart, text.length(), base);
-        return result;
+        flush(children, text, litStart, text.length(), base);
+        return new RichNode.Text("", Style.EMPTY, children);
     }
 
-    private static void flush(MutableComponent out, String text, int start, int end, Style style) {
+    private static void flush(List<RichNode> out, String text, int start, int end, Style style) {
         if (start < end) {
-            out.append(Component.literal(text.substring(start, end)).withStyle(style));
+            out.add(new RichNode.Text(text.substring(start, end), style, List.of()));
         }
     }
 
@@ -101,5 +101,4 @@ public class RichTextParser {
         }
         return true;
     }
-
 }

@@ -1,8 +1,8 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
+import com.uqlism.emoji_deco.text.RichNode;
 import com.uqlism.emoji_deco.text.RichTextParser;
-import com.uqlism.emoji_deco.text.SizeRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -36,7 +36,7 @@ public class MixinSignText {
                 result[i] = FormattedCharSequence.EMPTY;
                 continue;
             }
-            result[i] = SizeRegistry.buildScaledLine(font, RichTextParser.parse(raw));
+            result[i] = RichNode.toScaledLine(font, RichTextParser.parse(raw));
         }
         cir.setReturnValue(result);
     }

@@ -48,6 +48,6 @@ private Component runicink$transformHotbarName(ItemStack stack) {
     if (!Config.enableItemNames) return original;
     String raw = original.getString();
     if (raw.isBlank()) return original;
-    return RichTextParser.parse(raw);
+    return RichTextParser.parse(raw).toComponent();
 }
 }

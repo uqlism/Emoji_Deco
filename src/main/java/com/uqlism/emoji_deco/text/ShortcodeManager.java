@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
@@ -28,15 +28,15 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static final ShortcodeManager INSTANCE = new ShortcodeManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Pre-parsed components for shortcodes without emoji_deco:arg */
-    private static final Map<String, Component> REGISTRY = new ConcurrentHashMap<>();
-    /** Raw display JSON for shortcodes that contain emoji_deco:arg — parsed per call */
+    /** Pre-parsed nodes for shortcodes without dynamic content */
+    private static final Map<String, RichNode> REGISTRY = new ConcurrentHashMap<>();
+    /** Raw display JSON for shortcodes that contain dynamic nodes — parsed per call */
     private static final Map<String, JsonElement> PARAM_REGISTRY = new ConcurrentHashMap<>();
     /** alias text → canonical shortcode name */
     private static final Map<String, String> ALIASES = new ConcurrentHashMap<>();
 
     private record LoadResult(
-            Map<String, Component>  registry,
+            Map<String, RichNode>   registry,
             Map<String, JsonElement> paramRegistry,
             Map<String, String>     aliases) {}
 
@@ -65,8 +65,8 @@ public class ShortcodeManager implements PreparableReloadListener {
     }
 
     private static LoadResult loadAll(ResourceManager resourceManager) {
-        Map<String, Component>  loaded      = new HashMap<>();
-        Map<String, JsonElement> paramLoaded = new HashMap<>();
+        Map<String, RichNode>   loaded        = new HashMap<>();
+        Map<String, JsonElement> paramLoaded  = new HashMap<>();
         Map<String, String>     loadedAliases = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "shortcodes", path -> path.getPath().endsWith(".json"));
@@ -103,7 +103,6 @@ public class ShortcodeManager implements PreparableReloadListener {
         return new LoadResult(loaded, paramLoaded, loadedAliases);
     }
 
-    /** Returns true if the element or any descendant needs runtime resolution (args or dynamic providers). */
     private static boolean isDynamic(JsonElement el) {
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
@@ -115,10 +114,6 @@ public class ShortcodeManager implements PreparableReloadListener {
         return false;
     }
 
-    /**
-     * Returns the raw "suggestions" JsonElement for the emoji_deco:arg at argIndex
-     * inside the given shortcode's display JSON, or null if absent.
-     */
     public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
         JsonElement display = PARAM_REGISTRY.get(code);
         if (display == null) return null;
@@ -131,13 +126,13 @@ public class ShortcodeManager implements PreparableReloadListener {
         return REGISTRY.containsKey(code) || PARAM_REGISTRY.containsKey(code);
     }
 
-    public static Component resolve(String code, String[] args) {
+    public static RichNode resolve(String code, String[] args) {
         JsonElement display = PARAM_REGISTRY.get(code);
         if (display != null) return EmojiDecoComponentParser.parse(display, null, args);
-        return REGISTRY.getOrDefault(code, Component.literal(":" + code + ":"));
+        return REGISTRY.getOrDefault(code, new RichNode.Text(":" + code + ":", Style.EMPTY, List.of()));
     }
 
-    public static Component resolve(String code) {
+    public static RichNode resolve(String code) {
         return resolve(code, new String[0]);
     }
 

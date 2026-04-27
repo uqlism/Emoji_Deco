@@ -5,14 +5,13 @@ import com.mojang.math.Axis;
 import com.uqlism.emoji_deco.block.GraffitiAlignment;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
+import com.uqlism.emoji_deco.text.RichNode;
 import com.uqlism.emoji_deco.text.RichTextParser;
-import com.uqlism.emoji_deco.text.SizeRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import org.joml.Matrix4f;
@@ -56,17 +55,17 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         if (!hasContent) { pose.popPose(); return; }
 
         // Collect exactly displayedLines lines, including trailing blanks
-        java.util.List<Component> lines = new java.util.ArrayList<>();
+        java.util.List<RichNode> lines = new java.util.ArrayList<>();
         for (int i = 0; i < displayedLines; i++) {
             String raw = be.getLine(i);
-            lines.add((raw != null && !raw.isEmpty()) ? RichTextParser.parse(raw) : Component.empty());
+            lines.add((raw != null && !raw.isEmpty()) ? RichTextParser.parse(raw) : RichNode.empty());
         }
 
         // Vertically centre the block of text on the surface
         float startY = (SURFACE - lines.size() * lineHeight) / 2f;
 
         for (int idx = 0; idx < lines.size(); idx++) {
-            FormattedCharSequence seq = SizeRegistry.buildScaledLine(font, lines.get(idx));
+            FormattedCharSequence seq = RichNode.toScaledLine(font, lines.get(idx));
             float textWidth = font.width(seq);
             float xPos = switch (align) {
                 case LEFT   -> 1f;

@@ -25,6 +25,6 @@ public class MixinWrittenBookAccess {
         if (!(page instanceof Component component)) return;
         String raw = component.getString();
         if (raw.isBlank()) return;
-        cir.setReturnValue(RichTextParser.parse(raw));
+        cir.setReturnValue(RichTextParser.parse(raw).toComponent());
     }
 }

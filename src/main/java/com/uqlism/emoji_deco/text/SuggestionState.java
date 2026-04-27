@@ -3,6 +3,7 @@ package com.uqlism.emoji_deco.text;
 import com.google.gson.JsonElement;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
@@ -109,8 +110,11 @@ public class SuggestionState {
     private static List<Entry> buildStyleTagSuggestions(String prefix) {
         List<Entry> results = new ArrayList<>();
         DecoratorManager.getSuggestions(prefix).forEach(name -> {
-            Component preview = DecoratorManager.resolve(name, Component.literal(name));
-            if (preview == null) preview = Component.literal("#" + name + "[]");
+            RichNode previewNode = DecoratorManager.resolve(name,
+                    new RichNode.Text(name, Style.EMPTY, List.of()));
+            Component preview = previewNode != null
+                    ? previewNode.toComponent()
+                    : Component.literal("#" + name + "[]");
             results.add(new Entry("#" + name + "[]", preview, name, TriggerType.DECORATOR));
         });
         return results;
@@ -120,10 +124,10 @@ public class SuggestionState {
         if (prefix.isEmpty()) return Collections.emptyList();
         List<Entry> results = new ArrayList<>();
         ShortcodeManager.getSuggestions(prefix).forEach(code ->
-                results.add(new Entry(":" + code + ":", ShortcodeManager.resolve(code), code, TriggerType.SHORTCODE)));
+                results.add(new Entry(":" + code + ":", ShortcodeManager.resolve(code).toComponent(), code, TriggerType.SHORTCODE)));
         ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
             String canonical = e.getValue();
-            results.add(new Entry(":" + canonical + ":", ShortcodeManager.resolve(canonical), canonical, TriggerType.SHORTCODE));
+            results.add(new Entry(":" + canonical + ":", ShortcodeManager.resolve(canonical).toComponent(), canonical, TriggerType.SHORTCODE));
         });
         return results;
     }

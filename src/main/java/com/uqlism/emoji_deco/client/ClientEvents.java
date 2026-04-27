@@ -49,7 +49,7 @@ public class ClientEvents {
         List<Component> tooltip = event.getToolTip();
         if (tooltip.isEmpty()) return;
         String raw = tooltip.get(0).getString();
-        tooltip.set(0, RichTextParser.parse(raw));
+        tooltip.set(0, RichTextParser.parse(raw).toComponent());
     }
 
     @SubscribeEvent

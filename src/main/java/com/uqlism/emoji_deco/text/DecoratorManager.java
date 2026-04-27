@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
@@ -78,19 +77,19 @@ public class DecoratorManager implements PreparableReloadListener {
         return REGISTRY.containsKey(name);
     }
 
-    public static Component resolve(String name, Component slotComponent, String[] args) {
+    public static RichNode resolve(String name, RichNode slotNode, String[] args) {
         JsonObject json = REGISTRY.get(name);
         if (json == null) return null;
         try {
-            return EmojiDecoComponentParser.parse(json.get("display"), slotComponent, args);
+            return EmojiDecoComponentParser.parse(json.get("display"), slotNode, args);
         } catch (Exception e) {
             LOGGER.error("[EmojiDeco] Failed to resolve style tag '{}': {}", name, e.getMessage());
         }
-        return slotComponent;
+        return slotNode;
     }
 
-    public static Component resolve(String name, Component slotComponent) {
-        return resolve(name, slotComponent, new String[0]);
+    public static RichNode resolve(String name, RichNode slotNode) {
+        return resolve(name, slotNode, new String[0]);
     }
 
     /**

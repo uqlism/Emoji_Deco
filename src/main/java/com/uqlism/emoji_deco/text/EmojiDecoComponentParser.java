@@ -5,29 +5,26 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Converts the emoji_deco JSON component format into Minecraft Component trees.
+ * Converts the emoji_deco JSON component format into RichNode trees.
  *
- * Dynamic nodes are resolved by expandDynamicProviders() before any structural
- * parsing. This is the sole location that maps provider/arg keys to runtime values;
- * all downstream code is unaware of them.
+ * Dynamic nodes are resolved by expandDynamicProviders() before structural parsing.
+ * This is the sole location that maps provider/arg keys to runtime values.
  *
- *   emoji_deco:arg          → JsonPrimitive (resolved arg string)
+ *   emoji_deco:arg          → JsonPrimitive (resolved arg string, typed per "type" field)
  *   emoji_deco:player_names → JsonArray of player name strings
  *
- * Structural component nodes handled after expansion:
+ * Structural node types handled after expansion:
  *   emoji_deco:slot, emoji_deco:size, emoji_deco:glow,
  *   emoji_deco:sprite, emoji_deco:player_head,
  *   standard MC fields (text/color/bold/italic/…/extra)
@@ -40,13 +37,12 @@ public final class EmojiDecoComponentParser {
 
     // ── public API ────────────────────────────────────────────────────────────
 
-    public static Component parse(JsonElement el, @Nullable Component slot) {
+    public static RichNode parse(JsonElement el, @Nullable RichNode slot) {
         return parse(el, slot, EMPTY_ARGS);
     }
 
-    /** Expands dynamic nodes with args, then delegates to structural parsing. */
-    public static Component parse(JsonElement el, @Nullable Component slot, String[] args) {
-        if (el == null || el.isJsonNull()) return Component.empty();
+    public static RichNode parse(JsonElement el, @Nullable RichNode slot, String[] args) {
+        if (el == null || el.isJsonNull()) return RichNode.empty();
         return parseExpanded(expandDynamicProviders(el, args), slot);
     }
 
@@ -65,12 +61,8 @@ public final class EmojiDecoComponentParser {
         return result;
     }
 
-    // ── dynamic expansion (single source of truth for provider/arg keys) ──────
+    // ── dynamic expansion ─────────────────────────────────────────────────────
 
-    /**
-     * Recursively replaces dynamic nodes with resolved JSON values.
-     * Only this method knows about emoji_deco:arg and emoji_deco:player_names.
-     */
     private static JsonElement expandDynamicProviders(JsonElement el, String[] args) {
         if (el == null || el.isJsonNull() || el.isJsonPrimitive()) return el;
 
@@ -81,13 +73,8 @@ public final class EmojiDecoComponentParser {
                 JsonObject spec = obj.getAsJsonObject("emoji_deco:arg");
                 int    index = spec.has("index") ? spec.get("index").getAsInt()      : 0;
                 String type  = spec.has("type")  ? spec.get("type").getAsString()    : "string";
-                if (index < args.length) {
-                    // arg is always a user-supplied string — coerce to the declared type
-                    return coerceArg(args[index], type);
-                } else {
-                    // no arg supplied: use the default value as-is, preserving its JSON type
-                    return spec.has("default") ? spec.get("default") : defaultForType(type);
-                }
+                if (index < args.length) return coerceArg(args[index], type);
+                return spec.has("default") ? spec.get("default") : defaultForType(type);
             }
 
             if (obj.has("emoji_deco:player_names")) {
@@ -102,42 +89,39 @@ public final class EmojiDecoComponentParser {
                 return arr;
             }
 
-            // Recurse into all fields
             JsonObject result = new JsonObject();
-            for (var entry : obj.entrySet()) {
+            for (var entry : obj.entrySet())
                 result.add(entry.getKey(), expandDynamicProviders(entry.getValue(), args));
-            }
             return result;
         }
 
         if (el.isJsonArray()) {
             JsonArray result = new JsonArray();
-            for (JsonElement item : el.getAsJsonArray()) {
+            for (JsonElement item : el.getAsJsonArray())
                 result.add(expandDynamicProviders(item, args));
-            }
             return result;
         }
 
         return el;
     }
 
-    // ── structural parsing (no knowledge of args or dynamic providers) ────────
+    // ── structural parsing ────────────────────────────────────────────────────
 
-    private static Component parseExpanded(JsonElement el, @Nullable Component slot) {
-        if (el == null || el.isJsonNull()) return Component.empty();
-        if (el.isJsonPrimitive()) return Component.literal(el.getAsString());
+    private static RichNode parseExpanded(JsonElement el, @Nullable RichNode slot) {
+        if (el == null || el.isJsonNull()) return RichNode.empty();
+        if (el.isJsonPrimitive()) return new RichNode.Text(el.getAsString(), Style.EMPTY, List.of());
         if (el.isJsonArray()) {
-            MutableComponent result = Component.empty();
-            for (JsonElement child : el.getAsJsonArray()) result.append(parseExpanded(child, slot));
-            return result;
+            List<RichNode> children = new ArrayList<>();
+            for (JsonElement child : el.getAsJsonArray()) children.add(parseExpanded(child, slot));
+            return new RichNode.Text("", Style.EMPTY, children);
         }
         if (el.isJsonObject()) return parseObject(el.getAsJsonObject(), slot);
-        return Component.empty();
+        return RichNode.empty();
     }
 
-    private static Component parseObject(JsonObject obj, @Nullable Component slot) {
+    private static RichNode parseObject(JsonObject obj, @Nullable RichNode slot) {
         if (obj.has("emoji_deco:slot")) {
-            return slot != null ? slot : Component.empty();
+            return slot != null ? slot : RichNode.empty();
         }
         if (obj.has("emoji_deco:size")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:size");
@@ -145,37 +129,31 @@ public final class EmojiDecoComponentParser {
             if (spec.has("size") && spec.get("size").isJsonPrimitive()) {
                 try { size = spec.get("size").getAsFloat(); } catch (NumberFormatException ignored) {}
             }
-            Component contents = spec.has("contents")
-                    ? parseExpanded(spec.get("contents"), slot) : Component.empty();
-            return MutableComponent.create(new TranslatableContents(
-                    SizeRegistry.SIZE_KEY, null, new Object[]{String.valueOf(size), contents}));
+            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
+            return new RichNode.Sized(size, List.of(contents));
         }
         if (obj.has("emoji_deco:glow")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:glow");
             boolean applyGlow = !spec.has("glow") || spec.get("glow").getAsBoolean();
-            Component contents = spec.has("contents")
-                    ? parseExpanded(spec.get("contents"), slot) : Component.empty();
-            return applyGlow
-                    ? MutableComponent.create(new TranslatableContents(
-                            SizeRegistry.GLOW_KEY, null, new Object[]{contents}))
-                    : contents;
+            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
+            return applyGlow ? new RichNode.Glowing(List.of(contents)) : contents;
         }
         if (obj.has("emoji_deco:sprite")) {
-            JsonObject spec     = obj.getAsJsonObject("emoji_deco:sprite");
+            JsonObject spec  = obj.getAsJsonObject("emoji_deco:sprite");
             String atlas  = stringOf(spec.get("atlas"),  "");
             String sprite = stringOf(spec.get("sprite"), "");
-            return SpriteRegistry.createComponent(atlas, sprite);
+            return new RichNode.Sprite(atlas, sprite);
         }
         if (obj.has("emoji_deco:player_head")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:player_head");
             String username = stringOf(spec.get("player"), "");
-            return SpriteRegistry.createHeadComponent(username);
+            return new RichNode.Head(username);
         }
         return parseStandard(obj, slot);
     }
 
-    private static Component parseStandard(JsonObject obj, @Nullable Component slot) {
-        MutableComponent comp = Component.literal(stringOf(obj.get("text"), ""));
+    private static RichNode parseStandard(JsonObject obj, @Nullable RichNode slot) {
+        String textVal = stringOf(obj.get("text"), "");
 
         Style style = Style.EMPTY;
         if (obj.has("color")) {
@@ -191,17 +169,17 @@ public final class EmojiDecoComponentParser {
             ResourceLocation fontLoc = ResourceLocation.tryParse(stringOf(obj.get("font"), ""));
             if (fontLoc != null) style = style.withFont(fontLoc);
         }
-        if (!style.isEmpty()) comp = comp.withStyle(style);
 
+        List<RichNode> children = new ArrayList<>();
         if (obj.has("extra") && obj.get("extra").isJsonArray()) {
-            for (JsonElement child : obj.getAsJsonArray("extra")) comp.append(parseExpanded(child, slot));
+            for (JsonElement child : obj.getAsJsonArray("extra"))
+                children.add(parseExpanded(child, slot));
         }
-        return comp;
+        return new RichNode.Text(textVal, style, children);
     }
 
     // ── utilities ─────────────────────────────────────────────────────────────
 
-    /** Coerces a user-supplied arg string to the JSON primitive type declared in the arg spec. */
     private static JsonPrimitive coerceArg(String value, String type) {
         return switch (type) {
             case "boolean" -> new JsonPrimitive(
@@ -218,17 +196,15 @@ public final class EmojiDecoComponentParser {
         };
     }
 
-    /** Returns a sensible zero-value primitive for each type, used when no default is declared. */
     private static JsonPrimitive defaultForType(String type) {
         return switch (type) {
-            case "boolean"        -> new JsonPrimitive(false);
-            case "integer"        -> new JsonPrimitive(0);
-            case "float", "number"-> new JsonPrimitive(0.0f);
-            default               -> new JsonPrimitive("");
+            case "boolean"         -> new JsonPrimitive(false);
+            case "integer"         -> new JsonPrimitive(0);
+            case "float", "number" -> new JsonPrimitive(0.0f);
+            default                -> new JsonPrimitive("");
         };
     }
 
-    /** Returns the string value of el, or fallback if el is null or not a primitive. */
     private static String stringOf(@Nullable JsonElement el, String fallback) {
         return (el != null && el.isJsonPrimitive()) ? el.getAsString() : fallback;
     }
