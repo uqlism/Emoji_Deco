@@ -65,9 +65,10 @@ public class SizeRegistry {
      * If no size translate exists, returns (1.0f, c) unchanged.
      */
     private static HoistResult hoistSizeScale(Component c) {
-        // This node IS the size translate
+        // This node IS the size translate — recurse into content to support multiplicative nesting
         if (c.getContents() instanceof TranslatableContents tc && KEY.equals(tc.getKey())) {
-            return new HoistResult(scaleFromTc(tc), contentFromTc(tc));
+            HoistResult inner = hoistSizeScale(contentFromTc(tc));
+            return new HoistResult(scaleFromTc(tc) * inner.scale(), inner.component());
         }
 
         // Recurse into siblings, rebuilding the component with any found scale
