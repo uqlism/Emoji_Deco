@@ -72,10 +72,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         List<CompositeScaledSequence.Segment> segments = new ArrayList<>();
         collectSegments(font, root, 1.0f, false, Style.EMPTY, segments);
         if (segments.isEmpty()) return FormattedCharSequence.EMPTY;
-        if (segments.size() == 1) {
-            CompositeScaledSequence.Segment seg = segments.get(0);
-            return new ScaledSequence(seg.chars(), seg.scale());
-        }
         return new CompositeScaledSequence(segments);
     }
 

@@ -2,7 +2,6 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.CompositeScaledSequence;
 import com.uqlism.emoji_deco.text.GlowSequence;
-import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -37,14 +36,6 @@ public class MixinFont {
             return;
         }
 
-        if (text instanceof ScaledSequence ss) {
-            float s = ss.scale();
-            // translate(x,y,0) then scale(s,s,1): text starts at (x,y) in any coordinate system
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(s, s, 1.0f);
-            cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
-            return;
-        }
-
         if (text instanceof CompositeScaledSequence css) {
             float curX = x;
             int retVal = 0;
@@ -75,14 +66,6 @@ public class MixinFont {
 
         if (text instanceof GlowSequence gs) {
             self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, GlowSequence.FULL_LIGHT);
-            ci.cancel();
-            return;
-        }
-
-        if (text instanceof ScaledSequence ss) {
-            float s = ss.scale();
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(s, s, 1.0f);
-            self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }
@@ -145,10 +128,6 @@ public class MixinFont {
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$scaledWidth(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
-        if (text instanceof ScaledSequence ss) {
-            cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
-            return;
-        }
         if (text instanceof CompositeScaledSequence css) {
             int total = 0;
             for (var seg : css.segments()) {
