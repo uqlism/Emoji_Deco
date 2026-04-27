@@ -22,7 +22,7 @@ public class MixinBakedGlyph {
     )
     private VertexConsumer runicink$shiftOverlayZ(
             VertexConsumer buffer, Matrix4f matrix, float x, float y, float z) {
-        float newZ = HeadOverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? 0.001f : z;
+        float newZ = HeadOverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? 0.01f : z;
         return buffer.vertex(matrix, x, y, newZ);
     }
 }
