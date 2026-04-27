@@ -1,7 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.ConcatSequence;
-import com.uqlism.emoji_deco.text.GlowSequence;
+import com.uqlism.emoji_deco.text.LightSequence;
 import com.uqlism.emoji_deco.text.LightMode;
 import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
@@ -64,7 +64,7 @@ public class MixinFont {
         enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
-        if (text instanceof GlowSequence gs) {
+        if (text instanceof LightSequence gs) {
             int light = resolveLight(gs.mode(), packedLight);
             cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
             return;
@@ -108,7 +108,7 @@ public class MixinFont {
         enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
-        if (text instanceof GlowSequence gs) {
+        if (text instanceof LightSequence gs) {
             int light = resolveLight(gs.mode(), packedLight);
             self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, light);
             ci.cancel();
@@ -182,7 +182,7 @@ public class MixinFont {
             cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
             return;
         }
-        if (text instanceof GlowSequence gs) {
+        if (text instanceof LightSequence gs) {
             cir.setReturnValue(self.width(gs.inner()));
             return;
         }

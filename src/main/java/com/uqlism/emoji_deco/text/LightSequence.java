@@ -7,12 +7,12 @@ import net.minecraft.util.FormattedCharSink;
  * A {@link FormattedCharSequence} that carries a {@link LightMode} controlling
  * how packedLight is resolved during rendering.
  */
-public final class GlowSequence implements FormattedCharSequence {
+public final class LightSequence implements FormattedCharSequence {
 
     private final FormattedCharSequence inner;
     private final LightMode mode;
 
-    public GlowSequence(FormattedCharSequence inner, LightMode mode) {
+    public LightSequence(FormattedCharSequence inner, LightMode mode) {
         this.inner = inner;
         this.mode = mode;
     }

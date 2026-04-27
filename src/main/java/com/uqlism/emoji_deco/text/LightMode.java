@@ -1,10 +1,10 @@
 package com.uqlism.emoji_deco.text;
 
 /**
- * Controls how a {@link GlowSequence} affects the packedLight value during rendering.
+ * Controls how a {@link LightSequence} affects the packedLight value during rendering.
  *
  *   Bypass        — pass through whatever packedLight was received (including parent overrides)
- *   Ambient       — restore the original ambient light from before any GlowSequence override
+ *   Ambient       — restore the original ambient light from before any LightSequence override
  *   Fixed(value)  — force a specific packedLight value
  */
 public sealed interface LightMode permits LightMode.Bypass, LightMode.Ambient, LightMode.Fixed {
