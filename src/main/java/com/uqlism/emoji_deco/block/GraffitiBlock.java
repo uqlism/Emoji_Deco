@@ -8,6 +8,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -125,7 +126,16 @@ public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implem
     }
 
     @Override
-    public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
+    public ItemStack getCloneItemStack(BlockState state, HitResult target,
+            BlockGetter level, BlockPos pos, Player player) {
+        // Return the actual stack from inventory so the damage value matches for pick-block comparison
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack slot = inv.getItem(i);
+            if (slot.getItem() instanceof com.uqlism.emoji_deco.item.GraffitiInkItem) {
+                return slot.copy();
+            }
+        }
         return new ItemStack(com.uqlism.emoji_deco.Registration.GRAFFITI_INK_ITEM.get());
     }
 
