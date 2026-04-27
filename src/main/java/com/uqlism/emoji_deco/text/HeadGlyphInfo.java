@@ -26,6 +26,13 @@ public class HeadGlyphInfo implements GlyphInfo {
     }
 
     @Override
+    public float getBoldOffset() {
+        // bold offset must be 0 to prevent the base glyph (advance=0) from shifting
+        // the cursor by 1px in bold mode, which would misalign the overlay glyph
+        return 0.0f;
+    }
+
+    @Override
     public BakedGlyph bake(Function<SheetGlyphInfo, BakedGlyph> function) {
         // スキンテクスチャは 64x64
         // 顔ベース: x=8-16, y=8-16; オーバーレイ(帽子): x=40-48, y=8-16
