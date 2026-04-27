@@ -69,17 +69,17 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
      * Sized and Glowing nodes are fully honoured.
      */
     static FormattedCharSequence toSequence(Font font, RichNode root) {
-        List<CompositeScaledSequence.Segment> segments = new ArrayList<>();
-        collectSegments(font, root, 1.0f, false, Style.EMPTY, segments);
-        if (segments.isEmpty()) return FormattedCharSequence.EMPTY;
-        return new CompositeScaledSequence(segments);
+        List<FormattedCharSequence> parts = new ArrayList<>();
+        collectSegments(font, root, 1.0f, false, Style.EMPTY, parts);
+        if (parts.isEmpty()) return FormattedCharSequence.EMPTY;
+        if (parts.size() == 1) return parts.get(0);
+        return new ConcatSequence(parts);
     }
 
     private static void collectSegments(Font font, RichNode node,
                                         float scale, boolean glow, Style inherited,
-                                        List<CompositeScaledSequence.Segment> out) {
+                                        List<FormattedCharSequence> out) {
         if (node instanceof Text t) {
-            // style.applyTo(inherited): use style's set fields, fall back to inherited
             Style combined = t.style().applyTo(inherited);
             if (!t.literal().isEmpty())
                 addLeaf(font, Component.literal(t.literal()).withStyle(combined), scale, glow, out);
@@ -99,10 +99,11 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
     }
 
     private static void addLeaf(Font font, Component c, float scale, boolean glow,
-                                 List<CompositeScaledSequence.Segment> out) {
+                                 List<FormattedCharSequence> out) {
         List<FormattedCharSequence> lines = font.split(c, Integer.MAX_VALUE / 2);
         FormattedCharSequence fcs = lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
-        if (glow) fcs = new GlowSequence(fcs);
-        out.add(new CompositeScaledSequence.Segment(fcs, scale));
+        if (glow) fcs = new GlowSequence(fcs, true);
+        if (scale != 1.0f) fcs = new ScaledSequence(fcs, scale);
+        out.add(fcs);
     }
 }

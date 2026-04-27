@@ -1,7 +1,8 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.CompositeScaledSequence;
+import com.uqlism.emoji_deco.text.ConcatSequence;
 import com.uqlism.emoji_deco.text.GlowSequence;
+import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -32,23 +33,23 @@ public class MixinFont {
         Font self = (Font)(Object)this;
 
         if (text instanceof GlowSequence gs) {
-            cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, GlowSequence.FULL_LIGHT));
+            int light = gs.glow() ? GlowSequence.FULL_LIGHT : packedLight;
+            cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
             return;
         }
 
-        if (text instanceof CompositeScaledSequence css) {
+        if (text instanceof ScaledSequence ss) {
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
+            cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+            return;
+        }
+
+        if (text instanceof ConcatSequence cs) {
             float curX = x;
             int retVal = 0;
-            for (var seg : css.segments()) {
-                float s = seg.scale();
-                FormattedCharSequence chars = seg.chars();
-                if (s == 1.0f) {
-                    retVal = self.drawInBatch(chars, curX, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight);
-                } else {
-                    Matrix4f scaled = new Matrix4f(matrix).translate(curX, y, 0f).scale(s, s, 1.0f);
-                    retVal = self.drawInBatch(chars, 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight);
-                }
-                curX += self.width(chars) * s;
+            for (FormattedCharSequence part : cs.parts()) {
+                retVal = self.drawInBatch(part, curX, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight);
+                curX += self.width(part);
             }
             cir.setReturnValue(retVal);
         }
@@ -65,23 +66,24 @@ public class MixinFont {
         Font self = (Font)(Object)this;
 
         if (text instanceof GlowSequence gs) {
-            self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, GlowSequence.FULL_LIGHT);
+            int light = gs.glow() ? GlowSequence.FULL_LIGHT : packedLight;
+            self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, light);
             ci.cancel();
             return;
         }
 
-        if (text instanceof CompositeScaledSequence css) {
+        if (text instanceof ScaledSequence ss) {
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
+            self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
+            ci.cancel();
+            return;
+        }
+
+        if (text instanceof ConcatSequence cs) {
             float curX = x;
-            for (var seg : css.segments()) {
-                float s = seg.scale();
-                FormattedCharSequence chars = seg.chars();
-                if (s == 1.0f) {
-                    self.drawInBatch8xOutline(chars, curX, y, color, outlineColor, matrix, buffers, packedLight);
-                } else {
-                    Matrix4f scaled = new Matrix4f(matrix).translate(curX, y, 0f).scale(s, s, 1.0f);
-                    self.drawInBatch8xOutline(chars, 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
-                }
-                curX += self.width(chars) * s;
+            for (FormattedCharSequence part : cs.parts()) {
+                self.drawInBatch8xOutline(part, curX, y, color, outlineColor, matrix, buffers, packedLight);
+                curX += self.width(part);
             }
             ci.cancel();
             return;
@@ -102,9 +104,7 @@ public class MixinFont {
                 final boolean noGlow = isNoGlowFont(styleEntries.get(i));
                 final int start = i;
                 int j = i + 1;
-                while (j < cpEntries.size() && isNoGlowFont(styleEntries.get(j)) == noGlow) {
-                    j++;
-                }
+                while (j < cpEntries.size() && isNoGlowFont(styleEntries.get(j)) == noGlow) j++;
                 final int end = j;
                 FormattedCharSequence runSeq = sink -> {
                     for (int k = start; k < end; k++) {
@@ -128,11 +128,17 @@ public class MixinFont {
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$scaledWidth(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
-        if (text instanceof CompositeScaledSequence css) {
+        if (text instanceof ScaledSequence ss) {
+            cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
+            return;
+        }
+        if (text instanceof GlowSequence gs) {
+            cir.setReturnValue(self.width(gs.inner()));
+            return;
+        }
+        if (text instanceof ConcatSequence cs) {
             int total = 0;
-            for (var seg : css.segments()) {
-                total += Math.round(self.width(seg.chars()) * seg.scale());
-            }
+            for (FormattedCharSequence part : cs.parts()) total += self.width(part);
             cir.setReturnValue(total);
         }
     }
@@ -145,10 +151,7 @@ public class MixinFont {
     private static boolean hasNoGlowFont(FormattedCharSequence seq) {
         boolean[] found = {false};
         seq.accept((index, style, codePoint) -> {
-            if (isNoGlowFont(style)) {
-                found[0] = true;
-                return false;
-            }
+            if (isNoGlowFont(style)) { found[0] = true; return false; }
             return true;
         });
         return found[0];
