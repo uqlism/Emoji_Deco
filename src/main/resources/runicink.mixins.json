@@ -8,6 +8,7 @@
     "MixinChatScreen"
   ],
   "client": [
+    "MixinBakedGlyph",
     "MixinFont",
     "MixinFontSet",
     "MixinGui",
