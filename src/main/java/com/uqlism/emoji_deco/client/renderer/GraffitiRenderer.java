@@ -65,7 +65,7 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         float startY = (SURFACE - lines.size() * lineHeight) / 2f;
 
         for (int idx = 0; idx < lines.size(); idx++) {
-            FormattedCharSequence seq = RichNode.toScaledLine(font, lines.get(idx));
+            FormattedCharSequence seq = RichNode.toSequence(font, lines.get(idx));
             float textWidth = font.width(seq);
             float xPos = switch (align) {
                 case LEFT   -> 1f;

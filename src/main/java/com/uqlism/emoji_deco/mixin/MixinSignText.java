@@ -36,7 +36,7 @@ public class MixinSignText {
                 result[i] = FormattedCharSequence.EMPTY;
                 continue;
             }
-            result[i] = RichNode.toScaledLine(font, RichTextParser.parse(raw));
+            result[i] = RichNode.toSequence(font, RichTextParser.parse(raw));
         }
         cir.setReturnValue(result);
     }

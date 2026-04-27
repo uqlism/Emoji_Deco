@@ -21,7 +21,7 @@ import java.util.List;
  *
  * Conversion:
  *   toComponent()              — for chat / tooltip / entity names / books
- *   toScaledLine(font, node)   — for signs / graffiti (honours Sized and Glowing)
+ *   toSequence(font, node)   — for signs / graffiti (honours Sized and Glowing)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode.Glowing,
                                          RichNode.Sprite, RichNode.Head {
@@ -62,13 +62,13 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         return Component.empty();
     }
 
-    // ── toScaledLine ─────────────────────────────────────────────────────────
+    // ── toSequence ─────────────────────────────────────────────────────────
 
     /**
      * Converts to a FormattedCharSequence for scaled rendering (signs, graffiti).
      * Sized and Glowing nodes are fully honoured.
      */
-    static FormattedCharSequence toScaledLine(Font font, RichNode root) {
+    static FormattedCharSequence toSequence(Font font, RichNode root) {
         List<CompositeScaledSequence.Segment> segments = new ArrayList<>();
         collectSegments(font, root, 1.0f, false, Style.EMPTY, segments);
         if (segments.isEmpty()) return FormattedCharSequence.EMPTY;
