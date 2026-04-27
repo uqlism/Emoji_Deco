@@ -2,7 +2,13 @@
   "enable": true,
   "display": {
     "text": "",
-    "underlined": true,
+    "underlined": {
+      "emoji_deco:arg": {
+        "index": 0,
+        "default": true,
+        "type": "boolean"
+      }
+    },
     "extra": [
       { "emoji_deco:slot": {} }
     ]

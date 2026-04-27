@@ -1,0 +1,23 @@
+{
+  "enable": true,
+  "display": [
+    {
+      "text": "",
+      "color": "#ffffff",
+      "extra": [
+        {
+          "emoji_deco:sprite": {
+            "atlas": "minecraft:textures/atlas/blocks.png",
+            "sprite": {
+              "emoji_deco:arg": {
+                "index": 0,
+                "type": "string",
+                "default": "white"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

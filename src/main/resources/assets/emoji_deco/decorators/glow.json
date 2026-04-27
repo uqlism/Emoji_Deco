@@ -2,7 +2,13 @@
   "enable": true,
   "display": {
     "emoji_deco:glow": {
-      "glow": true,
+      "glow": {
+        "emoji_deco:arg": {
+          "index": 0,
+          "default": true,
+          "type": "boolean"
+        }
+      },
       "contents": {
         "emoji_deco:slot": {}
       }

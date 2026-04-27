@@ -78,15 +78,31 @@ public class DecoratorManager implements PreparableReloadListener {
         return REGISTRY.containsKey(name);
     }
 
-    public static Component resolve(String name, Component slotComponent) {
+    public static Component resolve(String name, Component slotComponent, String[] args) {
         JsonObject json = REGISTRY.get(name);
         if (json == null) return null;
         try {
-            return EmojiDecoComponentParser.parse(json.get("display"), slotComponent);
+            return EmojiDecoComponentParser.parse(json.get("display"), slotComponent, args);
         } catch (Exception e) {
             LOGGER.error("[EmojiDeco] Failed to resolve style tag '{}': {}", name, e.getMessage());
         }
         return slotComponent;
+    }
+
+    public static Component resolve(String name, Component slotComponent) {
+        return resolve(name, slotComponent, new String[0]);
+    }
+
+    /**
+     * Returns the raw "suggestions" JsonElement for the emoji_deco:arg at argIndex
+     * inside the given decorator's display JSON, or null if absent.
+     */
+    public static com.google.gson.JsonElement getArgSuggestionsSpec(String tagName, int argIndex) {
+        JsonObject json = REGISTRY.get(tagName);
+        if (json == null || !json.has("display")) return null;
+        JsonObject argSpec = EmojiDecoComponentParser.findArgSpec(json.get("display"), argIndex);
+        if (argSpec == null || !argSpec.has("suggestions")) return null;
+        return argSpec.get("suggestions");
     }
 
     /** Returns all tag names that start with prefix, sorted. */
@@ -103,7 +119,9 @@ public class DecoratorManager implements PreparableReloadListener {
         while (pos >= 0) {
             int bracket = text.indexOf('[', pos + 1);
             if (bracket > pos + 1) {
-                String name = text.substring(pos + 1, bracket);
+                String segment = text.substring(pos + 1, bracket);
+                int dot = segment.indexOf('.');
+                String name = dot > 0 ? segment.substring(0, dot) : segment;
                 if (isValidTagName(name) && REGISTRY.containsKey(name)) return true;
             }
             pos = text.indexOf('#', pos + 1);

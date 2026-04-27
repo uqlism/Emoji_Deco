@@ -1,0 +1,19 @@
+{
+  "enable": true,
+  "display": [
+    {
+      "emoji_deco:player_head": {
+        "player": {
+          "emoji_deco:arg": {
+            "index": 0,
+            "type": "string",
+            "default": "",
+            "suggestions": {
+              "emoji_deco:player_names": {}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

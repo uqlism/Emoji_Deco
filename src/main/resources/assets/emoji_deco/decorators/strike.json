@@ -2,11 +2,15 @@
   "enable": true,
   "display": {
     "text": "",
-    "strikethrough": true,
-    "extra": [
-      {
-        "emoji_deco:slot": {}
+    "strikethrough": {
+      "emoji_deco:arg": {
+        "index": 0,
+        "default": true,
+        "type": "boolean"
       }
+    },
+    "extra": [
+      { "emoji_deco:slot": {} }
     ]
   }
 }

@@ -19,27 +19,17 @@ public class RichTextParser {
         while (pos < text.length()) {
             char c = text.charAt(pos);
 
-            // @username → player head glyph
-            if (c == '@') {
-                int end = pos + 1;
-                while (end < text.length() && isUsernameChar(text.charAt(end))) end++;
-                if (end > pos + 1) {
-                    flush(result, text, litStart, pos, base);
-                    result.append(SpriteRegistry.createHeadComponent(text.substring(pos + 1, end)));
-                    pos = end;
-                    litStart = pos;
-                    continue;
-                }
-            }
-
-            // :shortcode:
+            // :shortcode: または :shortcode.arg1,arg2:
             if (c == ':') {
                 int close = text.indexOf(':', pos + 1);
                 if (close > pos + 1) {
-                    String code = text.substring(pos + 1, close);
+                    String inner = text.substring(pos + 1, close);
+                    int dot = inner.indexOf('.');
+                    String code = dot > 0 ? inner.substring(0, dot) : inner;
+                    String[] args = dot > 0 ? inner.substring(dot + 1).split(",", -1) : new String[0];
                     if (isValidShortcodeName(code) && ShortcodeManager.has(code)) {
                         flush(result, text, litStart, pos, base);
-                        result.append(ShortcodeManager.resolve(code));
+                        result.append(ShortcodeManager.resolve(code, args));
                         pos = close + 1;
                         litStart = pos;
                         continue;
@@ -47,20 +37,30 @@ public class RichTextParser {
                 }
             }
 
-            // #tagname[content] style tags
+            // #tagname[content] または #tagname.arg1,arg2[content]
             if (c == '#') {
                 int nameEnd = pos + 1;
                 while (nameEnd < text.length() && DecoratorManager.isValidTagName(String.valueOf(text.charAt(nameEnd)))) {
                     nameEnd++;
                 }
-                if (nameEnd > pos + 1 && nameEnd < text.length() && text.charAt(nameEnd) == '[') {
+                if (nameEnd > pos + 1 && nameEnd < text.length()) {
                     String tagName = text.substring(pos + 1, nameEnd);
-                    if (DecoratorManager.has(tagName)) {
-                        int bracketClose = findMatchingBracket(text, nameEnd);
+                    // 引数ブロック: .arg1,arg2 の解析
+                    String[] args = new String[0];
+                    int contentStart = nameEnd;
+                    if (text.charAt(nameEnd) == '.') {
+                        int bracketPos = text.indexOf('[', nameEnd + 1);
+                        if (bracketPos > nameEnd) {
+                            args = text.substring(nameEnd + 1, bracketPos).split(",", -1);
+                            contentStart = bracketPos;
+                        }
+                    }
+                    if (text.charAt(contentStart) == '[' && DecoratorManager.has(tagName)) {
+                        int bracketClose = findMatchingBracket(text, contentStart);
                         if (bracketClose != -1) {
                             flush(result, text, litStart, pos, base);
-                            MutableComponent slotComponent = parseInline(text.substring(nameEnd + 1, bracketClose), base);
-                            Component resolved = DecoratorManager.resolve(tagName, slotComponent);
+                            MutableComponent slotComponent = parseInline(text.substring(contentStart + 1, bracketClose), base);
+                            Component resolved = DecoratorManager.resolve(tagName, slotComponent, args);
                             result.append(resolved != null ? resolved : slotComponent);
                             pos = bracketClose + 1;
                             litStart = pos;
@@ -92,10 +92,6 @@ public class RichTextParser {
             }
         }
         return -1;
-    }
-
-    private static boolean isUsernameChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     private static boolean isValidShortcodeName(String code) {
