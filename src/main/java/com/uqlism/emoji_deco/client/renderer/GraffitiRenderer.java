@@ -46,13 +46,20 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         GraffitiAlignment align = be.getAlignment();
         float lineHeight = SURFACE / GraffitiBlockEntity.MAX_LINES;
 
-        // Collect non-empty lines (preserving order)
-        java.util.List<Component> lines = new java.util.ArrayList<>();
-        for (int i = 0; i < GraffitiBlockEntity.MAX_LINES; i++) {
+        // Find last non-empty line to avoid trailing blanks
+        int lastNonEmpty = -1;
+        for (int i = GraffitiBlockEntity.MAX_LINES - 1; i >= 0; i--) {
             String raw = be.getLine(i);
-            if (raw != null && !raw.isEmpty()) lines.add(RichTextParser.parse(raw));
+            if (raw != null && !raw.isEmpty()) { lastNonEmpty = i; break; }
         }
-        if (lines.isEmpty()) { pose.popPose(); return; }
+        if (lastNonEmpty < 0) { pose.popPose(); return; }
+
+        // Collect all lines up to lastNonEmpty, preserving blank lines between content
+        java.util.List<Component> lines = new java.util.ArrayList<>();
+        for (int i = 0; i <= lastNonEmpty; i++) {
+            String raw = be.getLine(i);
+            lines.add((raw != null && !raw.isEmpty()) ? RichTextParser.parse(raw) : Component.empty());
+        }
 
         // Vertically centre the block of text on the surface
         float startY = (SURFACE - lines.size() * lineHeight) / 2f;
