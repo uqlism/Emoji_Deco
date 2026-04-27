@@ -46,19 +46,26 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         GraffitiAlignment align = be.getAlignment();
         float lineHeight = SURFACE / GraffitiBlockEntity.MAX_LINES;
 
+        // Collect non-empty lines (preserving order)
+        java.util.List<Component> lines = new java.util.ArrayList<>();
         for (int i = 0; i < GraffitiBlockEntity.MAX_LINES; i++) {
             String raw = be.getLine(i);
-            if (raw == null || raw.isEmpty()) continue;
+            if (raw != null && !raw.isEmpty()) lines.add(RichTextParser.parse(raw));
+        }
+        if (lines.isEmpty()) { pose.popPose(); return; }
 
-            Component parsed = RichTextParser.parse(raw);
-            FormattedCharSequence seq = parsed.getVisualOrderText();
+        // Vertically centre the block of text on the surface
+        float startY = (SURFACE - lines.size() * lineHeight) / 2f;
+
+        for (int idx = 0; idx < lines.size(); idx++) {
+            FormattedCharSequence seq = lines.get(idx).getVisualOrderText();
             float textWidth = font.width(seq);
             float xPos = switch (align) {
                 case LEFT   -> 1f;
                 case CENTER -> (SURFACE - textWidth) / 2f;
                 case RIGHT  -> SURFACE - textWidth - 1f;
             };
-            float yPos = i * lineHeight + (lineHeight - font.lineHeight) / 2f;
+            float yPos = startY + idx * lineHeight + (lineHeight - font.lineHeight) / 2f;
             font.drawInBatch(seq, xPos, yPos, COLOR, false, matrix, buffers,
                     Font.DisplayMode.POLYGON_OFFSET, 0, LIGHT);
         }
