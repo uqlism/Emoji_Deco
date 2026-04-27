@@ -1,7 +1,9 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.SuggestionState;
+import net.minecraft.client.gui.font.TextFieldHelper;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,8 +14,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinAbstractSignEditScreen {
 
     // SRG field names from joined.tsrg
-    @Shadow(remap = false) private String[] f_244359_;   // messages
-    @Shadow(remap = false) private int f_244562_;        // currentRow
+    @Shadow(remap = false) private String[] f_244359_;          // messages
+    @Shadow(remap = false) private int f_244562_;               // currentRow (line)
+    @Shadow(remap = false) @Nullable private TextFieldHelper f_243993_; // signField
 
     // SRG: m_276998_ = setMessage(String)
     @Shadow(remap = false)
@@ -28,7 +31,9 @@ public abstract class MixinAbstractSignEditScreen {
     // SRG: m_5534_ = charTyped(char, int)
     @Inject(method = "m_5534_", at = @At("RETURN"), remap = false)
     private void runicink$onCharTyped(char c, int modifiers, CallbackInfoReturnable<Boolean> cir) {
-        SuggestionState.update(f_244359_[f_244562_]);
+        String msg = f_244359_[f_244562_];
+        int cursor = f_243993_ != null ? f_243993_.getCursorPos() : msg.length();
+        SuggestionState.update(msg, cursor);
     }
 
     // SRG: m_7933_ = keyPressed(int, int, int)
@@ -47,7 +52,12 @@ public abstract class MixinAbstractSignEditScreen {
         } else if (keyCode == 258) {    // TAB
             SuggestionState.Entry entry = SuggestionState.getSelected();
             if (entry != null) {
-                m_276998_(SuggestionState.applyTo(f_244359_[f_244562_], entry));
+                String completed = SuggestionState.applyTo(f_244359_[f_244562_], entry);
+                int newCursor = SuggestionState.pendingCursor;
+                m_276998_(completed);
+                if (newCursor >= 0 && f_243993_ != null) {
+                    f_243993_.setCursorPos(newCursor, false);
+                }
                 SuggestionState.clear();
             }
             cir.setReturnValue(true);
@@ -60,6 +70,8 @@ public abstract class MixinAbstractSignEditScreen {
                                               CallbackInfoReturnable<Boolean> cir) {
         // Guard: don't reset selectedIndex if HEAD already handled suggestion navigation
         if (SuggestionState.hasSuggestions() && (keyCode == 265 || keyCode == 264 || keyCode == 258)) return;
-        SuggestionState.update(f_244359_[f_244562_]);
+        String msg = f_244359_[f_244562_];
+        int cursor = f_243993_ != null ? f_243993_.getCursorPos() : msg.length();
+        SuggestionState.update(msg, cursor);
     }
 }

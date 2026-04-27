@@ -51,10 +51,6 @@ public class SuggestionState {
         selectedIndex = 0;
     }
 
-    public static void update(String text) {
-        update(text, text.length());
-    }
-
     /** Returns the position of the last unclosed ':' trigger, or -1. */
     private static int findActiveColonPos(String text) {
         int pos = text.lastIndexOf(':');
