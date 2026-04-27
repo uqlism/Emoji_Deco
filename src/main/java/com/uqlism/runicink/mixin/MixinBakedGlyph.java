@@ -16,13 +16,13 @@ public class MixinBakedGlyph {
         method = "m_5626_",
         at = @At(
             value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;vertex(Lorg/joml/Matrix4f;FFF)Lcom/mojang/blaze3d/vertex/VertexConsumer;"
+            target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;m_252986_(Lorg/joml/Matrix4f;FFF)Lcom/mojang/blaze3d/vertex/VertexConsumer;"
         ),
         remap = false
     )
     private VertexConsumer runicink$shiftOverlayZ(
             VertexConsumer buffer, Matrix4f matrix, float x, float y, float z) {
-        float newZ = HeadOverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? -0.001f : z;
+        float newZ = HeadOverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? 0.001f : z;
         return buffer.vertex(matrix, x, y, newZ);
     }
 }
