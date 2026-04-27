@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.text;
 
 import net.minecraft.network.chat.*;
 import net.minecraft.network.chat.contents.LiteralContents;
+import net.minecraft.network.chat.contents.TranslatableContents;
 
 import java.util.List;
 
@@ -24,6 +25,19 @@ public class ComponentTransformer {
         if (contents instanceof LiteralContents lc) {
             MutableComponent base = RichTextParser.parseInline(lc.text(), style)
                     .toComponent().withStyle(style);
+            for (Component sibling : siblings) base.append(walk(sibling));
+            return base;
+        }
+
+        if (contents instanceof TranslatableContents tc) {
+            Object[] args = tc.getArgs();
+            Object[] newArgs = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                newArgs[i] = (args[i] instanceof Component c) ? walk(c) : args[i];
+            }
+            MutableComponent base = MutableComponent
+                    .create(new TranslatableContents(tc.getKey(), tc.getFallback(), newArgs))
+                    .withStyle(style);
             for (Component sibling : siblings) base.append(walk(sibling));
             return base;
         }
