@@ -1,0 +1,12 @@
+{
+  "enable": true,
+  "display": {
+    "translate": "emoji_deco:size",
+    "with": [
+      "1.5",
+      {
+        "translate": "emoji_deco:slot"
+      }
+    ]
+  }
+}
