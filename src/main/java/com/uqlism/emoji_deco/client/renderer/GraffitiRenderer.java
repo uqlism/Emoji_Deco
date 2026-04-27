@@ -46,17 +46,18 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         GraffitiAlignment align = be.getAlignment();
         float lineHeight = SURFACE / GraffitiBlockEntity.MAX_LINES;
 
-        // Find last non-empty line to avoid trailing blanks
-        int lastNonEmpty = -1;
-        for (int i = GraffitiBlockEntity.MAX_LINES - 1; i >= 0; i--) {
+        int displayedLines = be.getDisplayedLines();
+        // Don't render if every displayed line is empty
+        boolean hasContent = false;
+        for (int i = 0; i < displayedLines; i++) {
             String raw = be.getLine(i);
-            if (raw != null && !raw.isEmpty()) { lastNonEmpty = i; break; }
+            if (raw != null && !raw.isEmpty()) { hasContent = true; break; }
         }
-        if (lastNonEmpty < 0) { pose.popPose(); return; }
+        if (!hasContent) { pose.popPose(); return; }
 
-        // Collect all lines up to lastNonEmpty, preserving blank lines between content
+        // Collect exactly displayedLines lines, including trailing blanks
         java.util.List<Component> lines = new java.util.ArrayList<>();
-        for (int i = 0; i <= lastNonEmpty; i++) {
+        for (int i = 0; i < displayedLines; i++) {
             String raw = be.getLine(i);
             lines.add((raw != null && !raw.isEmpty()) ? RichTextParser.parse(raw) : Component.empty());
         }
