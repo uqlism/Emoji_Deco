@@ -102,7 +102,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
                                  List<FormattedCharSequence> out) {
         List<FormattedCharSequence> lines = font.split(c, Integer.MAX_VALUE / 2);
         FormattedCharSequence fcs = lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
-        if (glow) fcs = new GlowSequence(fcs, true);
+        if (glow) fcs = new GlowSequence(fcs, LightMode.GLOW);
         if (scale != 1.0f) fcs = new ScaledSequence(fcs, scale);
         out.add(fcs);
     }

@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.ConcatSequence;
 import com.uqlism.emoji_deco.text.GlowSequence;
+import com.uqlism.emoji_deco.text.LightMode;
 import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
 import net.minecraft.client.gui.Font;
@@ -21,29 +22,58 @@ import java.util.List;
 @Mixin(Font.class)
 public class MixinFont {
 
+    // ── depth tracking for Ambient light restoration ──────────────────────────
+
+    /**
+     * Tracks nesting depth of drawInBatch / drawInBatch8xOutline calls.
+     * At depth 0 (outermost renderer call) the natural packedLight is stored as ambient.
+     */
+    private static final ThreadLocal<Integer> drawDepth    = ThreadLocal.withInitial(() -> 0);
+    private static final ThreadLocal<Integer> ambientLight = new ThreadLocal<>();
+
+    private static void enterDraw(int packedLight) {
+        int d = drawDepth.get();
+        drawDepth.set(d + 1);
+        if (d == 0) ambientLight.set(packedLight);
+    }
+
+    private static void exitDraw() {
+        int nd = drawDepth.get() - 1;
+        drawDepth.set(nd);
+        if (nd == 0) ambientLight.remove();
+    }
+
+    private static int resolveLight(LightMode mode, int current) {
+        if (mode instanceof LightMode.Bypass)  return current;
+        if (mode instanceof LightMode.Ambient) { Integer a = ambientLight.get(); return a != null ? a : current; }
+        if (mode instanceof LightMode.Fixed f) return f.value();
+        return current;
+    }
+
+    // ── drawInBatch ───────────────────────────────────────────────────────────
+
     // m_272191_ = drawInBatch(FormattedCharSequence, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
     @Inject(method = "m_272191_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$drawScaledLine(
+    private void runicink$drawBatch_head(
             FormattedCharSequence text, float x, float y,
             int color, boolean dropShadow,
             Matrix4f matrix, MultiBufferSource buffers,
             Font.DisplayMode mode, int bgColor, int packedLight,
             CallbackInfoReturnable<Integer> cir) {
 
+        enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
         if (text instanceof GlowSequence gs) {
-            int light = gs.glow() ? GlowSequence.FULL_LIGHT : packedLight;
+            int light = resolveLight(gs.mode(), packedLight);
             cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
             return;
         }
-
         if (text instanceof ScaledSequence ss) {
             Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
             cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
-
         if (text instanceof ConcatSequence cs) {
             float curX = x;
             int retVal = 0;
@@ -55,30 +85,41 @@ public class MixinFont {
         }
     }
 
+    @Inject(method = "m_272191_", at = @At("RETURN"), remap = false)
+    private void runicink$drawBatch_tail(
+            FormattedCharSequence text, float x, float y,
+            int color, boolean dropShadow,
+            Matrix4f matrix, MultiBufferSource buffers,
+            Font.DisplayMode mode, int bgColor, int packedLight,
+            CallbackInfoReturnable<Integer> cir) {
+        exitDraw();
+    }
+
+    // ── drawInBatch8xOutline ──────────────────────────────────────────────────
+
     // m_168645_ = drawInBatch8xOutline(FormattedCharSequence, float, float, int, int, Matrix4f, MultiBufferSource, int)
     @Inject(method = "m_168645_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$drawScaledLineGlow(
+    private void runicink$drawOutline_head(
             FormattedCharSequence text, float x, float y,
             int color, int outlineColor,
             Matrix4f matrix, MultiBufferSource buffers, int packedLight,
             CallbackInfo ci) {
 
+        enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
         if (text instanceof GlowSequence gs) {
-            int light = gs.glow() ? GlowSequence.FULL_LIGHT : packedLight;
+            int light = resolveLight(gs.mode(), packedLight);
             self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, light);
             ci.cancel();
             return;
         }
-
         if (text instanceof ScaledSequence ss) {
             Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
             self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }
-
         if (text instanceof ConcatSequence cs) {
             float curX = x;
             for (FormattedCharSequence part : cs.parts()) {
@@ -88,7 +129,6 @@ public class MixinFont {
             ci.cancel();
             return;
         }
-
         if (hasNoGlowFont(text)) {
             List<int[]> cpEntries = new ArrayList<>();
             List<Style> styleEntries = new ArrayList<>();
@@ -97,7 +137,6 @@ public class MixinFont {
                 styleEntries.add(style);
                 return true;
             });
-
             float curX = x;
             int i = 0;
             while (i < cpEntries.size()) {
@@ -124,9 +163,20 @@ public class MixinFont {
         }
     }
 
-    // m_92724_ = width(FormattedCharSequence) — returns visual (scaled) width
+    @Inject(method = "m_168645_", at = @At("RETURN"), remap = false)
+    private void runicink$drawOutline_tail(
+            FormattedCharSequence text, float x, float y,
+            int color, int outlineColor,
+            Matrix4f matrix, MultiBufferSource buffers, int packedLight,
+            CallbackInfo ci) {
+        exitDraw();
+    }
+
+    // ── width ─────────────────────────────────────────────────────────────────
+
+    // m_92724_ = width(FormattedCharSequence)
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
-    private void runicink$scaledWidth(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
+    private void runicink$width(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
         if (text instanceof ScaledSequence ss) {
             cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
@@ -142,6 +192,8 @@ public class MixinFont {
             cir.setReturnValue(total);
         }
     }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
 
     private static boolean isNoGlowFont(Style style) {
         var font = style.getFont();

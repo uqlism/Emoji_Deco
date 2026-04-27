@@ -4,20 +4,17 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.FormattedCharSink;
 
 /**
- * A {@link FormattedCharSequence} that carries a glow flag.
- * When glow=true, renders at maximum brightness regardless of ambient light.
- * When glow=false, acts as an explicit "no glow" override for nested content.
+ * A {@link FormattedCharSequence} that carries a {@link LightMode} controlling
+ * how packedLight is resolved during rendering.
  */
 public final class GlowSequence implements FormattedCharSequence {
 
-    public static final int FULL_LIGHT = 0xF000F0;
-
     private final FormattedCharSequence inner;
-    private final boolean glow;
+    private final LightMode mode;
 
-    public GlowSequence(FormattedCharSequence inner, boolean glow) {
+    public GlowSequence(FormattedCharSequence inner, LightMode mode) {
         this.inner = inner;
-        this.glow = glow;
+        this.mode = mode;
     }
 
     @Override
@@ -26,5 +23,5 @@ public final class GlowSequence implements FormattedCharSequence {
     }
 
     public FormattedCharSequence inner() { return inner; }
-    public boolean glow()               { return glow; }
+    public LightMode mode()             { return mode; }
 }
