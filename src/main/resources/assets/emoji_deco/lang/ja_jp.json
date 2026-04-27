@@ -5,5 +5,6 @@
   "screen.emoji_deco.graffiti.align.left": "左寄せ",
   "screen.emoji_deco.graffiti.align.center": "中央寄せ",
   "screen.emoji_deco.graffiti.align.right": "右寄せ",
-  "emoji_deco:size": "%2$s"
+  "emoji_deco:size": "%2$s",
+  "emoji_deco:glow": "%s"
 }

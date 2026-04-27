@@ -1,0 +1,9 @@
+{
+  "enable": true,
+  "display": {
+    "translate": "emoji_deco:glow",
+    "with": [
+      { "translate": "emoji_deco:slot" }
+    ]
+  }
+}

@@ -5,5 +5,6 @@
   "screen.emoji_deco.graffiti.align.left": "Align: Left",
   "screen.emoji_deco.graffiti.align.center": "Align: Center",
   "screen.emoji_deco.graffiti.align.right": "Align: Right",
-  "emoji_deco:size": "%2$s"
+  "emoji_deco:size": "%2$s",
+  "emoji_deco:glow": "%s"
 }

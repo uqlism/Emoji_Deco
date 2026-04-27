@@ -1,6 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.text.CompositeScaledSequence;
+import com.uqlism.emoji_deco.text.GlowSequence;
 import com.uqlism.emoji_deco.text.ScaledSequence;
 import com.uqlism.emoji_deco.text.SpriteRegistry;
 import net.minecraft.client.gui.Font;
@@ -30,6 +31,11 @@ public class MixinFont {
             CallbackInfoReturnable<Integer> cir) {
 
         Font self = (Font)(Object)this;
+
+        if (text instanceof GlowSequence gs) {
+            cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, GlowSequence.FULL_LIGHT));
+            return;
+        }
 
         if (text instanceof ScaledSequence ss) {
             float s = ss.scale();
@@ -66,6 +72,12 @@ public class MixinFont {
             CallbackInfo ci) {
 
         Font self = (Font)(Object)this;
+
+        if (text instanceof GlowSequence gs) {
+            self.drawInBatch8xOutline(gs.inner(), x, y, color, outlineColor, matrix, buffers, GlowSequence.FULL_LIGHT);
+            ci.cancel();
+            return;
+        }
 
         if (text instanceof ScaledSequence ss) {
             float s = ss.scale();

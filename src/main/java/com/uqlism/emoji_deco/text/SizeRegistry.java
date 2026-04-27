@@ -11,46 +11,37 @@ import java.util.List;
 
 public class SizeRegistry {
 
-    public static final String KEY = "emoji_deco:size";
+    public static final String SIZE_KEY = "emoji_deco:size";
+    public static final String GLOW_KEY = "emoji_deco:glow";
 
     /**
      * Converts a parsed {@link Component} into a {@link FormattedCharSequence} that
-     * carries scaling metadata. Handles:
-     * <ul>
-     *   <li>Whole-line single scale: {@link ScaledSequence}</li>
-     *   <li>Partial line or nested decorators: {@link CompositeScaledSequence}</li>
-     *   <li>No scaling: plain split result</li>
-     * </ul>
+     * carries scaling and glow metadata for sign/graffiti rendering.
      */
     public static FormattedCharSequence buildScaledLine(Font font, Component parsed) {
         List<Component> siblings = parsed.getSiblings();
 
         if (siblings.isEmpty()) {
-            // The component itself may be (or deeply contain) a size translate
-            var h = hoistSizeScale(parsed);
-            if (h.scale() != 1.0f) {
-                List<FormattedCharSequence> lines = font.split(h.component(), Integer.MAX_VALUE / 2);
-                return new ScaledSequence(lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0), h.scale());
+            var h = hoistDecorators(parsed);
+            if (h.hasEffect()) {
+                FormattedCharSequence fcs = split(font, h.component());
+                if (h.glow()) fcs = new GlowSequence(fcs);
+                return new ScaledSequence(fcs, h.scale());
             }
-            List<FormattedCharSequence> lines = font.split(parsed, Integer.MAX_VALUE / 2);
-            return lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
+            return split(font, parsed);
         }
 
-        // Hoist each sibling; build segments if any has a scale
-        boolean anyScaled = false;
+        boolean anyEffect = false;
         List<CompositeScaledSequence.Segment> segments = new ArrayList<>();
         for (Component sib : siblings) {
-            var h = hoistSizeScale(sib);
-            if (h.scale() != 1.0f) anyScaled = true;
-            List<FormattedCharSequence> lines = font.split(h.component(), Integer.MAX_VALUE / 2);
-            segments.add(new CompositeScaledSequence.Segment(
-                    lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0), h.scale()));
+            var h = hoistDecorators(sib);
+            if (h.hasEffect()) anyEffect = true;
+            FormattedCharSequence fcs = split(font, h.component());
+            if (h.glow()) fcs = new GlowSequence(fcs);
+            segments.add(new CompositeScaledSequence.Segment(fcs, h.scale()));
         }
 
-        if (!anyScaled) {
-            List<FormattedCharSequence> lines = font.split(parsed, Integer.MAX_VALUE / 2);
-            return lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
-        }
+        if (!anyEffect) return split(font, parsed);
         if (segments.size() == 1) {
             var seg = segments.get(0);
             return new ScaledSequence(seg.chars(), seg.scale());
@@ -59,30 +50,36 @@ public class SizeRegistry {
     }
 
     /**
-     * Recursively walks {@code c} looking for an {@code emoji_deco:size} translate.
-     * When found, returns its scale and replaces the translate node with its inner
-     * content, preserving all outer styles/structure.
-     * If no size translate exists, returns (1.0f, c) unchanged.
+     * Recursively walks {@code c}, extracting {@code emoji_deco:size} (scale multiplier)
+     * and {@code emoji_deco:glow} (max-brightness flag) from any depth in the tree.
+     * The returned component has those translate nodes replaced by their inner content,
+     * with outer styles preserved.
      */
-    private static HoistResult hoistSizeScale(Component c) {
-        // This node IS the size translate — recurse into content to support multiplicative nesting
-        if (c.getContents() instanceof TranslatableContents tc && KEY.equals(tc.getKey())) {
-            HoistResult inner = hoistSizeScale(contentFromTc(tc));
-            return new HoistResult(scaleFromTc(tc) * inner.scale(), inner.component());
+    private static HoistResult hoistDecorators(Component c) {
+        if (c.getContents() instanceof TranslatableContents tc) {
+            if (SIZE_KEY.equals(tc.getKey())) {
+                HoistResult inner = hoistDecorators(contentFromTc(tc, 1));
+                return new HoistResult(scaleFromTc(tc) * inner.scale(), inner.glow(), inner.component());
+            }
+            if (GLOW_KEY.equals(tc.getKey())) {
+                HoistResult inner = hoistDecorators(contentFromTc(tc, 0));
+                return new HoistResult(inner.scale(), true, inner.component());
+            }
         }
 
-        // Recurse into siblings, rebuilding the component with any found scale
         List<Component> siblings = c.getSiblings();
-        if (siblings.isEmpty()) return new HoistResult(1.0f, c);
+        if (siblings.isEmpty()) return new HoistResult(1.0f, false, c);
 
-        float foundScale = 1.0f;
+        float scale = 1.0f;
+        boolean glow = false;
         MutableComponent rebuilt = MutableComponent.create(c.getContents()).withStyle(c.getStyle());
         for (Component sib : siblings) {
-            HoistResult h = hoistSizeScale(sib);
-            if (h.scale() != 1.0f && foundScale == 1.0f) foundScale = h.scale();
+            HoistResult h = hoistDecorators(sib);
+            if (h.scale() != 1.0f && scale == 1.0f) scale = h.scale();
+            if (h.glow()) glow = true;
             rebuilt.append(h.component());
         }
-        return new HoistResult(foundScale, rebuilt);
+        return new HoistResult(scale, glow, rebuilt);
     }
 
     private static float scaleFromTc(TranslatableContents tc) {
@@ -92,11 +89,18 @@ public class SizeRegistry {
         catch (NumberFormatException e) { return 1.0f; }
     }
 
-    private static Component contentFromTc(TranslatableContents tc) {
+    private static Component contentFromTc(TranslatableContents tc, int argIndex) {
         Object[] args = tc.getArgs();
-        if (args.length < 2) return Component.empty();
-        return args[1] instanceof Component comp ? comp : Component.literal(args[1].toString());
+        if (args.length <= argIndex) return Component.empty();
+        return args[argIndex] instanceof Component c ? c : Component.literal(args[argIndex].toString());
     }
 
-    private record HoistResult(float scale, Component component) {}
+    private static FormattedCharSequence split(Font font, Component c) {
+        List<FormattedCharSequence> lines = font.split(c, Integer.MAX_VALUE / 2);
+        return lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
+    }
+
+    private record HoistResult(float scale, boolean glow, Component component) {
+        boolean hasEffect() { return scale != 1.0f || glow; }
+    }
 }
