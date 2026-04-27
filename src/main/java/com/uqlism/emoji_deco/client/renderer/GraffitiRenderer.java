@@ -21,7 +21,6 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
 
     private static final float SURFACE = 100f;          // virtual surface size in font units
     private static final float SCALE   = 1f / SURFACE;  // 100 font units == 1 block
-    private static final int   LIGHT   = 0xF000F0;
     private static final int   COLOR   = 0xFFFFFF;
 
     private final Font font;
@@ -68,7 +67,7 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
             };
             float yPos = startY + idx * lineHeight + (lineHeight - font.lineHeight) / 2f;
             font.drawInBatch(seq, xPos, yPos, COLOR, false, matrix, buffers,
-                    Font.DisplayMode.POLYGON_OFFSET, 0, LIGHT);
+                    Font.DisplayMode.POLYGON_OFFSET, 0, packedLight);
         }
 
         pose.popPose();
