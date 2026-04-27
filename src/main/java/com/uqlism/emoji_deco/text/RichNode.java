@@ -97,10 +97,17 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
             for (RichNode child : g.children())
                 collectSegments(font, child, scale, g.lightMode(), inherited, out);
         } else if (node instanceof Sprite s) {
-            addLeaf(font, SpriteRegistry.createComponent(s.atlas(), s.sprite()), scale, lightMode, out);
+            addLeaf(font, withInherited(SpriteRegistry.createComponent(s.atlas(), s.sprite()), inherited), scale, lightMode, out);
         } else if (node instanceof Head h) {
-            addLeaf(font, SpriteRegistry.createHeadComponent(h.username()), scale, lightMode, out);
+            addLeaf(font, withInherited(SpriteRegistry.createHeadComponent(h.username()), inherited), scale, lightMode, out);
         }
+    }
+
+    /** Merges inherited style into a leaf component, preserving the leaf's own explicit fields. */
+    private static Component withInherited(Component c, Style inherited) {
+        if (inherited.isEmpty()) return c;
+        // c.getStyle() (e.g. {font:SPRITE_FONT}) overrides; unset fields fall back to inherited (e.g. color)
+        return c.copy().withStyle(c.getStyle().applyTo(inherited));
     }
 
     private static void addLeaf(Font font, Component c, float scale, LightMode lightMode,
