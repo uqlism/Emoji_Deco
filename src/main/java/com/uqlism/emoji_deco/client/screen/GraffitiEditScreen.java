@@ -98,7 +98,10 @@ public class GraffitiEditScreen extends Screen {
             String completed = SuggestionState.applyTo(box.getValue(), entry);
             box.setValue(completed);
             int cursor = SuggestionState.pendingCursor;
-            if (cursor >= 0) box.moveCursorTo(cursor);
+            if (cursor >= 0) {
+                box.moveCursorTo(cursor);
+                box.setHighlightPos(cursor); // prevent ] from being range-selected
+            }
             SuggestionState.clear();
             return;
         }
