@@ -43,7 +43,8 @@ public class ComponentTransformer {
         }
 
         if (contents instanceof LiteralContents lc) {
-            MutableComponent base = RichTextParser.parseInline(lc.text(), style);
+            // withStyle preserves the parent style (e.g. color) even when lc.text() is empty
+            MutableComponent base = RichTextParser.parseInline(lc.text(), style).withStyle(style);
             for (Component sibling : siblings) base.append(walk(sibling));
             return base;
         }
