@@ -6,6 +6,7 @@ import com.uqlism.emoji_deco.block.GraffitiAlignment;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
 import com.uqlism.emoji_deco.text.RichTextParser;
+import com.uqlism.emoji_deco.text.SizeRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -58,7 +59,7 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         float startY = (SURFACE - lines.size() * lineHeight) / 2f;
 
         for (int idx = 0; idx < lines.size(); idx++) {
-            FormattedCharSequence seq = lines.get(idx).getVisualOrderText();
+            FormattedCharSequence seq = SizeRegistry.buildScaledLine(font, lines.get(idx));
             float textWidth = font.width(seq);
             float xPos = switch (align) {
                 case LEFT   -> 1f;

@@ -33,8 +33,9 @@ public class MixinFont {
 
         if (text instanceof ScaledSequence ss) {
             float s = ss.scale();
-            Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
-            cir.setReturnValue(self.drawInBatch(ss.inner(), x, y / s, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+            // translate(x,y,0) then scale(s,s,1): text starts at (x,y) in any coordinate system
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(s, s, 1.0f);
+            cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
 
@@ -47,8 +48,8 @@ public class MixinFont {
                 if (s == 1.0f) {
                     retVal = self.drawInBatch(chars, curX, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight);
                 } else {
-                    Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
-                    retVal = self.drawInBatch(chars, curX / s, y / s, color, dropShadow, scaled, buffers, mode, bgColor, packedLight);
+                    Matrix4f scaled = new Matrix4f(matrix).translate(curX, y, 0f).scale(s, s, 1.0f);
+                    retVal = self.drawInBatch(chars, 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight);
                 }
                 curX += self.width(chars) * s;
             }
@@ -68,8 +69,8 @@ public class MixinFont {
 
         if (text instanceof ScaledSequence ss) {
             float s = ss.scale();
-            Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
-            self.drawInBatch8xOutline(ss.inner(), x, y / s, color, outlineColor, scaled, buffers, packedLight);
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(s, s, 1.0f);
+            self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }
@@ -82,8 +83,8 @@ public class MixinFont {
                 if (s == 1.0f) {
                     self.drawInBatch8xOutline(chars, curX, y, color, outlineColor, matrix, buffers, packedLight);
                 } else {
-                    Matrix4f scaled = new Matrix4f(matrix).scale(s, s, 1.0f);
-                    self.drawInBatch8xOutline(chars, curX / s, y / s, color, outlineColor, scaled, buffers, packedLight);
+                    Matrix4f scaled = new Matrix4f(matrix).translate(curX, y, 0f).scale(s, s, 1.0f);
+                    self.drawInBatch8xOutline(chars, 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
                 }
                 curX += self.width(chars) * s;
             }
@@ -128,16 +129,21 @@ public class MixinFont {
         }
     }
 
-    // m_92724_ = width(FormattedCharSequence) — returns visual (scaled) width for CompositeScaledSequence
+    // m_92724_ = width(FormattedCharSequence) — returns visual (scaled) width
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$scaledWidth(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
-        if (!(text instanceof CompositeScaledSequence css)) return;
         Font self = (Font)(Object)this;
-        int total = 0;
-        for (var seg : css.segments()) {
-            total += Math.round(self.width(seg.chars()) * seg.scale());
+        if (text instanceof ScaledSequence ss) {
+            cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
+            return;
         }
-        cir.setReturnValue(total);
+        if (text instanceof CompositeScaledSequence css) {
+            int total = 0;
+            for (var seg : css.segments()) {
+                total += Math.round(self.width(seg.chars()) * seg.scale());
+            }
+            cir.setReturnValue(total);
+        }
     }
 
     private static boolean isNoGlowFont(Style style) {

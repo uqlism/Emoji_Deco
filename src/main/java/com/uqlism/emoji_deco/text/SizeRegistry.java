@@ -1,10 +1,13 @@
 package com.uqlism.emoji_deco.text;
 
+import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.contents.LiteralContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.util.FormattedCharSequence;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SizeRegistry {
@@ -40,11 +43,56 @@ public class SizeRegistry {
     }
 
     /**
-     * Finds the {@code emoji_deco:size} TranslatableContents in {@code c}, handling two cases:
-     * 1. {@code c} itself is the size translate.
-     * 2. {@code c} is an empty literal wrapper with a single size-translate sibling
-     *    (the typical output of {@link RichTextParser#parseInline} for a lone {@code #tag[...]} token).
+     * Converts a parsed {@link Component} into a {@link FormattedCharSequence} that
+     * carries scaling metadata, for use in sign and graffiti rendering.
+     *
+     * <ul>
+     *   <li>If the entire line is a single {@code emoji_deco:size} decorator →
+     *       {@link ScaledSequence}</li>
+     *   <li>If the line has mixed scaled/unscaled siblings →
+     *       {@link CompositeScaledSequence}</li>
+     *   <li>Otherwise → plain {@link FormattedCharSequence} from {@code font.split}</li>
+     * </ul>
      */
+    public static FormattedCharSequence buildScaledLine(Font font, Component parsed) {
+        // Case 1: entire line is a single size-decorated component
+        float sizeScale = extractScale(parsed);
+        if (sizeScale != 1.0f) {
+            Component content = extractContent(parsed);
+            List<FormattedCharSequence> lines = font.split(content, Integer.MAX_VALUE / 2);
+            FormattedCharSequence fcs = lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
+            return new ScaledSequence(fcs, sizeScale);
+        }
+
+        // Case 2: mixed siblings — check if any sibling carries a size scale
+        List<Component> siblings = parsed.getSiblings();
+        boolean anyScaled = false;
+        for (Component sib : siblings) {
+            if (extractScale(sib) != 1.0f) { anyScaled = true; break; }
+        }
+        if (!anyScaled || siblings.isEmpty()) {
+            List<FormattedCharSequence> lines = font.split(parsed, Integer.MAX_VALUE / 2);
+            return lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0);
+        }
+
+        // Build one segment per sibling, each with its own scale
+        List<CompositeScaledSequence.Segment> segments = new ArrayList<>();
+        for (Component sib : siblings) {
+            float s = extractScale(sib);
+            if (s != 1.0f) {
+                Component content = extractContent(sib);
+                List<FormattedCharSequence> lines = font.split(content, Integer.MAX_VALUE / 2);
+                segments.add(new CompositeScaledSequence.Segment(
+                        lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0), s));
+            } else {
+                List<FormattedCharSequence> lines = font.split(sib, Integer.MAX_VALUE / 2);
+                segments.add(new CompositeScaledSequence.Segment(
+                        lines.isEmpty() ? FormattedCharSequence.EMPTY : lines.get(0), 1.0f));
+            }
+        }
+        return new CompositeScaledSequence(segments);
+    }
+
     private static TranslatableContents findTranslate(Component c) {
         if (c.getContents() instanceof TranslatableContents tc && KEY.equals(tc.getKey()))
             return tc;
@@ -58,11 +106,6 @@ public class SizeRegistry {
         return null;
     }
 
-    /**
-     * Returns true for content that contributes no visible text of its own:
-     * {@code ComponentContents.EMPTY} (from {@link Component#empty()}) or
-     * {@code LiteralContents("")} (from {@link Component#literal(String)}).
-     */
     private static boolean isTransparentContent(ComponentContents contents) {
         return contents == ComponentContents.EMPTY
             || (contents instanceof LiteralContents lc && lc.text().isEmpty());
