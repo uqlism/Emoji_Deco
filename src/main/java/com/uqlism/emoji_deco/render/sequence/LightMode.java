@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.render.sequence;
 
 /**
  * Controls how a {@link LightSequence} affects the packedLight value during rendering.

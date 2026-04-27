@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.render.sequence;
 
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.FormattedCharSink;

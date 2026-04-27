@@ -2,9 +2,9 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.logging.LogUtils;
-import com.uqlism.emoji_deco.text.HeadGlyphInfo;
-import com.uqlism.emoji_deco.text.SpriteGlyphInfo;
-import com.uqlism.emoji_deco.text.SpriteRegistry;
+import com.uqlism.emoji_deco.render.HeadGlyphInfo;
+import com.uqlism.emoji_deco.render.SpriteGlyphInfo;
+import com.uqlism.emoji_deco.render.SpriteRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;

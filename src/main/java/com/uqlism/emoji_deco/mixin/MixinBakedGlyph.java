@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.HeadOverlayGlyphs;
+import com.uqlism.emoji_deco.render.HeadOverlayGlyphs;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import org.joml.Matrix4f;

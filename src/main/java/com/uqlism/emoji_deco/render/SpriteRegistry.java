@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.render;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;

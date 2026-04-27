@@ -5,7 +5,7 @@ import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
 import com.uqlism.emoji_deco.client.CompletionRenderer;
 import com.uqlism.emoji_deco.network.GraffitiUpdatePacket;
 import com.uqlism.emoji_deco.network.Network;
-import com.uqlism.emoji_deco.text.SuggestionState;
+import com.uqlism.emoji_deco.client.SuggestionState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;

@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.client;
 
-import com.uqlism.emoji_deco.text.SuggestionState;
+import com.uqlism.emoji_deco.client.SuggestionState;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 

@@ -1,10 +1,10 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.ConcatSequence;
-import com.uqlism.emoji_deco.text.LightSequence;
-import com.uqlism.emoji_deco.text.LightMode;
-import com.uqlism.emoji_deco.text.ScaledSequence;
-import com.uqlism.emoji_deco.text.SpriteRegistry;
+import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
+import com.uqlism.emoji_deco.render.sequence.LightSequence;
+import com.uqlism.emoji_deco.render.sequence.LightMode;
+import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
+import com.uqlism.emoji_deco.render.SpriteRegistry;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Style;

@@ -1,6 +1,8 @@
 package com.uqlism.emoji_deco.text;
 
 import com.google.gson.JsonArray;
+import com.uqlism.emoji_deco.render.SpriteRegistry;
+import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;

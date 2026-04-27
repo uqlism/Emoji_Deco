@@ -1,6 +1,11 @@
 package com.uqlism.emoji_deco.text;
 
 import net.minecraft.client.gui.Font;
+import com.uqlism.emoji_deco.render.SpriteRegistry;
+import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
+import com.uqlism.emoji_deco.render.sequence.LightMode;
+import com.uqlism.emoji_deco.render.sequence.LightSequence;
+import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;

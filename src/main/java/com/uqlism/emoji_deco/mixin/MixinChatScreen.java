@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.SuggestionState;
+import com.uqlism.emoji_deco.client.SuggestionState;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;

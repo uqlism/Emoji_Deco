@@ -1,8 +1,12 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.client;
 
 import com.google.gson.JsonElement;
+import com.uqlism.emoji_deco.text.DecoratorManager;
+import com.uqlism.emoji_deco.text.EmojiDecoComponentParser;
+import com.uqlism.emoji_deco.text.RichNode;
+import com.uqlism.emoji_deco.text.ShortcodeManager;
+import com.uqlism.emoji_deco.render.sequence.LightMode;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 

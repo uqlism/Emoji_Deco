@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.render;
 
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 
