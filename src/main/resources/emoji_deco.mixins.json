@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.uqlism.emoji_deco.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "emoji_deco.refmap.json",
+  "mixins": [
+    "MixinChatScreen"
+  ],
+  "client": [
+    "MixinBakedGlyph",
+    "MixinFont",
+    "MixinFontSet",
+    "MixinGui",
+    "MixinSignText",
+    "MixinAbstractSignEditScreen",
+    "MixinEntityRenderer",
+    "MixinWrittenBookAccess"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

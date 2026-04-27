@@ -3,23 +3,23 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-    modId="runicink"
+    modId="emoji_deco"
     version="0.0.1"
-    displayName="Runic Ink"
+    displayName="Emoji & Deco"
     #logoFile="examplemod.png" #optional
     credits="uqlism"
     authors="uqlism"
 
     description='''use emojis and richtexts in minecraft!!!'''
 
-[[dependencies.runicink]]
+[[dependencies.emoji_deco]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.runicink]]
+[[dependencies.emoji_deco]]
     modId="forge"
     mandatory=true
     versionRange="[47,)"

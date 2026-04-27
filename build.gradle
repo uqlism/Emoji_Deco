@@ -157,7 +157,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'MixinConfigs'            : 'runicink.mixins.json'
+                'MixinConfigs'            : 'emoji_deco.mixins.json'
         ])
     }
 
@@ -191,7 +191,7 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     manifest {
         attributes([
-            "MixinConfigs": "runicink.mixins.json"
+            "MixinConfigs": "emoji_deco.mixins.json"
         ])
     }
 }
