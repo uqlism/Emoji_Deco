@@ -8,93 +8,95 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SuggestionStateTest extends MinecraftTestBase {
 
+    private SuggestionState state;
+
     @BeforeEach
     void resetState() {
-        SuggestionState.clear();
-        SuggestionState.pendingCursor = -1;
+        state = new SuggestionState();
+        state.pendingCursor = -1;
     }
 
     // ── applyTo: decorator ────────────────────────────────────────────────────
 
     @Test
     void applyDecorator() {
-        SuggestionState.lastInput  = "#bo";
-        SuggestionState.lastCursor = 3;
+        state.lastInput  = "#bo";
+        state.lastCursor = 3;
         var entry = entry("bold", SuggestionState.TriggerType.DECORATOR);
-        assertEquals("#bold[]", SuggestionState.applyTo("#bo", entry));
-        assertEquals(6, SuggestionState.pendingCursor); // カーソルは [] の中
+        assertEquals("#bold[]", state.applyTo("#bo", entry));
+        assertEquals(6, state.pendingCursor); // カーソルは [] の中
     }
 
     @Test
     void applyDecoratorWithTrailingText() {
-        SuggestionState.lastInput  = "#bo world";
-        SuggestionState.lastCursor = 3;
+        state.lastInput  = "#bo world";
+        state.lastCursor = 3;
         var entry = entry("bold", SuggestionState.TriggerType.DECORATOR);
-        assertEquals("#bold[] world", SuggestionState.applyTo("#bo world", entry));
+        assertEquals("#bold[] world", state.applyTo("#bo world", entry));
     }
 
     // ── applyTo: shortcode ────────────────────────────────────────────────────
 
     @Test
     void applyShortcode() {
-        SuggestionState.lastInput  = ":hea";
-        SuggestionState.lastCursor = 4;
+        state.lastInput  = ":hea";
+        state.lastCursor = 4;
         var entry = entry("heart", SuggestionState.TriggerType.SHORTCODE);
-        assertEquals(":heart:", SuggestionState.applyTo(":hea", entry));
-        assertEquals(7, SuggestionState.pendingCursor);
+        assertEquals(":heart:", state.applyTo(":hea", entry));
+        assertEquals(7, state.pendingCursor);
     }
 
     // ── applyTo: decorator arg ────────────────────────────────────────────────
 
     @Test
     void applyDecoratorArg() {
-        SuggestionState.lastInput  = "#color.r";
-        SuggestionState.lastCursor = 8;
+        state.lastInput  = "#color.r";
+        state.lastCursor = 8;
         var entry = entry("red", SuggestionState.TriggerType.DECORATOR_ARG);
-        assertEquals("#color.red[]", SuggestionState.applyTo("#color.r", entry));
-        assertEquals(11, SuggestionState.pendingCursor);
+        assertEquals("#color.red[]", state.applyTo("#color.r", entry));
+        assertEquals(11, state.pendingCursor);
     }
 
     @Test
     void applyDecoratorArgSecond() {
         // 2番目の引数を補完: #gradient.red,bl → #gradient.red,blue[
-        SuggestionState.lastInput  = "#gradient.red,bl";
-        SuggestionState.lastCursor = 16;
+        state.lastInput  = "#gradient.red,bl";
+        state.lastCursor = 16;
         var entry = entry("blue", SuggestionState.TriggerType.DECORATOR_ARG);
-        assertEquals("#gradient.red,blue[]", SuggestionState.applyTo("#gradient.red,bl", entry));
+        assertEquals("#gradient.red,blue[]", state.applyTo("#gradient.red,bl", entry));
     }
 
     // ── applyTo: shortcode arg ────────────────────────────────────────────────
 
     @Test
     void applyShortcodeArg() {
-        SuggestionState.lastInput  = ":player.Ste";
-        SuggestionState.lastCursor = 11;
+        state.lastInput  = ":player.Ste";
+        state.lastCursor = 11;
         var entry = entry("Steve", SuggestionState.TriggerType.SHORTCODE_ARG);
-        assertEquals(":player.Steve:", SuggestionState.applyTo(":player.Ste", entry));
-        assertEquals(14, SuggestionState.pendingCursor);
+        assertEquals(":player.Steve:", state.applyTo(":player.Ste", entry));
+        assertEquals(14, state.pendingCursor);
     }
 
     // ── trigger detection: escape ─────────────────────────────────────────────
 
     @Test
     void escapedHashNotTriggered() {
-        SuggestionState.update("\\#bold", 6);
-        assertTrue(SuggestionState.suggestions.isEmpty());
+        state.update("\\#bold", 6);
+        assertTrue(state.suggestions.isEmpty());
     }
 
     @Test
     void escapedColonNotTriggered() {
-        SuggestionState.update("\\:heart", 7);
-        assertTrue(SuggestionState.suggestions.isEmpty());
+        state.update("\\:heart", 7);
+        assertTrue(state.suggestions.isEmpty());
     }
 
     @Test
     void unescapedHashTriggersWhenValid() {
         // 未登録デコレーターでも # は検出される (候補リストが空になるだけ)
-        SuggestionState.update("#bold", 5);
+        state.update("#bold", 5);
         // DecoratorManager に何も登録されていないので suggestions は空だが例外が出ないこと
-        assertNotNull(SuggestionState.suggestions);
+        assertNotNull(state.suggestions);
     }
 
     // ── helper ────────────────────────────────────────────────────────────────
