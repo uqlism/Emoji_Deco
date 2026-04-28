@@ -3,6 +3,8 @@ package com.uqlism.emoji_deco.text;
 import net.minecraft.client.gui.Font;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
+import com.uqlism.emoji_deco.render.registry.TextureRegistry;
+import net.minecraft.resources.ResourceLocation;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
@@ -30,13 +32,14 @@ import java.util.List;
  *   toSequence(font, node)   — for signs / graffiti (honours Sized and Glowing)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode.Glowing,
-                                         RichNode.Sprite, RichNode.Head {
+                                         RichNode.Sprite, RichNode.Head, RichNode.Texture {
 
     record Text(String literal, Style style, List<RichNode> children) implements RichNode {}
     record Sized(float scale, List<RichNode> children)                 implements RichNode {}
     record Glowing(LightMode lightMode, List<RichNode> children)       implements RichNode {}
-    record Sprite(String atlas, String sprite)                         implements RichNode {}
+    record Sprite(String atlas, String sprite, int width, int height)  implements RichNode {}
     record Head(String username)                                       implements RichNode {}
+    record Texture(ResourceLocation texture)                           implements RichNode {}
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
@@ -63,8 +66,9 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
             for (RichNode child : g.children()) c.append(child.toComponent());
             return c;
         }
-        if (this instanceof Sprite s) return SpriteRegistry.createComponent(s.atlas(), s.sprite()).copy();
-        if (this instanceof Head h)   return PlayerHeadRegistry.createComponent(h.username()).copy();
+        if (this instanceof Sprite s)   return SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()).copy();
+        if (this instanceof Head h)     return PlayerHeadRegistry.createComponent(h.username()).copy();
+        if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture()).copy();
         return Component.empty();
     }
 
@@ -98,9 +102,11 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
             for (RichNode child : g.children())
                 collectSegments(font, child, scale, g.lightMode(), inherited, out);
         } else if (node instanceof Sprite s) {
-            addLeaf(font, withInherited(SpriteRegistry.createComponent(s.atlas(), s.sprite()), inherited), scale, lightMode, out);
+            addLeaf(font, withInherited(SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()), inherited), scale, lightMode, out);
         } else if (node instanceof Head h) {
             addLeaf(font, withInherited(PlayerHeadRegistry.createComponent(h.username()), inherited), scale, lightMode, out);
+        } else if (node instanceof Texture t) {
+            addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture()), inherited), scale, lightMode, out);
         }
     }
 

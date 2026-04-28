@@ -9,11 +9,13 @@ import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
+import com.uqlism.emoji_deco.render.registry.TextureRegistry;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import net.minecraft.client.gui.screens.inventory.BookEditScreen;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -30,6 +32,7 @@ import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -107,6 +110,17 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         PlayerHeadRegistry.clearSkinCache();
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        java.util.List<net.minecraft.resources.ResourceLocation> toRelease = TextureRegistry.tickAndEvict();
+        if (toRelease.isEmpty()) return;
+        TextureManager tm = Minecraft.getInstance().getTextureManager();
+        for (net.minecraft.resources.ResourceLocation rl : toRelease) {
+            tm.release(rl);
+        }
     }
 
     private static final int HIGHLIGHT_RANGE = 10;

@@ -140,15 +140,22 @@ public final class EmojiDecoComponentParser {
             return new RichNode.Glowing(lightMode, List.of(contents));
         }
         if (obj.has("emoji_deco:sprite")) {
-            JsonObject spec  = obj.getAsJsonObject("emoji_deco:sprite");
+            JsonObject spec   = obj.getAsJsonObject("emoji_deco:sprite");
             String atlas  = stringOf(spec.get("atlas"),  "");
             String sprite = stringOf(spec.get("sprite"), "");
-            return new RichNode.Sprite(atlas, sprite);
+            int width  = spec.has("width")  && spec.get("width").isJsonPrimitive()  ? spec.get("width").getAsInt()  : 8;
+            int height = spec.has("height") && spec.get("height").isJsonPrimitive() ? spec.get("height").getAsInt() : 8;
+            return new RichNode.Sprite(atlas, sprite, width, height);
         }
         if (obj.has("emoji_deco:player_head")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:player_head");
             String username = stringOf(spec.get("player"), "");
             return new RichNode.Head(username);
+        }
+        if (obj.has("emoji_deco:texture")) {
+            JsonObject spec = obj.getAsJsonObject("emoji_deco:texture");
+            ResourceLocation texRL = ResourceLocation.tryParse(stringOf(spec.get("texture"), ""));
+            return texRL != null ? new RichNode.Texture(texRL) : RichNode.empty();
         }
         return parseStandard(obj, slot);
     }

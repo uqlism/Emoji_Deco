@@ -22,15 +22,19 @@ public class SpriteGlyphInfo implements GlyphInfo {
 
     private final ResourceLocation atlasRL;
     private final ResourceLocation textureRL;
+    private final int width;
+    private final int height;
 
-    public SpriteGlyphInfo(ResourceLocation atlasRL, ResourceLocation textureRL) {
+    public SpriteGlyphInfo(ResourceLocation atlasRL, ResourceLocation textureRL, int width, int height) {
         this.atlasRL = atlasRL;
         this.textureRL = textureRL;
+        this.width = width;
+        this.height = height;
     }
 
     @Override
     public float getAdvance() {
-        return 9.0f;
+        return width + 1.0f;
     }
 
     @Override
@@ -41,7 +45,7 @@ public class SpriteGlyphInfo implements GlyphInfo {
 
         if (sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation())) {
             LOGGER.warn("[EmojiDeco] Sprite not found in block atlas: {} (try e.g. block/fire_0)", textureRL);
-            return null;
+            // Return the missing-texture sprite itself rather than null to prevent NPE in the font renderer.
         }
 
         GlyphRenderTypes renderTypes = GlyphRenderTypes.createForColorTexture(atlasRL);
@@ -49,8 +53,8 @@ public class SpriteGlyphInfo implements GlyphInfo {
                 renderTypes,
                 sprite.getU0(), sprite.getU1(),
                 sprite.getV0(), sprite.getV1(),
-                0.0f, 8.0f,
-                3.0f, 11.0f
+                0.0f, (float) width,
+                3.0f, 3.0f + height
         );
     }
 }

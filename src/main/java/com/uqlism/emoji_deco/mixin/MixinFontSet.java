@@ -4,11 +4,14 @@ import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.glyphinfo.HeadGlyphInfo;
 import com.uqlism.emoji_deco.render.glyphinfo.SpriteGlyphInfo;
+import com.uqlism.emoji_deco.render.glyphinfo.TextureGlyphInfo;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
+import com.uqlism.emoji_deco.render.registry.TextureRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,10 +32,14 @@ public abstract class MixinFontSet {
     @Shadow(remap = false)
     private ResourceLocation f_95052_;
 
-    // Per-FontSet-instance BakedGlyph cache for our custom codepoints.
-    // FontSet instances are recreated on resource reload, so no manual invalidation is needed.
+    // Sprite glyph cache: texture never changes, so simple codepoint→BakedGlyph is fine.
     @Unique
     private final Map<Integer, BakedGlyph> runicink$glyphCache = new HashMap<>();
+
+    // Head glyph cache: skin may change after initial load (async download).
+    // We track which skin RL the cached BakedGlyph was built from and recreate on change.
+    @Unique
+    private final Map<Integer, ResourceLocation> runicink$headSkins = new HashMap<>();
 
     // SRG: m_243128_ -> getGlyphInfo(int, boolean)
     @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
@@ -41,7 +48,10 @@ public abstract class MixinFontSet {
         if (this.f_95052_ == null) return;
         if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
             SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
-            if (key != null) cir.setReturnValue(new SpriteGlyphInfo(key.atlas(), key.sprite()));
+            if (key != null) cir.setReturnValue(new SpriteGlyphInfo(key.atlas(), key.sprite(), key.width(), key.height()));
+        } else if (TextureRegistry.TEXTURE_FONT.equals(this.f_95052_)) {
+            ResourceLocation tex = TextureRegistry.getTexture(codePoint);
+            if (tex != null) cir.setReturnValue(new TextureGlyphInfo(tex));
         } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
             String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
@@ -61,54 +71,86 @@ public abstract class MixinFontSet {
                                       CallbackInfoReturnable<BakedGlyph> cir) {
         if (this.f_95052_ == null) return;
 
-        BakedGlyph cached = runicink$glyphCache.get(codePoint);
-        if (cached != null) { cir.setReturnValue(cached); return; }
-
-        BakedGlyph glyph = null;
         if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
+            BakedGlyph cached = runicink$glyphCache.get(codePoint);
+            if (cached != null) { cir.setReturnValue(cached); return; }
             SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
             if (key == null) {
                 LOGGER.warn("[EmojiDeco] No texture mapped for cp=U+{}", Integer.toHexString(codePoint));
                 return;
             }
-            glyph = new SpriteGlyphInfo(key.atlas(), key.sprite()).bake(null);
-        } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
-            String username = PlayerHeadRegistry.getUsername(codePoint);
-            if (username == null) return;
-            ResourceLocation skin = getSkinTexture(username);
-            if (skin == null) return;
-            glyph = new HeadGlyphInfo(skin, false).bake(null);
-        } else if (PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_)) {
-            String username = PlayerHeadRegistry.getUsername(codePoint);
-            if (username == null) return;
-            ResourceLocation skin = getSkinTexture(username);
-            if (skin == null) return;
-            glyph = new HeadGlyphInfo(skin, true).bake(null);
-        }
-        if (glyph != null) {
+            BakedGlyph glyph = new SpriteGlyphInfo(key.atlas(), key.sprite(), key.width(), key.height()).bake(null);
+            if (glyph == null) return;
             runicink$glyphCache.put(codePoint, glyph);
+            cir.setReturnValue(glyph);
+
+        } else if (TextureRegistry.TEXTURE_FONT.equals(this.f_95052_)) {
+            ResourceLocation tex = TextureRegistry.getTexture(codePoint);
+            if (tex == null) return;
+            TextureRegistry.markUsed(codePoint);
+            if (TextureRegistry.isEvicted(codePoint)) {
+                // GL texture was released by LRU; force re-bake and clear the flag.
+                TextureRegistry.clearEvicted(codePoint);
+                runicink$glyphCache.remove(codePoint);
+            } else {
+                BakedGlyph cached = runicink$glyphCache.get(codePoint);
+                if (cached != null) { cir.setReturnValue(cached); return; }
+            }
+            BakedGlyph glyph = new TextureGlyphInfo(tex).bake(null);
+            runicink$glyphCache.put(codePoint, glyph);
+            cir.setReturnValue(glyph);
+
+        } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)
+                || PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_)) {
+            boolean overlay = PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_);
+            String username = PlayerHeadRegistry.getUsername(codePoint);
+            if (username == null) return;
+            ResourceLocation skin = getSkinTexture(username);
+            if (skin == null) return;
+
+            // Invalidate cached BakedGlyph when the skin ResourceLocation changes
+            // (e.g. default skin → real skin after async download completes).
+            ResourceLocation prevSkin = runicink$headSkins.get(codePoint);
+            if (skin.equals(prevSkin)) {
+                BakedGlyph cached = runicink$glyphCache.get(codePoint);
+                if (cached != null) { cir.setReturnValue(cached); return; }
+            }
+
+            BakedGlyph glyph = new HeadGlyphInfo(skin, overlay).bake(null);
+            runicink$glyphCache.put(codePoint, glyph);
+            runicink$headSkins.put(codePoint, skin);
             cir.setReturnValue(glyph);
         }
     }
 
     private static ResourceLocation getSkinTexture(String username) {
+        // Return already-confirmed real skin immediately.
         ResourceLocation cached = PlayerHeadRegistry.getCachedSkin(username);
         if (cached != null) return cached;
 
         Minecraft mc = Minecraft.getInstance();
         ResourceLocation skin = null;
-        // Check local player first (always available)
         if (mc.player != null && mc.player.getName().getString().equalsIgnoreCase(username)) {
-            skin = mc.getSkinManager().getInsecureSkinLocation(mc.player.getGameProfile());
+            // getSkinTextureLocation() triggers async skin loading if not yet started.
+            skin = mc.player.getSkinTextureLocation();
         } else if (mc.level != null) {
-            for (var player : mc.level.players()) {
+            for (AbstractClientPlayer player : mc.level.players()) {
                 if (player.getName().getString().equalsIgnoreCase(username)) {
-                    skin = mc.getSkinManager().getInsecureSkinLocation(player.getGameProfile());
+                    skin = player.getSkinTextureLocation();
                     break;
                 }
             }
         }
-        if (skin != null) PlayerHeadRegistry.cacheSkin(username, skin);
+        // Cache only once the real (non-default) skin has loaded.
+        // Default skins have paths like "textures/entity/player/wide/steve.png".
+        if (skin != null && !isDefaultSkin(skin)) {
+            PlayerHeadRegistry.cacheSkin(username, skin);
+        }
         return skin;
+    }
+
+    private static boolean isDefaultSkin(ResourceLocation skin) {
+        return skin.getNamespace().equals("minecraft")
+                && skin.getPath().startsWith("textures/entity/player/");
     }
 }

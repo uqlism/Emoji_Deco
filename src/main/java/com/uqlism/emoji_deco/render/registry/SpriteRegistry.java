@@ -17,8 +17,8 @@ public class SpriteRegistry {
     private static final Map<Integer, SpriteKey> CP_TO_TEXTURE = new ConcurrentHashMap<>();
     private static final AtomicInteger nextCp = new AtomicInteger(0xE000);
 
-    public static int allocate(String atlasName, String textureName) {
-        SpriteKey key = new SpriteKey(ResourceLocation.parse(atlasName), ResourceLocation.parse(textureName));
+    public static int allocate(String atlasName, String textureName, int width, int height) {
+        SpriteKey key = new SpriteKey(ResourceLocation.parse(atlasName), ResourceLocation.parse(textureName), width, height);
         return TEXTURE_TO_CP.computeIfAbsent(key, k -> {
             int cp = nextCp.getAndIncrement();
             CP_TO_TEXTURE.put(cp, k);
@@ -30,11 +30,11 @@ public class SpriteRegistry {
         return CP_TO_TEXTURE.get(codePoint);
     }
 
-    public static Component createComponent(String atlasName, String textureName) {
-        int cp = allocate(atlasName, textureName);
+    public static Component createComponent(String atlasName, String textureName, int width, int height) {
+        int cp = allocate(atlasName, textureName, width, height);
         return Component.literal(new String(Character.toChars(cp)))
                 .withStyle(Style.EMPTY.withFont(SPRITE_FONT));
     }
 
-    public record SpriteKey(ResourceLocation atlas, ResourceLocation sprite) {}
+    public record SpriteKey(ResourceLocation atlas, ResourceLocation sprite, int width, int height) {}
 }
