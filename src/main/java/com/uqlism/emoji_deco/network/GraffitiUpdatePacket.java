@@ -25,7 +25,9 @@ public record GraffitiUpdatePacket(BlockPos pos, String[] lines, GraffitiAlignme
 
     public static GraffitiUpdatePacket decode(FriendlyByteBuf buf) {
         BlockPos pos = buf.readBlockPos();
-        GraffitiAlignment align = GraffitiAlignment.values()[buf.readByte()];
+        GraffitiAlignment[] alignments = GraffitiAlignment.values();
+        int ordinal = Math.max(0, Math.min(buf.readByte(), alignments.length - 1));
+        GraffitiAlignment align = alignments[ordinal];
         int displayedLines = buf.readVarInt();
         int n = buf.readVarInt();
         String[] lines = new String[Math.min(n, GraffitiBlockEntity.MAX_LINES)];
