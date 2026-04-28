@@ -5,16 +5,16 @@ import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
 import com.uqlism.emoji_deco.render.registry.TextureRegistry;
 import net.minecraft.resources.ResourceLocation;
+
+import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
-import com.uqlism.emoji_deco.render.sequence.OffsetSequence;
-import com.uqlism.emoji_deco.render.sequence.RotatedSequence;
-import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,10 +27,11 @@ import java.util.List;
  *   Glowing(children)              — glow effect wrapper
  *   Sprite(atlas, sprite)          — sprite glyph via custom font
  *   Head(username)                 — player-head glyph pair via HEAD_FONT
+ *   Offset / Scaled / Rotated      — spatial transform wrappers (sign/graffiti only)
  *
  * Conversion:
  *   toComponent()            — for chat / tooltip / entity names / books
- *   toSequence(font, node)   — for signs / graffiti (honours Scaled, Offset and Glowing)
+ *   toSequence(font, node)   — for signs / graffiti (honours all wrappers)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                                          RichNode.Sprite, RichNode.Head, RichNode.Texture,
@@ -51,7 +52,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     /**
      * Converts to a Minecraft Component for standard rendering contexts.
-     * Scaled, Offset and Glowing effects are not preserved (standard renderer has no support).
+     * Spatial transforms are not preserved (standard renderer has no support).
      */
     default MutableComponent toComponent() {
         if (this instanceof Text t) {
@@ -68,6 +69,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         if (this instanceof Sprite s)   return SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()).copy();
         if (this instanceof Head h)     return PlayerHeadRegistry.createComponent(h.username()).copy();
         if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture(), t.width(), t.height()).copy();
+        // Offset / Scaled / Rotated: render contents without transform
         if (this instanceof Offset o) {
             MutableComponent c = Component.empty();
             for (RichNode child : o.children()) c.append(child.toComponent());
@@ -90,7 +92,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     /**
      * Converts to a FormattedCharSequence for scaled rendering (signs, graffiti).
-     * Scaled, Offset and Glowing nodes are fully honoured.
+     * All transform wrappers are converted to AffineSequence at collect time.
      */
     static FormattedCharSequence toSequence(Font font, RichNode root) {
         List<FormattedCharSequence> parts = new ArrayList<>();
@@ -119,29 +121,50 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Texture t) {
             addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture(), t.width(), t.height()), inherited), lightMode, out);
         } else if (node instanceof Offset o) {
-            List<FormattedCharSequence> inner = new ArrayList<>();
-            for (RichNode child : o.children())
-                collectSegments(font, child, lightMode, inherited, inner);
-            if (!inner.isEmpty()) {
-                FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
-                out.add(new OffsetSequence(seq, o.x(), o.y()));
-            }
+            wrapAffine(font, o.children(), lightMode, inherited, out,
+                    new Matrix4f().translate(o.x(), o.y(), 0f));
         } else if (node instanceof Scaled s) {
-            List<FormattedCharSequence> inner = new ArrayList<>();
-            for (RichNode child : s.children())
-                collectSegments(font, child, lightMode, inherited, inner);
-            if (!inner.isEmpty()) {
-                FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
-                out.add(new ScaledSequence(seq, s.scaleX(), s.scaleY()));
-            }
+            wrapAffine(font, s.children(), lightMode, inherited, out, seq -> {
+                float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
+                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : 0f;
+                return new Matrix4f().translate(ox, oy, 0f).scale(s.scaleX(), s.scaleY(), 1f);
+            });
         } else if (node instanceof Rotated r) {
-            List<FormattedCharSequence> inner = new ArrayList<>();
-            for (RichNode child : r.children())
-                collectSegments(font, child, lightMode, inherited, inner);
-            if (!inner.isEmpty()) {
-                FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
-                out.add(new RotatedSequence(seq, r.angle()));
-            }
+            wrapAffine(font, r.children(), lightMode, inherited, out, seq -> {
+                float cx = font.width(seq) / 2f;
+                float cy = font.lineHeight / 2f;
+                return new Matrix4f()
+                        .translate(cx, cy, 0f)
+                        .rotateZ((float) Math.toRadians(r.angle()))
+                        .translate(-cx, -cy, 0f);
+            });
+        }
+    }
+
+    /** Collects children, then wraps the result in an AffineSequence with a static matrix. */
+    private static void wrapAffine(Font font, List<RichNode> children,
+                                    LightMode lightMode, Style inherited,
+                                    List<FormattedCharSequence> out, Matrix4f matrix) {
+        List<FormattedCharSequence> inner = new ArrayList<>();
+        for (RichNode child : children)
+            collectSegments(font, child, lightMode, inherited, inner);
+        if (!inner.isEmpty()) {
+            FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
+            out.add(new AffineSequence(seq, matrix));
+        }
+    }
+
+    /** Collects children, then wraps with a matrix that depends on the inner sequence's width. */
+    private static void wrapAffine(Font font, List<RichNode> children,
+                                    LightMode lightMode, Style inherited,
+                                    List<FormattedCharSequence> out,
+                                    java.util.function.Function<FormattedCharSequence, Matrix4f> matrixFn) {
+        List<FormattedCharSequence> inner = new ArrayList<>();
+        for (RichNode child : children)
+            collectSegments(font, child, lightMode, inherited, inner);
+        if (!inner.isEmpty()) {
+            FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
+            out.add(new AffineSequence(seq, matrixFn.apply(seq)));
         }
     }
 

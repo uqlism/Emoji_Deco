@@ -43,7 +43,7 @@ class ParsingIntegrationTest extends MinecraftTestBase {
                 """);
         putDecorator("size",
                 """
-                {"emoji_deco:size":{"size":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"contents":{"emoji_deco:slot":{}}}}
+                {"emoji_deco:scale":{"x":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"y":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"contents":{"emoji_deco:slot":{}}}}
                 """);
 
         // Shortcodes
@@ -162,10 +162,10 @@ class ParsingIntegrationTest extends MinecraftTestBase {
 
     @Test
     void sizeNodeType() {
-        // Verify the RichNode tree contains a Sized node
+        // Verify the RichNode tree contains a Scaled node
         RichNode result = RichTextParser.parse("#size.2[hello]");
-        assertTrue(containsNodeType(result, RichNode.Sized.class),
-                "Expected a Sized node in the IR tree");
+        assertTrue(containsNodeType(result, RichNode.Scaled.class),
+                "Expected a Scaled node in the IR tree");
     }
 
     // ── registry helpers ──────────────────────────────────────────────────────
@@ -198,10 +198,14 @@ class ParsingIntegrationTest extends MinecraftTestBase {
         if (type.isInstance(node)) return true;
         if (node instanceof RichNode.Text t)
             return t.children().stream().anyMatch(c -> containsNodeType(c, type));
-        if (node instanceof RichNode.Sized s)
-            return s.children().stream().anyMatch(c -> containsNodeType(c, type));
         if (node instanceof RichNode.Glowing g)
             return g.children().stream().anyMatch(c -> containsNodeType(c, type));
+        if (node instanceof RichNode.Scaled s)
+            return s.children().stream().anyMatch(c -> containsNodeType(c, type));
+        if (node instanceof RichNode.Offset o)
+            return o.children().stream().anyMatch(c -> containsNodeType(c, type));
+        if (node instanceof RichNode.Rotated r)
+            return r.children().stream().anyMatch(c -> containsNodeType(c, type));
         return false;
     }
 }
