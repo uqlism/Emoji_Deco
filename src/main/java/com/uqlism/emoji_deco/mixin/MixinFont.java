@@ -71,9 +71,12 @@ public class MixinFont {
             cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
             return;
         }
-        if (text instanceof ScaledSequence sxy) {
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(sxy.scaleX(), sxy.scaleY(), 1.0f);
-            cir.setReturnValue(self.drawInBatch(sxy.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+        if (text instanceof ScaledSequence ss) {
+            // Negative scale flips around the origin; compensate so the result stays in-place.
+            float ox = ss.scaleX() < 0 ? self.width(ss.inner()) * (-ss.scaleX()) : 0f;
+            float oy = ss.scaleY() < 0 ? self.lineHeight * (-ss.scaleY()) : 0f;
+            Matrix4f scaled = new Matrix4f(matrix).translate(x + ox, y + oy, 0f).scale(ss.scaleX(), ss.scaleY(), 1.0f);
+            cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
         if (text instanceof OffsetSequence os) {
@@ -121,9 +124,11 @@ public class MixinFont {
             ci.cancel();
             return;
         }
-        if (text instanceof ScaledSequence sxy) {
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(sxy.scaleX(), sxy.scaleY(), 1.0f);
-            self.drawInBatch8xOutline(sxy.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
+        if (text instanceof ScaledSequence ss) {
+            float ox = ss.scaleX() < 0 ? self.width(ss.inner()) * (-ss.scaleX()) : 0f;
+            float oy = ss.scaleY() < 0 ? self.lineHeight * (-ss.scaleY()) : 0f;
+            Matrix4f scaled = new Matrix4f(matrix).translate(x + ox, y + oy, 0f).scale(ss.scaleX(), ss.scaleY(), 1.0f);
+            self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }

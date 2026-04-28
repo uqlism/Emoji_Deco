@@ -1,0 +1,11 @@
+{
+  "enable": true,
+  "display": {
+    "emoji_deco:scale": {
+      "x": -1,
+      "contents": {
+        "emoji_deco:slot": {}
+      }
+    }
+  }
+}
