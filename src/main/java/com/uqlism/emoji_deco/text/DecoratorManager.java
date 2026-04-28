@@ -112,22 +112,6 @@ public class DecoratorManager implements PreparableReloadListener {
                 .collect(Collectors.toList());
     }
 
-    /** Returns true if text contains at least one valid #tag[...] pattern. */
-    public static boolean hasAnyTag(String text) {
-        int pos = text.indexOf('#');
-        while (pos >= 0) {
-            int bracket = text.indexOf('[', pos + 1);
-            if (bracket > pos + 1) {
-                String segment = text.substring(pos + 1, bracket);
-                int dot = segment.indexOf('.');
-                String name = dot > 0 ? segment.substring(0, dot) : segment;
-                if (isValidTagName(name) && REGISTRY.containsKey(name)) return true;
-            }
-            pos = text.indexOf('#', pos + 1);
-        }
-        return false;
-    }
-
     static boolean isValidTagName(String name) {
         if (name.isEmpty()) return false;
         for (char c : name.toCharArray()) {

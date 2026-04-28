@@ -57,8 +57,4 @@ public class Registration {
             event.accept(GRAFFITI_INK_ITEM.get());
         }
     }
-
-    public static ResourceLocation id(String path) {
-        return new ResourceLocation(EmojiDeco.MODID, path);
-    }
 }

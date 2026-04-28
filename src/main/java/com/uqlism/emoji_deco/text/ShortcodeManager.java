@@ -136,21 +136,6 @@ public class ShortcodeManager implements PreparableReloadListener {
         return resolve(code, new String[0]);
     }
 
-    public static boolean hasAnyShortcode(String text) {
-        int start = text.indexOf(':');
-        while (start >= 0) {
-            int end = text.indexOf(':', start + 1);
-            if (end > start + 1) {
-                String inner = text.substring(start + 1, end);
-                int dot = inner.indexOf('.');
-                String code = dot > 0 ? inner.substring(0, dot) : inner;
-                if (has(code)) return true;
-            }
-            start = text.indexOf(':', start + 1);
-        }
-        return false;
-    }
-
     public static List<String> getSuggestions(String prefix) {
         return Stream.concat(REGISTRY.keySet().stream(), PARAM_REGISTRY.keySet().stream())
                 .filter(key -> key.startsWith(prefix))
