@@ -1,0 +1,34 @@
+﻿{
+    "enable": true,
+    "aliases": [
+        "石",
+        "テスト"
+    ],
+    "display": {
+        "text": "",
+        "color": "#ffffff",
+        "extra": [
+            {
+                "emoji_deco:sprite": {
+                    "atlas": "minecraft:textures/atlas/blocks.png",
+                    "sprite": {
+                        "emoji_deco:join": {
+                            "parts": [
+                                "block/",
+                                {
+                                    "emoji_deco:arg": {
+                                        "index": 0,
+                                        "type": "string",
+                                        "default": ""
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "width": 8,
+                    "height": 8
+                }
+            }
+        ]
+    }
+}

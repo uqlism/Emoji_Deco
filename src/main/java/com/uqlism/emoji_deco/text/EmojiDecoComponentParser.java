@@ -89,6 +89,22 @@ public final class EmojiDecoComponentParser {
                 return arr;
             }
 
+            if (obj.has("emoji_deco:join")) {
+                JsonObject spec = obj.getAsJsonObject("emoji_deco:join");
+                String separator = spec.has("separator") && spec.get("separator").isJsonPrimitive()
+                        ? spec.get("separator").getAsString() : "";
+                if (spec.has("parts") && spec.get("parts").isJsonArray()) {
+                    java.util.List<String> parts = new java.util.ArrayList<>();
+                    for (JsonElement part : spec.getAsJsonArray("parts")) {
+                        JsonElement expanded = expandDynamicProviders(part, args);
+                        if (expanded != null && expanded.isJsonPrimitive())
+                            parts.add(expanded.getAsString());
+                    }
+                    return new JsonPrimitive(String.join(separator, parts));
+                }
+                return new JsonPrimitive("");
+            }
+
             JsonObject result = new JsonObject();
             for (var entry : obj.entrySet())
                 result.add(entry.getKey(), expandDynamicProviders(entry.getValue(), args));
