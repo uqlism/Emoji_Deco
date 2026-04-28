@@ -148,10 +148,10 @@ public class SuggestionState {
         if (prefix.isEmpty()) return Collections.emptyList();
         List<Entry> results = new ArrayList<>();
         ShortcodeManager.getSuggestions(prefix).forEach(code ->
-                results.add(new Entry(":" + code + ":", ShortcodeManager.resolve(code).toComponent(), code, TriggerType.SHORTCODE)));
+                results.add(new Entry(ShortcodeManager.getLabel(code), ShortcodeManager.getPreview(code), code, TriggerType.SHORTCODE)));
         ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
             String canonical = e.getValue();
-            results.add(new Entry(":" + canonical + ":", ShortcodeManager.resolve(canonical).toComponent(), canonical, TriggerType.SHORTCODE));
+            results.add(new Entry(ShortcodeManager.getLabel(canonical), ShortcodeManager.getPreview(canonical), canonical, TriggerType.SHORTCODE));
         });
         return results;
     }

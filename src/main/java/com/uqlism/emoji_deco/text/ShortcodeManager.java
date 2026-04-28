@@ -32,13 +32,16 @@ public class ShortcodeManager implements PreparableReloadListener {
     private static final Map<String, RichNode> REGISTRY = new ConcurrentHashMap<>();
     /** Raw display JSON for shortcodes that contain dynamic nodes — parsed per call */
     private static final Map<String, JsonElement> PARAM_REGISTRY = new ConcurrentHashMap<>();
+    /** Full JSON for all shortcodes — used for label/preview lookup */
+    private static final Map<String, JsonObject> JSON_REGISTRY = new ConcurrentHashMap<>();
     /** alias text → canonical shortcode name */
     private static final Map<String, String> ALIASES = new ConcurrentHashMap<>();
 
     private record LoadResult(
-            Map<String, RichNode>   registry,
+            Map<String, RichNode>    registry,
             Map<String, JsonElement> paramRegistry,
-            Map<String, String>     aliases) {}
+            Map<String, JsonObject>  jsonRegistry,
+            Map<String, String>      aliases) {}
 
     @Override
     public CompletableFuture<Void> reload(
@@ -57,6 +60,8 @@ public class ShortcodeManager implements PreparableReloadListener {
                     REGISTRY.putAll(result.registry());
                     PARAM_REGISTRY.clear();
                     PARAM_REGISTRY.putAll(result.paramRegistry());
+                    JSON_REGISTRY.clear();
+                    JSON_REGISTRY.putAll(result.jsonRegistry());
                     ALIASES.clear();
                     ALIASES.putAll(result.aliases());
                     LOGGER.info("[EmojiDeco] Loaded {} shortcode(s) ({} parametric), {} alias(es)",
@@ -65,9 +70,10 @@ public class ShortcodeManager implements PreparableReloadListener {
     }
 
     private static LoadResult loadAll(ResourceManager resourceManager) {
-        Map<String, RichNode>   loaded        = new HashMap<>();
-        Map<String, JsonElement> paramLoaded  = new HashMap<>();
-        Map<String, String>     loadedAliases = new HashMap<>();
+        Map<String, RichNode>    loaded        = new HashMap<>();
+        Map<String, JsonElement> paramLoaded   = new HashMap<>();
+        Map<String, JsonObject>  jsonLoaded    = new HashMap<>();
+        Map<String, String>      loadedAliases = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "shortcodes", path -> path.getPath().endsWith(".json"));
 
@@ -89,6 +95,7 @@ public class ShortcodeManager implements PreparableReloadListener {
                 } else {
                     loaded.put(name, EmojiDecoComponentParser.parse(display, null));
                 }
+                jsonLoaded.put(name, json);
 
                 if (json.has("aliases") && json.get("aliases").isJsonArray()) {
                     for (JsonElement alias : json.getAsJsonArray("aliases")) {
@@ -100,7 +107,7 @@ public class ShortcodeManager implements PreparableReloadListener {
                 LOGGER.error("[EmojiDeco] Failed to load shortcode {}: {}", location, e.getMessage());
             }
         }
-        return new LoadResult(loaded, paramLoaded, loadedAliases);
+        return new LoadResult(loaded, paramLoaded, jsonLoaded, loadedAliases);
     }
 
     private static boolean isDynamic(JsonElement el) {
@@ -112,6 +119,66 @@ public class ShortcodeManager implements PreparableReloadListener {
             for (JsonElement child : el.getAsJsonArray()) if (isDynamic(child)) return true;
         }
         return false;
+    }
+
+    /**
+     * Returns the label for autocomplete display.
+     * Priority: explicit top-level "label" > auto-built from arg "label" fields > ":code:".
+     */
+    public static String getLabel(String code) {
+        JsonObject json = JSON_REGISTRY.get(code);
+        if (json == null) return ":" + code + ":";
+
+        if (json.has("label") && json.get("label").isJsonPrimitive())
+            return json.get("label").getAsString();
+
+        JsonElement display = json.get("display");
+        if (display != null) {
+            var args = EmojiDecoComponentParser.findAllArgSpecs(display);
+            if (!args.isEmpty()) {
+                int lastVisible = -1;
+                for (var entry : args.entrySet()) {
+                    JsonObject spec = entry.getValue();
+                    boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                            && spec.get("hidden").getAsBoolean();
+                    if (!hidden) lastVisible = entry.getKey();
+                }
+                if (lastVisible >= 0) {
+                    StringBuilder sb = new StringBuilder(":").append(code).append(".");
+                    boolean first = true;
+                    for (var entry : args.entrySet()) {
+                        if (entry.getKey() > lastVisible) break;
+                        if (!first) sb.append(",");
+                        first = false;
+                        JsonObject spec = entry.getValue();
+                        boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                                && spec.get("hidden").getAsBoolean();
+                        if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
+                            sb.append(spec.get("label").getAsString());
+                        else
+                            sb.append("<arg").append(entry.getKey() + 1).append(">");
+                    }
+                    sb.append(":");
+                    return sb.toString();
+                }
+            }
+        }
+
+        return ":" + code + ":";
+    }
+
+    /** Returns a Component for autocomplete preview. Falls back to resolving with empty args. */
+    public static net.minecraft.network.chat.Component getPreview(String code) {
+        JsonObject json = JSON_REGISTRY.get(code);
+        if (json != null && json.has("preview")) {
+            try {
+                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
+                if (node != null) return node.toComponent();
+            } catch (Exception e) {
+                LOGGER.warn("[EmojiDeco] Failed to parse preview for shortcode '{}': {}", code, e.getMessage());
+            }
+        }
+        return resolve(code).toComponent();
     }
 
     public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
