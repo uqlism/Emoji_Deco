@@ -30,6 +30,10 @@ public class Config {
             .comment("Enable rich text formatting in written books")
             .define("enableBooks", true);
 
+    private static final ForgeConfigSpec.BooleanValue ENABLE_GUI = BUILDER
+            .comment("Enable rich text formatting in titles, subtitles, and action bar")
+            .define("enableGui", true);
+
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static boolean enableChat;
@@ -37,6 +41,7 @@ public class Config {
     public static boolean enableItemNames;
     public static boolean enableEntityNames;
     public static boolean enableBooks;
+    public static boolean enableGui;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -45,5 +50,6 @@ public class Config {
         enableItemNames = ENABLE_ITEM_NAMES.get();
         enableEntityNames = ENABLE_ENTITY_NAMES.get();
         enableBooks = ENABLE_BOOKS.get();
+        enableGui = ENABLE_GUI.get();
     }
 }
