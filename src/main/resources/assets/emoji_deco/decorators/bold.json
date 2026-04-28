@@ -6,7 +6,8 @@
       "emoji_deco:arg": {
         "index": 0,
         "default": true,
-        "type": "boolean"
+        "type": "boolean",
+        "hidden": true
       }
     },
     "extra": [
