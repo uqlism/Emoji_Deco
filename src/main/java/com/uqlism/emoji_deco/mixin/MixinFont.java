@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.OffsetSequence;
+import com.uqlism.emoji_deco.render.sequence.RotatedSequence;
 import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
@@ -79,6 +80,16 @@ public class MixinFont {
             cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
+        if (text instanceof RotatedSequence rs) {
+            float cx = self.width(rs.inner()) / 2f;
+            float cy = self.lineHeight / 2f;
+            Matrix4f rotated = new Matrix4f(matrix)
+                    .translate(x + cx, y + cy, 0f)
+                    .rotateZ((float) Math.toRadians(rs.angle()))
+                    .translate(-cx, -cy, 0f);
+            cir.setReturnValue(self.drawInBatch(rs.inner(), 0f, 0f, color, dropShadow, rotated, buffers, mode, bgColor, packedLight));
+            return;
+        }
         if (text instanceof OffsetSequence os) {
             cir.setReturnValue(self.drawInBatch(os.inner(), x + os.offsetX(), y + os.offsetY(), color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
             return;
@@ -129,6 +140,17 @@ public class MixinFont {
             float oy = ss.scaleY() < 0 ? self.lineHeight * (-ss.scaleY()) : 0f;
             Matrix4f scaled = new Matrix4f(matrix).translate(x + ox, y + oy, 0f).scale(ss.scaleX(), ss.scaleY(), 1.0f);
             self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
+            ci.cancel();
+            return;
+        }
+        if (text instanceof RotatedSequence rs) {
+            float cx = self.width(rs.inner()) / 2f;
+            float cy = self.lineHeight / 2f;
+            Matrix4f rotated = new Matrix4f(matrix)
+                    .translate(x + cx, y + cy, 0f)
+                    .rotateZ((float) Math.toRadians(rs.angle()))
+                    .translate(-cx, -cy, 0f);
+            self.drawInBatch8xOutline(rs.inner(), 0f, 0f, color, outlineColor, rotated, buffers, packedLight);
             ci.cancel();
             return;
         }
@@ -201,6 +223,10 @@ public class MixinFont {
         }
         if (text instanceof ScaledSequence sxy) {
             cir.setReturnValue(Math.round(self.width(sxy.inner()) * sxy.scaleX()));
+            return;
+        }
+        if (text instanceof RotatedSequence rs) {
+            cir.setReturnValue(self.width(rs.inner()));
             return;
         }
         if (text instanceof OffsetSequence os) {

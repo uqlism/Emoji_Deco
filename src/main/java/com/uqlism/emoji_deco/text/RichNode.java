@@ -9,6 +9,7 @@ import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.OffsetSequence;
+import com.uqlism.emoji_deco.render.sequence.RotatedSequence;
 import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -33,15 +34,16 @@ import java.util.List;
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                                          RichNode.Sprite, RichNode.Head, RichNode.Texture,
-                                         RichNode.Offset, RichNode.Scaled {
+                                         RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
-    record Text(String literal, Style style, List<RichNode> children) implements RichNode {}
-    record Glowing(LightMode lightMode, List<RichNode> children)       implements RichNode {}
-    record Sprite(String atlas, String sprite, int width, int height)  implements RichNode {}
-    record Head(String username)                                       implements RichNode {}
-    record Texture(ResourceLocation texture, int width, int height)    implements RichNode {}
-    record Offset(float x, float y, List<RichNode> children)          implements RichNode {}
-    record Scaled(float scaleX, float scaleY, List<RichNode> children) implements RichNode {}
+    record Text(String literal, Style style, List<RichNode> children)  implements RichNode {}
+    record Glowing(LightMode lightMode, List<RichNode> children)        implements RichNode {}
+    record Sprite(String atlas, String sprite, int width, int height)   implements RichNode {}
+    record Head(String username)                                        implements RichNode {}
+    record Texture(ResourceLocation texture, int width, int height)     implements RichNode {}
+    record Offset(float x, float y, List<RichNode> children)           implements RichNode {}
+    record Scaled(float scaleX, float scaleY, List<RichNode> children)  implements RichNode {}
+    record Rotated(float angle, List<RichNode> children)                implements RichNode {}
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
@@ -74,6 +76,11 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         if (this instanceof Scaled s) {
             MutableComponent c = Component.empty();
             for (RichNode child : s.children()) c.append(child.toComponent());
+            return c;
+        }
+        if (this instanceof Rotated r) {
+            MutableComponent c = Component.empty();
+            for (RichNode child : r.children()) c.append(child.toComponent());
             return c;
         }
         return Component.empty();
@@ -126,6 +133,14 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             if (!inner.isEmpty()) {
                 FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
                 out.add(new ScaledSequence(seq, s.scaleX(), s.scaleY()));
+            }
+        } else if (node instanceof Rotated r) {
+            List<FormattedCharSequence> inner = new ArrayList<>();
+            for (RichNode child : r.children())
+                collectSegments(font, child, lightMode, inherited, inner);
+            if (!inner.isEmpty()) {
+                FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
+                out.add(new RotatedSequence(seq, r.angle()));
             }
         }
     }

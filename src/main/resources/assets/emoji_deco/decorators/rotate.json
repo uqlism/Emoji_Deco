@@ -1,0 +1,18 @@
+{
+  "enable": true,
+  "display": {
+    "emoji_deco:rotate": {
+      "angle": {
+        "emoji_deco:arg": {
+          "index": 0,
+          "label": "<angle>",
+          "default": 0,
+          "type": "float"
+        }
+      },
+      "contents": {
+        "emoji_deco:slot": {}
+      }
+    }
+  }
+}
