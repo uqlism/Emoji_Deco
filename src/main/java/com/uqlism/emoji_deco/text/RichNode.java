@@ -32,7 +32,8 @@ import java.util.List;
  *   toSequence(font, node)   — for signs / graffiti (honours Sized and Glowing)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode.Glowing,
-                                         RichNode.Sprite, RichNode.Head, RichNode.Texture {
+                                         RichNode.Sprite, RichNode.Head, RichNode.Texture,
+                                         RichNode.Offset {
 
     record Text(String literal, Style style, List<RichNode> children) implements RichNode {}
     record Sized(float scale, List<RichNode> children)                 implements RichNode {}
@@ -40,6 +41,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
     record Sprite(String atlas, String sprite, int width, int height)  implements RichNode {}
     record Head(String username)                                       implements RichNode {}
     record Texture(ResourceLocation texture, int width, int height)    implements RichNode {}
+    record Offset(float x, float y, List<RichNode> children)          implements RichNode {}
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
@@ -69,6 +71,12 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         if (this instanceof Sprite s)   return SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()).copy();
         if (this instanceof Head h)     return PlayerHeadRegistry.createComponent(h.username()).copy();
         if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture(), t.width(), t.height()).copy();
+        if (this instanceof Offset o) {
+            // Standard renderer has no offset support; render contents as-is.
+            MutableComponent c = Component.empty();
+            for (RichNode child : o.children()) c.append(child.toComponent());
+            return c;
+        }
         return Component.empty();
     }
 
@@ -107,6 +115,14 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
             addLeaf(font, withInherited(PlayerHeadRegistry.createComponent(h.username()), inherited), scale, lightMode, out);
         } else if (node instanceof Texture t) {
             addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture(), t.width(), t.height()), inherited), scale, lightMode, out);
+        } else if (node instanceof Offset o) {
+            List<FormattedCharSequence> inner = new ArrayList<>();
+            for (RichNode child : o.children())
+                collectSegments(font, child, scale, lightMode, inherited, inner);
+            if (!inner.isEmpty()) {
+                FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
+                out.add(new com.uqlism.emoji_deco.render.sequence.OffsetSequence(seq, o.x() * scale, o.y() * scale));
+            }
         }
     }
 

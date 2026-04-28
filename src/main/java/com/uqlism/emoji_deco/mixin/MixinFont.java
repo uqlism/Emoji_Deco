@@ -3,6 +3,7 @@ package com.uqlism.emoji_deco.mixin;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
+import com.uqlism.emoji_deco.render.sequence.OffsetSequence;
 import com.uqlism.emoji_deco.render.sequence.ScaledSequence;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
@@ -75,6 +76,10 @@ public class MixinFont {
             cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
+        if (text instanceof OffsetSequence os) {
+            cir.setReturnValue(self.drawInBatch(os.inner(), x + os.offsetX(), y + os.offsetY(), color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
+            return;
+        }
         if (text instanceof ConcatSequence cs) {
             float curX = x;
             int retVal = 0;
@@ -119,6 +124,11 @@ public class MixinFont {
         if (text instanceof ScaledSequence ss) {
             Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
             self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
+            ci.cancel();
+            return;
+        }
+        if (text instanceof OffsetSequence os) {
+            self.drawInBatch8xOutline(os.inner(), x + os.offsetX(), y + os.offsetY(), color, outlineColor, matrix, buffers, packedLight);
             ci.cancel();
             return;
         }
@@ -186,6 +196,10 @@ public class MixinFont {
         }
         if (text instanceof LightSequence gs) {
             cir.setReturnValue(self.width(gs.inner()));
+            return;
+        }
+        if (text instanceof OffsetSequence os) {
+            cir.setReturnValue(self.width(os.inner()));
             return;
         }
         if (text instanceof ConcatSequence cs) {
