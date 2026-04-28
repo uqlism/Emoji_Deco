@@ -35,6 +35,10 @@ public class GraffitiEditScreen extends Screen {
     private int panelLeft, panelTop, panelRight, panelBottom;
     private int linesTop;
 
+    // Per-screen suggestion state; registered in REGISTRY via of(this) so
+    // ClientEvents.onScreenClose can clear it without knowing this class.
+    private final SuggestionState completionState = SuggestionState.of(this);
+
     public static void open(GraffitiBlockEntity be) {
         Minecraft.getInstance().setScreen(new GraffitiEditScreen(be));
     }
@@ -77,7 +81,7 @@ public class GraffitiEditScreen extends Screen {
             box.setValue(lineValues[i]);
             box.setResponder(text -> {
                 if (boxes[idx] != null && boxes[idx].isFocused()) {
-                    SuggestionState.update(text, boxes[idx].getCursorPosition());
+                    completionState.update(text, boxes[idx].getCursorPosition());
                 }
             });
             boxes[i] = box;
@@ -99,11 +103,11 @@ public class GraffitiEditScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (SuggestionState.hasSuggestions()) {
-            if (keyCode == 265) { SuggestionState.moveUp();   return true; }
-            if (keyCode == 264) { SuggestionState.moveDown(); return true; }
+        if (completionState.hasSuggestions()) {
+            if (keyCode == 265) { completionState.moveUp();   return true; }
+            if (keyCode == 264) { completionState.moveDown(); return true; }
             if (keyCode == 258) { applyCompletion();          return true; }
-            if (keyCode == 256) { SuggestionState.clear();    return true; }
+            if (keyCode == 256) { completionState.clear();    return true; }
         }
 
         // Up/Down: move between lines
@@ -190,7 +194,7 @@ public class GraffitiEditScreen extends Screen {
                 int next = i + delta;
                 if (next >= 0 && next < activeLines) {
                     setFocused(boxes[next]);
-                    SuggestionState.clear();
+                    completionState.clear();
                 }
                 return;
             }
@@ -204,19 +208,19 @@ public class GraffitiEditScreen extends Screen {
     }
 
     private void applyCompletion() {
-        SuggestionState.Entry entry = SuggestionState.getSelected();
+        SuggestionState.Entry entry = completionState.getSelected();
         if (entry == null) return;
         for (int i = 0; i < activeLines; i++) {
             EditBox box = boxes[i];
             if (box == null || !box.isFocused()) continue;
-            String completed = SuggestionState.applyTo(box.getValue(), entry);
+            String completed = completionState.applyTo(box.getValue(), entry);
             box.setValue(completed);
-            int cursor = SuggestionState.pendingCursor;
+            int cursor = completionState.pendingCursor;
             if (cursor >= 0) {
                 box.moveCursorTo(cursor);
                 box.setHighlightPos(cursor);
             }
-            SuggestionState.clear();
+            completionState.clear();
             return;
         }
     }
@@ -255,25 +259,25 @@ public class GraffitiEditScreen extends Screen {
     }
 
     private void renderCompletions(GuiGraphics graphics) {
-        if (!SuggestionState.hasSuggestions()) return;
+        if (!completionState.hasSuggestions()) return;
         for (int i = 0; i < activeLines; i++) {
             EditBox box = boxes[i];
             if (box == null || !box.isFocused()) continue;
-            if (!box.getValue().equals(SuggestionState.lastInput)) {
-                SuggestionState.clear();
+            if (!box.getValue().equals(completionState.lastInput)) {
+                completionState.clear();
                 return;
             }
-            int tp = Math.min(SuggestionState.triggerPos, SuggestionState.lastInput.length());
-            int x  = box.getX() + font.width(SuggestionState.lastInput.substring(0, tp));
+            int tp = Math.min(completionState.triggerPos, completionState.lastInput.length());
+            int x  = box.getX() + font.width(completionState.lastInput.substring(0, tp));
 
-            int visible     = Math.min(SuggestionState.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
+            int visible     = Math.min(completionState.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
             int completionH = CompletionRenderer.ITEM_HEIGHT * visible;
             int y = (box.getY() + box.getHeight() + completionH + 4 <= height)
                     ? box.getY() + box.getHeight() + 1
                     : box.getY() - completionH - 1;
 
             CompletionRenderer.render(graphics, font,
-                    SuggestionState.suggestions, SuggestionState.selectedIndex,
+                    completionState.suggestions, completionState.selectedIndex,
                     x, y, width - 2);
             break;
         }
@@ -295,7 +299,7 @@ public class GraffitiEditScreen extends Screen {
 
     @Override
     public void onClose() {
-        SuggestionState.clear();
+        completionState.clear();
         super.onClose();
     }
 

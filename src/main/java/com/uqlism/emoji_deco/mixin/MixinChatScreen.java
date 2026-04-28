@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -17,28 +18,34 @@ public class MixinChatScreen {
     @Shadow(remap = false)
     private EditBox f_95573_;
 
+    @Unique
+    private SuggestionState runicink$ss() {
+        return SuggestionState.of(this);
+    }
+
     // SRG: m_95610_ = onEdited(String)
     @Inject(method = "m_95610_", at = @At("HEAD"), remap = false)
     private void runicink$onTyped(String text, CallbackInfo ci) {
-        SuggestionState.update(text, f_95573_.getCursorPosition());
+        runicink$ss().update(text, f_95573_.getCursorPosition());
     }
 
     // SRG: m_7933_ = keyPressed(int, int, int)
     @Inject(method = "m_7933_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$onKeyPressed(int keyCode, int scanCode, int modifiers,
                                        CallbackInfoReturnable<Boolean> cir) {
-        if (!SuggestionState.hasSuggestions()) return;
+        SuggestionState ss = runicink$ss();
+        if (!ss.hasSuggestions()) return;
 
         if (keyCode == 265) {           // UP
-            SuggestionState.moveUp();
+            ss.moveUp();
             cir.setReturnValue(true);
         } else if (keyCode == 264) {    // DOWN
-            SuggestionState.moveDown();
+            ss.moveDown();
             cir.setReturnValue(true);
         } else if (keyCode == 258) {    // TAB
-            SuggestionState.Entry entry = SuggestionState.getSelected();
+            SuggestionState.Entry entry = ss.getSelected();
             if (entry != null) {
-                String completed = SuggestionState.applyTo(SuggestionState.lastInput, entry);
+                String completed = ss.applyTo(ss.lastInput, entry);
                 try {
                     // m_95612_ = setChatLine(String)
                     java.lang.reflect.Method m =
@@ -47,12 +54,12 @@ public class MixinChatScreen {
                     m.invoke((ChatScreen) (Object) this, completed);
                 } catch (Exception ignored) {}
 
-                int newCursor = SuggestionState.pendingCursor;
+                int newCursor = ss.pendingCursor;
                 if (newCursor >= 0) {
                     f_95573_.moveCursorTo(newCursor);
                     f_95573_.setHighlightPos(newCursor);
                 }
-                SuggestionState.clear();
+                ss.clear();
             }
             cir.setReturnValue(true);
         }

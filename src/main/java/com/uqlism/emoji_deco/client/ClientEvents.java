@@ -51,18 +51,20 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onScreenRender(ScreenEvent.Render.Post event) {
-        if (SuggestionState.suggestions.isEmpty()) return;
         var screen = event.getScreen();
         if (!(screen instanceof ChatScreen)
                 && !(screen instanceof AbstractSignEditScreen)
                 && !(screen instanceof BookEditScreen)) return;
+
+        SuggestionState ss = SuggestionState.of(screen);
+        if (ss.suggestions.isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();
         GuiGraphics graphics = event.getGuiGraphics();
         int screenWidth  = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
 
-        int visible     = Math.min(SuggestionState.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
+        int visible     = Math.min(ss.suggestions.size(), CompletionRenderer.MAX_VISIBLE);
         int totalHeight = CompletionRenderer.ITEM_HEIGHT * visible;
 
         int x, baseY;
@@ -70,8 +72,8 @@ public class ClientEvents {
             // Book text area: local origin is at (screenWidth-192)/2+36, y=32.
             // Compute the trigger's line number and line-local X from '\n' splits.
             int bookLeft = (screenWidth - 192) / 2 + 36;
-            String pageText = SuggestionState.lastInput;
-            int tp = Math.min(SuggestionState.triggerPos, pageText.length());
+            String pageText = ss.lastInput;
+            int tp = Math.min(ss.triggerPos, pageText.length());
             String beforeTrigger = pageText.substring(0, tp);
             int lastNl = beforeTrigger.lastIndexOf('\n');
             String lineText = lastNl >= 0 ? beforeTrigger.substring(lastNl + 1) : beforeTrigger;
@@ -85,19 +87,19 @@ public class ClientEvents {
         } else {
             // Chat and sign: position just above the input bar at the bottom.
             baseY = screenHeight - 14 - totalHeight;
-            int triggerPos = Math.min(SuggestionState.triggerPos, SuggestionState.lastInput.length());
-            x = 2 + 4 + mc.font.width(SuggestionState.lastInput.substring(0, triggerPos));
+            int triggerPos = Math.min(ss.triggerPos, ss.lastInput.length());
+            x = 2 + 4 + mc.font.width(ss.lastInput.substring(0, triggerPos));
         }
 
         CompletionRenderer.render(
                 graphics, mc.font,
-                SuggestionState.suggestions, SuggestionState.selectedIndex,
+                ss.suggestions, ss.selectedIndex,
                 x, baseY, screenWidth - 2);
     }
 
     @SubscribeEvent
     public static void onScreenClose(ScreenEvent.Closing event) {
-        SuggestionState.clear();
+        SuggestionState.of(event.getScreen()).clear();
     }
 
     private static final int HIGHLIGHT_RANGE = 10;
