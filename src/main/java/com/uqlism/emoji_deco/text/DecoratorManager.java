@@ -19,6 +19,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
+
 public class DecoratorManager implements PreparableReloadListener {
 
     public static final DecoratorManager INSTANCE = new DecoratorManager();
