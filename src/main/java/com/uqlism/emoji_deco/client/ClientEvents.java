@@ -16,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import net.minecraft.client.gui.screens.inventory.BookEditScreen;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -115,10 +116,11 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        java.util.List<net.minecraft.resources.ResourceLocation> toRelease = TextureRegistry.tickAndEvict();
+        TextureRegistry.tickAnimatedTextures();
+        List<ResourceLocation> toRelease = TextureRegistry.tickAndEvict();
         if (toRelease.isEmpty()) return;
         TextureManager tm = Minecraft.getInstance().getTextureManager();
-        for (net.minecraft.resources.ResourceLocation rl : toRelease) {
+        for (ResourceLocation rl : toRelease) {
             tm.release(rl);
         }
     }

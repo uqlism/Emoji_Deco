@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.render.registry;
 
+import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
@@ -19,6 +20,9 @@ public class TextureRegistry {
     private static final Map<ResourceLocation, Integer> TEXTURE_TO_CP = new ConcurrentHashMap<>();
     private static final Map<Integer, ResourceLocation> CP_TO_TEXTURE = new ConcurrentHashMap<>();
     private static final AtomicInteger nextCp = new AtomicInteger(0xE000);
+
+    // Animated textures: ticked each client tick, never LRU-evicted.
+    private static final Map<ResourceLocation, AnimatedGlyphTexture> ANIMATED = new ConcurrentHashMap<>();
 
     // LRU eviction
     private static final Map<Integer, Long> LAST_USED = new ConcurrentHashMap<>();
@@ -46,6 +50,21 @@ public class TextureRegistry {
                 .withStyle(Style.EMPTY.withFont(TEXTURE_FONT));
     }
 
+    // ── animated texture management ───────────────────────────────────────────
+
+    public static void putAnimated(ResourceLocation rl, AnimatedGlyphTexture tex) {
+        ANIMATED.put(rl, tex);
+    }
+
+    /** Advances all animated textures by one tick. Must be called from the render thread. */
+    public static void tickAnimatedTextures() {
+        for (AnimatedGlyphTexture tex : ANIMATED.values()) {
+            tex.tick();
+        }
+    }
+
+    // ── LRU usage tracking ────────────────────────────────────────────────────
+
     /** Called by MixinFontSet each time a texture glyph is rendered. */
     public static void markUsed(int codePoint) {
         LAST_USED.put(codePoint, currentTick);
@@ -72,8 +91,13 @@ public class TextureRegistry {
         LAST_USED.entrySet().removeIf(entry -> {
             if (currentTick - entry.getValue() > EVICTION_TICKS) {
                 int cp = entry.getKey();
-                EVICTED.add(cp);
                 ResourceLocation tex = CP_TO_TEXTURE.get(cp);
+                if (tex != null && ANIMATED.containsKey(tex)) {
+                    // Never evict animated textures; refresh their usage timestamp instead.
+                    entry.setValue(currentTick);
+                    return false;
+                }
+                EVICTED.add(cp);
                 if (tex != null) toRelease.add(tex);
                 return true;
             }
@@ -82,9 +106,12 @@ public class TextureRegistry {
         return toRelease;
     }
 
-    /** Called on resource reload; clears eviction state (FontSet caches are rebuilt anyway). */
+    /** Called on resource reload; clears eviction and animation state (FontSet caches are rebuilt anyway). */
     public static void onResourceReload() {
         LAST_USED.clear();
         EVICTED.clear();
+        // AnimatedGlyphTexture instances are closed by TextureManager on reload;
+        // clear our references so tick() is no longer called on stale objects.
+        ANIMATED.clear();
     }
 }
