@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.render;
+package com.uqlism.emoji_deco.render.glyphinfo;
 
 import java.util.function.Function;
 

@@ -1,8 +1,9 @@
-package com.uqlism.emoji_deco.render;
+package com.uqlism.emoji_deco.render.glyphinfo;
 
 import java.util.function.Function;
 
 import com.mojang.blaze3d.font.GlyphInfo;
+import com.uqlism.emoji_deco.render.OverlayGlyphs;
 import com.mojang.blaze3d.font.SheetGlyphInfo;
 
 import net.minecraft.client.gui.font.GlyphRenderTypes;

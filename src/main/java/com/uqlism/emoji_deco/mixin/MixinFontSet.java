@@ -2,8 +2,8 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.logging.LogUtils;
-import com.uqlism.emoji_deco.render.HeadGlyphInfo;
-import com.uqlism.emoji_deco.render.SpriteGlyphInfo;
+import com.uqlism.emoji_deco.render.glyphinfo.HeadGlyphInfo;
+import com.uqlism.emoji_deco.render.glyphinfo.SpriteGlyphInfo;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
 import net.minecraft.client.Minecraft;
