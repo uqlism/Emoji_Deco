@@ -1,0 +1,19 @@
+{
+  "criteria": {
+    "has_water_bottle": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["minecraft:potion"],
+            "nbt": "{Potion:\"minecraft:water\"}"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["has_water_bottle"]],
+  "rewards": {
+    "recipes": ["emoji_deco:graffiti_ink"]
+  }
+}
