@@ -5,9 +5,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Manages codepoint allocation and Component creation for player-head glyphs.
@@ -26,14 +27,14 @@ public class PlayerHeadRegistry {
     public static final ResourceLocation HEAD_FONT         = new ResourceLocation("emoji_deco", "head");
     public static final ResourceLocation HEAD_OVERLAY_FONT = new ResourceLocation("emoji_deco", "head_overlay");
 
-    private static final Map<String, Integer>      USERNAME_TO_CP = new HashMap<>();
-    private static final Map<Integer, String>      CP_TO_USERNAME = new HashMap<>();
-    private static final Map<String, ResourceLocation> SKIN_CACHE = new HashMap<>();
-    private static int nextCp = 0xF000;
+    private static final Map<String, Integer>         USERNAME_TO_CP = new ConcurrentHashMap<>();
+    private static final Map<Integer, String>         CP_TO_USERNAME = new ConcurrentHashMap<>();
+    private static final Map<String, ResourceLocation> SKIN_CACHE    = new ConcurrentHashMap<>();
+    private static final AtomicInteger nextCp = new AtomicInteger(0xF000);
 
-    public static synchronized int allocate(String username) {
+    public static int allocate(String username) {
         return USERNAME_TO_CP.computeIfAbsent(username, k -> {
-            int cp = nextCp++;
+            int cp = nextCp.getAndIncrement();
             CP_TO_USERNAME.put(cp, k);
             return cp;
         });

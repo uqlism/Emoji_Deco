@@ -4,22 +4,23 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Manages codepoint allocation and Component creation for sprite glyphs (SPRITE_FONT). */
 public class SpriteRegistry {
 
     public static final ResourceLocation SPRITE_FONT = new ResourceLocation("emoji_deco", "sprite");
 
-    private static final Map<SpriteKey, Integer> TEXTURE_TO_CP = new HashMap<>();
-    private static final Map<Integer, SpriteKey> CP_TO_TEXTURE = new HashMap<>();
-    private static int nextCp = 0xE000;
+    private static final Map<SpriteKey, Integer> TEXTURE_TO_CP = new ConcurrentHashMap<>();
+    private static final Map<Integer, SpriteKey> CP_TO_TEXTURE = new ConcurrentHashMap<>();
+    private static final AtomicInteger nextCp = new AtomicInteger(0xE000);
 
-    public static synchronized int allocate(String atlasName, String textureName) {
+    public static int allocate(String atlasName, String textureName) {
         SpriteKey key = new SpriteKey(ResourceLocation.parse(atlasName), ResourceLocation.parse(textureName));
         return TEXTURE_TO_CP.computeIfAbsent(key, k -> {
-            int cp = nextCp++;
+            int cp = nextCp.getAndIncrement();
             CP_TO_TEXTURE.put(cp, k);
             return cp;
         });
