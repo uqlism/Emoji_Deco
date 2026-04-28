@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
 public class SuggestionState {
@@ -21,14 +22,28 @@ public class SuggestionState {
 
     public record Entry(String label, Component preview, String insertion, TriggerType type) {}
 
-    public static String lastInput = "";
-    public static int lastCursor = 0;
-    public static int pendingCursor = -1;
-    public static List<Entry> suggestions = Collections.emptyList();
-    public static int selectedIndex = 0;
-    public static int triggerPos = 0;
+    // ── instance state ────────────────────────────────────────────────────────
 
-    public static void update(String text, int cursor) {
+    public String lastInput = "";
+    public int lastCursor = 0;
+    public int pendingCursor = -1;
+    public List<Entry> suggestions = Collections.emptyList();
+    public int selectedIndex = 0;
+    public int triggerPos = 0;
+
+    // ── per-screen registry ───────────────────────────────────────────────────
+
+    // Accessed only on the client main thread; no synchronization needed.
+    // WeakHashMap: entry is removed automatically when the screen is GC'd.
+    private static final WeakHashMap<Object, SuggestionState> REGISTRY = new WeakHashMap<>();
+
+    public static SuggestionState of(Object screen) {
+        return REGISTRY.computeIfAbsent(screen, k -> new SuggestionState());
+    }
+
+    // ── update ────────────────────────────────────────────────────────────────
+
+    public void update(String text, int cursor) {
         lastInput = text;
         lastCursor = Math.min(cursor, text.length());
         String active = text.substring(0, lastCursor);
@@ -82,7 +97,13 @@ public class SuggestionState {
         int pos = text.lastIndexOf(':');
         if (pos < 0) return -1;
         if (pos > 0 && text.charAt(pos - 1) == '\\') return -1; // escaped
-        if (text.indexOf(':', pos + 1) >= 0) return -1;
+        // If there is a previous ':' and the text between them contains no spaces,
+        // pos is a closing colon (completing a :name: pair) — do not suggest.
+        int prev = text.lastIndexOf(':', pos - 1);
+        if (prev >= 0) {
+            String between = text.substring(prev + 1, pos);
+            if (!between.isEmpty() && !between.contains(" ")) return -1;
+        }
         return pos;
     }
 
@@ -153,7 +174,7 @@ public class SuggestionState {
 
     // ── apply completion ──────────────────────────────────────────────────────
 
-    public static String applyTo(String text, Entry entry) {
+    public String applyTo(String text, Entry entry) {
         int split = Math.min(lastCursor, text.length());
         String before = text.substring(0, split);
         String after  = text.substring(split);
@@ -207,22 +228,22 @@ public class SuggestionState {
         return count;
     }
 
-    public static void clear() {
+    public void clear() {
         suggestions = Collections.emptyList();
         selectedIndex = 0;
     }
 
-    public static boolean hasSuggestions() { return !suggestions.isEmpty(); }
+    public boolean hasSuggestions() { return !suggestions.isEmpty(); }
 
-    public static void moveUp() {
+    public void moveUp() {
         if (!suggestions.isEmpty()) selectedIndex = (selectedIndex - 1 + suggestions.size()) % suggestions.size();
     }
 
-    public static void moveDown() {
+    public void moveDown() {
         if (!suggestions.isEmpty()) selectedIndex = (selectedIndex + 1) % suggestions.size();
     }
 
-    public static Entry getSelected() {
+    public Entry getSelected() {
         return suggestions.isEmpty() ? null : suggestions.get(selectedIndex);
     }
 }
