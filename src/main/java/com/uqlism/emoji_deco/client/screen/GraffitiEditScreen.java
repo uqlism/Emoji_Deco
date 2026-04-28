@@ -72,7 +72,7 @@ public class GraffitiEditScreen extends Screen {
             int boxY = linesTop + i * LINE_HEIGHT + 2;
             EditBox box = new EditBox(font, left, boxY, BOX_WIDTH, font.lineHeight,
                     Component.literal("line " + (i + 1)));
-            box.setMaxLength(256);
+            box.setMaxLength(GraffitiBlockEntity.MAX_LINE_LENGTH);
             box.setBordered(false);
             box.setValue(lineValues[i]);
             box.setResponder(text -> {

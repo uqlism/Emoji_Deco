@@ -11,7 +11,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class GraffitiBlockEntity extends BlockEntity {
-    public static final int MAX_LINES = 10;
+    public static final int MAX_LINES       = 10;
+    public static final int MAX_LINE_LENGTH = 256;
 
     private final String[] lines = new String[MAX_LINES];
     private GraffitiAlignment alignment = GraffitiAlignment.LEFT;
@@ -49,7 +50,8 @@ public class GraffitiBlockEntity extends BlockEntity {
 
     public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {
         for (int i = 0; i < MAX_LINES; i++) {
-            lines[i] = (i < newLines.length && newLines[i] != null) ? newLines[i] : "";
+            String v = (i < newLines.length && newLines[i] != null) ? newLines[i] : "";
+            lines[i] = v.length() > MAX_LINE_LENGTH ? v.substring(0, MAX_LINE_LENGTH) : v;
         }
         this.alignment = newAlignment == null ? GraffitiAlignment.LEFT : newAlignment;
         this.displayedLines = Math.max(1, Math.min(newDisplayedLines, MAX_LINES));
