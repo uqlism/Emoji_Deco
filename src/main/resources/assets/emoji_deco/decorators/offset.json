@@ -1,7 +1,7 @@
 {
   "enable": true,
   "display": {
-    "emoji_deco:pos": {
+    "emoji_deco:offset": {
       "x": {
         "emoji_deco:arg": {
           "index": 0,

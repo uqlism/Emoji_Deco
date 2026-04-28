@@ -168,8 +168,8 @@ public final class EmojiDecoComponentParser {
             String username = stringOf(spec.get("player"), "");
             return new RichNode.Head(username);
         }
-        if (obj.has("emoji_deco:pos")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:pos");
+        if (obj.has("emoji_deco:offset")) {
+            JsonObject spec = obj.getAsJsonObject("emoji_deco:offset");
             float x = 0f, y = 0f;
             try { if (spec.has("x") && spec.get("x").isJsonPrimitive()) x = spec.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
             try { if (spec.has("y") && spec.get("y").isJsonPrimitive()) y = spec.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
