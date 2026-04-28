@@ -6,7 +6,7 @@
       "nbt": "{Potion:\"minecraft:water\"}"
     },
     {
-      "tag": "minecraft:dye"
+      "tag": "forge:dyes"
     }
   ],
   "result": {
