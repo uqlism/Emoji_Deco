@@ -13,9 +13,13 @@ import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Mixin(FontSet.class)
 public abstract class MixinFontSet {
@@ -24,6 +28,11 @@ public abstract class MixinFontSet {
 
     @Shadow(remap = false)
     private ResourceLocation f_95052_;
+
+    // Per-FontSet-instance BakedGlyph cache for our custom codepoints.
+    // FontSet instances are recreated on resource reload, so no manual invalidation is needed.
+    @Unique
+    private final Map<Integer, BakedGlyph> runicink$glyphCache = new HashMap<>();
 
     // SRG: m_243128_ -> getGlyphInfo(int, boolean)
     @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
@@ -51,28 +60,34 @@ public abstract class MixinFontSet {
     private void runicink$injectGlyph(int codePoint,
                                       CallbackInfoReturnable<BakedGlyph> cir) {
         if (this.f_95052_ == null) return;
+
+        BakedGlyph cached = runicink$glyphCache.get(codePoint);
+        if (cached != null) { cir.setReturnValue(cached); return; }
+
+        BakedGlyph glyph = null;
         if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
             SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
             if (key == null) {
                 LOGGER.warn("[EmojiDeco] No texture mapped for cp=U+{}", Integer.toHexString(codePoint));
                 return;
             }
-            BakedGlyph glyph = new SpriteGlyphInfo(key.atlas(), key.sprite()).bake(null);
-            if (glyph != null) cir.setReturnValue(glyph);
+            glyph = new SpriteGlyphInfo(key.atlas(), key.sprite()).bake(null);
         } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
             String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
             if (skin == null) return;
-            BakedGlyph glyph = new HeadGlyphInfo(skin, false).bake(null);
-            if (glyph != null) cir.setReturnValue(glyph);
+            glyph = new HeadGlyphInfo(skin, false).bake(null);
         } else if (PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_)) {
             String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
             if (skin == null) return;
-            BakedGlyph glyph = new HeadGlyphInfo(skin, true).bake(null);
-            if (glyph != null) cir.setReturnValue(glyph);
+            glyph = new HeadGlyphInfo(skin, true).bake(null);
+        }
+        if (glyph != null) {
+            runicink$glyphCache.put(codePoint, glyph);
+            cir.setReturnValue(glyph);
         }
     }
 
