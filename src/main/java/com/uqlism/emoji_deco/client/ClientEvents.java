@@ -8,6 +8,7 @@ import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
+import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 
 import net.minecraft.client.Minecraft;
@@ -26,6 +27,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -100,6 +102,11 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onScreenClose(ScreenEvent.Closing event) {
         SuggestionState.of(event.getScreen()).clear();
+    }
+
+    @SubscribeEvent
+    public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        PlayerHeadRegistry.clearSkinCache();
     }
 
     private static final int HIGHLIGHT_RANGE = 10;

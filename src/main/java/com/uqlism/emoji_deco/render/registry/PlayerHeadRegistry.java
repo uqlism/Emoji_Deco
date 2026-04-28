@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -25,8 +26,9 @@ public class PlayerHeadRegistry {
     public static final ResourceLocation HEAD_FONT         = new ResourceLocation("emoji_deco", "head");
     public static final ResourceLocation HEAD_OVERLAY_FONT = new ResourceLocation("emoji_deco", "head_overlay");
 
-    private static final Map<String, Integer> USERNAME_TO_CP = new HashMap<>();
-    private static final Map<Integer, String> CP_TO_USERNAME = new HashMap<>();
+    private static final Map<String, Integer>      USERNAME_TO_CP = new HashMap<>();
+    private static final Map<Integer, String>      CP_TO_USERNAME = new HashMap<>();
+    private static final Map<String, ResourceLocation> SKIN_CACHE = new HashMap<>();
     private static int nextCp = 0xF000;
 
     public static synchronized int allocate(String username) {
@@ -39,6 +41,18 @@ public class PlayerHeadRegistry {
 
     public static String getUsername(int codePoint) {
         return CP_TO_USERNAME.get(codePoint);
+    }
+
+    public static ResourceLocation getCachedSkin(String username) {
+        return SKIN_CACHE.get(username.toLowerCase(Locale.ROOT));
+    }
+
+    public static void cacheSkin(String username, ResourceLocation skin) {
+        SKIN_CACHE.put(username.toLowerCase(Locale.ROOT), skin);
+    }
+
+    public static void clearSkinCache() {
+        SKIN_CACHE.clear();
     }
 
     /**

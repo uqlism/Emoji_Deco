@@ -77,17 +77,23 @@ public abstract class MixinFontSet {
     }
 
     private static ResourceLocation getSkinTexture(String username) {
+        ResourceLocation cached = PlayerHeadRegistry.getCachedSkin(username);
+        if (cached != null) return cached;
+
         Minecraft mc = Minecraft.getInstance();
+        ResourceLocation skin = null;
         // Check local player first (always available)
         if (mc.player != null && mc.player.getName().getString().equalsIgnoreCase(username)) {
-            return mc.getSkinManager().getInsecureSkinLocation(mc.player.getGameProfile());
-        }
-        if (mc.level == null) return null;
-        for (var player : mc.level.players()) {
-            if (player.getName().getString().equalsIgnoreCase(username)) {
-                return mc.getSkinManager().getInsecureSkinLocation(player.getGameProfile());
+            skin = mc.getSkinManager().getInsecureSkinLocation(mc.player.getGameProfile());
+        } else if (mc.level != null) {
+            for (var player : mc.level.players()) {
+                if (player.getName().getString().equalsIgnoreCase(username)) {
+                    skin = mc.getSkinManager().getInsecureSkinLocation(player.getGameProfile());
+                    break;
+                }
             }
         }
-        return null;
+        if (skin != null) PlayerHeadRegistry.cacheSkin(username, skin);
+        return skin;
     }
 }
