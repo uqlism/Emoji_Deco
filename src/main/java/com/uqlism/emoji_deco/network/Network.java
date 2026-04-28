@@ -8,7 +8,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public class Network {
     private static final String VERSION = "1";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(EmojiDeco.MODID, "main"),
+            ResourceLocation.parse(EmojiDeco.MODID + ":main"),
             () -> VERSION,
             VERSION::equals,
             VERSION::equals);

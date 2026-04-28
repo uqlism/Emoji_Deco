@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Manages codepoint allocation and Component creation for sprite glyphs (SPRITE_FONT). */
 public class SpriteRegistry {
 
-    public static final ResourceLocation SPRITE_FONT = new ResourceLocation("emoji_deco", "sprite");
+    public static final ResourceLocation SPRITE_FONT = ResourceLocation.parse("emoji_deco:sprite");
 
     private static final Map<SpriteKey, Integer> TEXTURE_TO_CP = new ConcurrentHashMap<>();
     private static final Map<Integer, SpriteKey> CP_TO_TEXTURE = new ConcurrentHashMap<>();

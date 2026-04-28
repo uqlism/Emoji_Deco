@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class PlayerHeadRegistry {
 
-    public static final ResourceLocation HEAD_FONT         = new ResourceLocation("emoji_deco", "head");
-    public static final ResourceLocation HEAD_OVERLAY_FONT = new ResourceLocation("emoji_deco", "head_overlay");
+    public static final ResourceLocation HEAD_FONT         = ResourceLocation.parse("emoji_deco:head");
+    public static final ResourceLocation HEAD_OVERLAY_FONT = ResourceLocation.parse("emoji_deco:head_overlay");
 
     private static final Map<String, Integer>         USERNAME_TO_CP = new ConcurrentHashMap<>();
     private static final Map<Integer, String>         CP_TO_USERNAME = new ConcurrentHashMap<>();

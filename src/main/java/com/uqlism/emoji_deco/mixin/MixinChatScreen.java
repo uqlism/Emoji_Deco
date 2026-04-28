@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatScreen.class)
 public class MixinChatScreen {
 
-    // SRG: f_95573_ = input (EditBox)
+    // SRG: f_95573_ = f_95573_ (EditBox)
     @Shadow(remap = false)
     private EditBox f_95573_;
 
