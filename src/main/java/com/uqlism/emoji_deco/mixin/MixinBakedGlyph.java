@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.render.HeadOverlayGlyphs;
+import com.uqlism.emoji_deco.render.OverlayGlyphs;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import org.joml.Matrix4f;
@@ -22,7 +22,7 @@ public class MixinBakedGlyph {
     )
     private VertexConsumer runicink$shiftOverlayZ(
             VertexConsumer buffer, Matrix4f matrix, float x, float y, float z) {
-        float newZ = HeadOverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? 0.01f : z;
+        float newZ = OverlayGlyphs.OVERLAYS.contains((BakedGlyph)(Object)this) ? 0.01f : z;
         return buffer.vertex(matrix, x, y, newZ);
     }
 }

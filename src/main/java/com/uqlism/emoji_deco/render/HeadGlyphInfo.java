@@ -50,7 +50,7 @@ public class HeadGlyphInfo implements GlyphInfo {
                 -expand, 8.0f + expand,
                 3.0f - expand, 11.0f + expand
         );
-        if (overlay) HeadOverlayGlyphs.OVERLAYS.add(glyph);
+        if (overlay) OverlayGlyphs.OVERLAYS.add(glyph);
         return glyph;
     }
 }
