@@ -155,7 +155,9 @@ public final class EmojiDecoComponentParser {
         if (obj.has("emoji_deco:texture")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:texture");
             ResourceLocation texRL = ResourceLocation.tryParse(stringOf(spec.get("texture"), ""));
-            return texRL != null ? new RichNode.Texture(texRL) : RichNode.empty();
+            int width  = spec.has("width")  && spec.get("width").isJsonPrimitive()  ? spec.get("width").getAsInt()  : 8;
+            int height = spec.has("height") && spec.get("height").isJsonPrimitive() ? spec.get("height").getAsInt() : 8;
+            return texRL != null ? new RichNode.Texture(texRL, width, height) : RichNode.empty();
         }
         return parseStandard(obj, slot);
     }

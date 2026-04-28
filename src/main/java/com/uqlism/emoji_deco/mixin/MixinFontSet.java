@@ -50,8 +50,8 @@ public abstract class MixinFontSet {
             SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
             if (key != null) cir.setReturnValue(new SpriteGlyphInfo(key.atlas(), key.sprite(), key.width(), key.height()));
         } else if (TextureRegistry.TEXTURE_FONT.equals(this.f_95052_)) {
-            ResourceLocation tex = TextureRegistry.getTexture(codePoint);
-            if (tex != null) cir.setReturnValue(new TextureGlyphInfo(tex));
+            TextureRegistry.TextureKey key = TextureRegistry.getTextureKey(codePoint);
+            if (key != null) cir.setReturnValue(new TextureGlyphInfo(key.texture(), key.width(), key.height()));
         } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
             String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
@@ -85,8 +85,8 @@ public abstract class MixinFontSet {
             cir.setReturnValue(glyph);
 
         } else if (TextureRegistry.TEXTURE_FONT.equals(this.f_95052_)) {
-            ResourceLocation tex = TextureRegistry.getTexture(codePoint);
-            if (tex == null) return;
+            TextureRegistry.TextureKey key = TextureRegistry.getTextureKey(codePoint);
+            if (key == null) return;
             TextureRegistry.markUsed(codePoint);
             if (TextureRegistry.isEvicted(codePoint)) {
                 // GL texture was released by LRU; force re-bake and clear the flag.
@@ -96,7 +96,7 @@ public abstract class MixinFontSet {
                 BakedGlyph cached = runicink$glyphCache.get(codePoint);
                 if (cached != null) { cir.setReturnValue(cached); return; }
             }
-            BakedGlyph glyph = new TextureGlyphInfo(tex).bake(null);
+            BakedGlyph glyph = new TextureGlyphInfo(key.texture(), key.width(), key.height()).bake(null);
             runicink$glyphCache.put(codePoint, glyph);
             cir.setReturnValue(glyph);
 

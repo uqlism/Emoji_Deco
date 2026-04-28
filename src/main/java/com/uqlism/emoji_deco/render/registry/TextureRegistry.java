@@ -17,8 +17,8 @@ public class TextureRegistry {
 
     public static final ResourceLocation TEXTURE_FONT = ResourceLocation.parse("emoji_deco:texture");
 
-    private static final Map<ResourceLocation, Integer> TEXTURE_TO_CP = new ConcurrentHashMap<>();
-    private static final Map<Integer, ResourceLocation> CP_TO_TEXTURE = new ConcurrentHashMap<>();
+    private static final Map<TextureKey, Integer> TEXTURE_TO_CP = new ConcurrentHashMap<>();
+    private static final Map<Integer, TextureKey> CP_TO_TEXTURE = new ConcurrentHashMap<>();
     private static final AtomicInteger nextCp = new AtomicInteger(0xE000);
 
     // Animated textures: ticked each client tick, never LRU-evicted.
@@ -32,20 +32,23 @@ public class TextureRegistry {
     static final long EVICTION_TICKS = 600L;
     private static final long SCAN_INTERVAL = 20L;
 
-    public static int allocate(ResourceLocation texture) {
-        return TEXTURE_TO_CP.computeIfAbsent(texture, k -> {
+    public record TextureKey(ResourceLocation texture, int width, int height) {}
+
+    public static int allocate(ResourceLocation texture, int width, int height) {
+        TextureKey key = new TextureKey(texture, width, height);
+        return TEXTURE_TO_CP.computeIfAbsent(key, k -> {
             int cp = nextCp.getAndIncrement();
             CP_TO_TEXTURE.put(cp, k);
             return cp;
         });
     }
 
-    public static ResourceLocation getTexture(int codePoint) {
+    public static TextureKey getTextureKey(int codePoint) {
         return CP_TO_TEXTURE.get(codePoint);
     }
 
-    public static Component createComponent(ResourceLocation texture) {
-        int cp = allocate(texture);
+    public static Component createComponent(ResourceLocation texture, int width, int height) {
+        int cp = allocate(texture, width, height);
         return Component.literal(new String(Character.toChars(cp)))
                 .withStyle(Style.EMPTY.withFont(TEXTURE_FONT));
     }
@@ -91,14 +94,15 @@ public class TextureRegistry {
         LAST_USED.entrySet().removeIf(entry -> {
             if (currentTick - entry.getValue() > EVICTION_TICKS) {
                 int cp = entry.getKey();
-                ResourceLocation tex = CP_TO_TEXTURE.get(cp);
-                if (tex != null && ANIMATED.containsKey(tex)) {
-                    // Never evict animated textures; refresh their usage timestamp instead.
-                    entry.setValue(currentTick);
+                TextureKey key = CP_TO_TEXTURE.get(cp);
+                if (key != null && ANIMATED.containsKey(key.texture())) {
+                    // Never evict animated textures.
+                    // markUsed() keeps the timestamp fresh while the texture is on screen;
+                    // if it goes off screen the stale entry is harmless — we just skip it here.
                     return false;
                 }
                 EVICTED.add(cp);
-                if (tex != null) toRelease.add(tex);
+                if (key != null) toRelease.add(key.texture());
                 return true;
             }
             return false;

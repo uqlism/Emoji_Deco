@@ -23,12 +23,13 @@ import java.util.Optional;
 /**
  * Standalone animated texture for emoji_deco:texture glyphs.
  *
- * The GL texture is sized to one frame (frameWidth × frameWidth). Each tick(),
+ * The GL texture is sized to one frame (frameWidth × frameHeight). Each tick(),
  * the next frame's pixel rows are uploaded via glTexSubImage2D so the UV in
  * BakedGlyph (0→1, 0→1) always refers to the current frame without rebuilding
  * any glyph cache entries.
  *
- * Falls back to a static texture when no .mcmeta is present.
+ * Falls back to a static texture when no .mcmeta is present (frameCount=1,
+ * frameHeight=totalHeight, supporting non-square images without buffer overflow).
  */
 public class AnimatedGlyphTexture extends AbstractTexture {
 
@@ -37,8 +38,9 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     private final ResourceLocation location;
     private NativeImage spriteSheet;
     private int frameWidth;
+    private int frameHeight;   // height of one frame in the GL texture
     private int frameCount = 1;
-    private int[] frameTimes;   // ticks each frame is displayed
+    private int[] frameTimes;  // ticks each frame is displayed
     private int tickAccum = 0;
     private int currentFrame = 0;
     private boolean animated = false;
@@ -66,6 +68,9 @@ public class AnimatedGlyphTexture extends AbstractTexture {
 
         frameWidth = spriteSheet.getWidth();
         int totalHeight = spriteSheet.getHeight();
+        // Default: one static frame covering the full image height (handles non-square images).
+        frameHeight = totalHeight;
+        frameCount = 1;
         frameTimes = new int[]{1};
 
         ResourceLocation mcmetaLoc = ResourceLocation.parse(
@@ -82,8 +87,8 @@ public class AnimatedGlyphTexture extends AbstractTexture {
             }
         }
 
-        // GL texture holds exactly one frame; we overwrite it each tick.
-        TextureUtil.prepareImage(getId(), frameWidth, frameWidth);
+        // GL texture holds exactly one frame.
+        TextureUtil.prepareImage(getId(), frameWidth, frameHeight);
         uploadFrame(0);
     }
 
@@ -106,14 +111,16 @@ public class AnimatedGlyphTexture extends AbstractTexture {
             Arrays.fill(frameTimes, defaultTime);
         }
 
+        // Frame height derived from total image height and frame count.
+        frameHeight = totalHeight / frameCount;
         animated = frameCount > 1;
     }
 
     private void uploadFrame(int frame) {
         RenderSystem.bindTexture(getId());
-        // Upload one frame from the vertical-strip spritesheet.
-        // unpackSkipY = frame * frameWidth skips to the correct row in the source image.
-        spriteSheet.upload(0, 0, 0, 0, frame * frameWidth, frameWidth, frameWidth,
+        // Upload one frame (frameWidth × frameHeight) from the vertical-strip spritesheet.
+        // GL_UNPACK_SKIP_ROWS = frame * frameHeight skips to the correct row in the source image.
+        spriteSheet.upload(0, 0, 0, 0, frame * frameHeight, frameWidth, frameHeight,
                 false, false, false, false);
     }
 

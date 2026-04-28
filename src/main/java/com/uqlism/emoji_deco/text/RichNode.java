@@ -39,7 +39,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
     record Glowing(LightMode lightMode, List<RichNode> children)       implements RichNode {}
     record Sprite(String atlas, String sprite, int width, int height)  implements RichNode {}
     record Head(String username)                                       implements RichNode {}
-    record Texture(ResourceLocation texture)                           implements RichNode {}
+    record Texture(ResourceLocation texture, int width, int height)    implements RichNode {}
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
@@ -68,7 +68,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         }
         if (this instanceof Sprite s)   return SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()).copy();
         if (this instanceof Head h)     return PlayerHeadRegistry.createComponent(h.username()).copy();
-        if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture()).copy();
+        if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture(), t.width(), t.height()).copy();
         return Component.empty();
     }
 
@@ -106,7 +106,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         } else if (node instanceof Head h) {
             addLeaf(font, withInherited(PlayerHeadRegistry.createComponent(h.username()), inherited), scale, lightMode, out);
         } else if (node instanceof Texture t) {
-            addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture()), inherited), scale, lightMode, out);
+            addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture(), t.width(), t.height()), inherited), scale, lightMode, out);
         }
     }
 
