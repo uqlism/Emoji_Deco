@@ -27,3 +27,5 @@ forge*changelog.txt
 .claude/settings.local.json
 
 tools
+
+logs
