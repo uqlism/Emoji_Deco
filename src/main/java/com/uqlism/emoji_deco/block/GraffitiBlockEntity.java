@@ -1,6 +1,8 @@
 package com.uqlism.emoji_deco.block;
 
 import com.uqlism.emoji_deco.Registration;
+import com.uqlism.emoji_deco.text.RichNode;
+import com.uqlism.emoji_deco.text.RichTextParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
@@ -17,6 +19,9 @@ public class GraffitiBlockEntity extends BlockEntity {
     private final String[] lines = new String[MAX_LINES];
     private GraffitiAlignment alignment = GraffitiAlignment.LEFT;
     private int displayedLines = 1;
+
+    /** Client-side parse cache. {@code null} means invalid; rebuilt lazily by {@link #getRichLines()}. */
+    private transient RichNode[] parsedCache;
 
     public GraffitiBlockEntity(BlockPos pos, BlockState state) {
         super(Registration.GRAFFITI_BLOCK_ENTITY.get(), pos, state);
@@ -48,6 +53,23 @@ public class GraffitiBlockEntity extends BlockEntity {
         return displayedLines;
     }
 
+    /**
+     * Returns parsed {@link RichNode}s for each displayed line, rebuilding the cache if needed.
+     * Call only on the client thread (renderer).
+     */
+    public RichNode[] getRichLines() {
+        if (parsedCache == null) {
+            parsedCache = new RichNode[displayedLines];
+            for (int i = 0; i < displayedLines; i++) {
+                String raw = lines[i];
+                parsedCache[i] = (raw != null && !raw.isEmpty())
+                        ? RichTextParser.parse(raw)
+                        : RichNode.empty();
+            }
+        }
+        return parsedCache;
+    }
+
     public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {
         for (int i = 0; i < MAX_LINES; i++) {
             String v = (i < newLines.length && newLines[i] != null) ? newLines[i] : "";
@@ -55,6 +77,7 @@ public class GraffitiBlockEntity extends BlockEntity {
         }
         this.alignment = newAlignment == null ? GraffitiAlignment.LEFT : newAlignment;
         this.displayedLines = Math.max(1, Math.min(newDisplayedLines, MAX_LINES));
+        parsedCache = null;
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
@@ -78,6 +101,7 @@ public class GraffitiBlockEntity extends BlockEntity {
             lines[i] = tag.contains("line" + i) ? tag.getString("line" + i) : "";
         }
         alignment = GraffitiAlignment.byName(tag.getString("align"));
+        parsedCache = null;
         if (tag.contains("displayedLines")) {
             displayedLines = Math.max(1, Math.min(tag.getInt("displayedLines"), MAX_LINES));
         } else {
@@ -103,6 +127,6 @@ public class GraffitiBlockEntity extends BlockEntity {
 
     @Override
     public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
-        if (pkt.getTag() != null) load(pkt.getTag());
+        if (pkt.getTag() != null) load(pkt.getTag()); // load() already invalidates parsedCache
     }
 }

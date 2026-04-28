@@ -6,7 +6,6 @@ import com.uqlism.emoji_deco.block.GraffitiAlignment;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
 import com.uqlism.emoji_deco.text.RichNode;
-import com.uqlism.emoji_deco.text.RichTextParser;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -54,18 +53,13 @@ public class GraffitiRenderer implements BlockEntityRenderer<GraffitiBlockEntity
         }
         if (!hasContent) { pose.popPose(); return; }
 
-        // Collect exactly displayedLines lines, including trailing blanks
-        java.util.List<RichNode> lines = new java.util.ArrayList<>();
-        for (int i = 0; i < displayedLines; i++) {
-            String raw = be.getLine(i);
-            lines.add((raw != null && !raw.isEmpty()) ? RichTextParser.parse(raw) : RichNode.empty());
-        }
+        RichNode[] lines = be.getRichLines();
 
         // Vertically centre the block of text on the surface
-        float startY = (SURFACE - lines.size() * lineHeight) / 2f;
+        float startY = (SURFACE - lines.length * lineHeight) / 2f;
 
-        for (int idx = 0; idx < lines.size(); idx++) {
-            FormattedCharSequence seq = RichNode.toSequence(font, lines.get(idx));
+        for (int idx = 0; idx < lines.length; idx++) {
+            FormattedCharSequence seq = RichNode.toSequence(font, lines[idx]);
             float textWidth = font.width(seq);
             float xPos = switch (align) {
                 case LEFT   -> 1f;
