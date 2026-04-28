@@ -1,7 +1,0 @@
-{
-    "enable": true,
-    "display": [
-        "これは石です",
-        { "emoji_deco:sprite": { "atlas": "minecraft:textures/atlas/blocks.png", "sprite": "block/stone" } }
-    ]
-}
