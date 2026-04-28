@@ -10,7 +10,6 @@ import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 import com.uqlism.emoji_deco.text.RichTextParser;
-import com.uqlism.emoji_deco.client.SuggestionState;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
