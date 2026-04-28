@@ -83,6 +83,7 @@ public class MixinFont {
                 curX += self.width(part);
             }
             cir.setReturnValue(retVal);
+            return;
         }
     }
 
