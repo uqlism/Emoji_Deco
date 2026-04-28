@@ -81,6 +81,7 @@ public class SuggestionState {
     private static int findActiveColonPos(String text) {
         int pos = text.lastIndexOf(':');
         if (pos < 0) return -1;
+        if (pos > 0 && text.charAt(pos - 1) == '\\') return -1; // escaped
         if (text.indexOf(':', pos + 1) >= 0) return -1;
         return pos;
     }
@@ -93,6 +94,7 @@ public class SuggestionState {
     private static int findActiveHashPos(String text) {
         int pos = text.lastIndexOf('#');
         if (pos < 0) return -1;
+        if (pos > 0 && text.charAt(pos - 1) == '\\') return -1; // escaped
         String after = text.substring(pos + 1);
         if (after.isEmpty()) return pos;
         if (after.charAt(0) == ' ' || after.charAt(0) == '#') return -1;

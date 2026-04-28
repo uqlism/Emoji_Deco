@@ -20,6 +20,15 @@ public class RichTextParser {
         while (pos < text.length()) {
             char c = text.charAt(pos);
 
+            // バックスラッシュエスケープ: \# \: \[ \] \. \, \\
+            if (c == '\\' && pos + 1 < text.length() && isEscapable(text.charAt(pos + 1))) {
+                flush(children, text, litStart, pos, base);
+                children.add(new RichNode.Text(String.valueOf(text.charAt(pos + 1)), base, List.of()));
+                pos += 2;
+                litStart = pos;
+                continue;
+            }
+
             // :shortcode: または :shortcode.arg1,arg2:
             if (c == ':') {
                 int close = text.indexOf(':', pos + 1);
@@ -92,6 +101,11 @@ public class RichTextParser {
             }
         }
         return -1;
+    }
+
+    private static boolean isEscapable(char c) {
+        return c == '#' || c == ':' || c == '[' || c == ']'
+            || c == '.' || c == ',' || c == '\\';
     }
 
     private static boolean isValidShortcodeName(String code) {
