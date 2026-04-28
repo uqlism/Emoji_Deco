@@ -9,7 +9,6 @@ import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.RichTextParser;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -47,8 +46,7 @@ public class ClientEvents {
         if (!Config.enableItemNames) return;
         List<Component> tooltip = event.getToolTip();
         if (tooltip.isEmpty()) return;
-        String raw = tooltip.get(0).getString();
-        tooltip.set(0, RichTextParser.parse(raw).toComponent());
+        tooltip.set(0, ComponentTransformer.transform(tooltip.get(0)));
     }
 
     @SubscribeEvent
