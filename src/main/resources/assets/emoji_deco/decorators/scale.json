@@ -5,14 +5,15 @@
       "x": {
         "emoji_deco:arg": {
           "index": 0,
-          "label": "<size>",
+          "label": "<x>",
           "default": 1.0,
           "type": "float"
         }
       },
       "y": {
         "emoji_deco:arg": {
-          "index": 0,
+          "index": 1,
+          "label": "<y>",
           "default": 1.0,
           "type": "float"
         }

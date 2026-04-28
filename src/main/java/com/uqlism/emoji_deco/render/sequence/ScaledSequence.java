@@ -3,15 +3,17 @@ package com.uqlism.emoji_deco.render.sequence;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.FormattedCharSink;
 
-/** A {@link FormattedCharSequence} that carries a scale factor for rendering. */
+/** A {@link FormattedCharSequence} that carries independent x/y scale factors. */
 public final class ScaledSequence implements FormattedCharSequence {
 
     private final FormattedCharSequence inner;
-    private final float scale;
+    private final float scaleX;
+    private final float scaleY;
 
-    public ScaledSequence(FormattedCharSequence inner, float scale) {
+    public ScaledSequence(FormattedCharSequence inner, float scaleX, float scaleY) {
         this.inner = inner;
-        this.scale = scale;
+        this.scaleX = scaleX;
+        this.scaleY = scaleY;
     }
 
     @Override
@@ -20,5 +22,6 @@ public final class ScaledSequence implements FormattedCharSequence {
     }
 
     public FormattedCharSequence inner() { return inner; }
-    public float scale()                 { return scale; }
+    public float scaleX()               { return scaleX; }
+    public float scaleY()               { return scaleY; }
 }

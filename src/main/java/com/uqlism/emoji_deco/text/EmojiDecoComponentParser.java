@@ -139,15 +139,6 @@ public final class EmojiDecoComponentParser {
         if (obj.has("emoji_deco:slot")) {
             return slot != null ? slot : RichNode.empty();
         }
-        if (obj.has("emoji_deco:size")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:size");
-            float size = 1.0f;
-            if (spec.has("size") && spec.get("size").isJsonPrimitive()) {
-                try { size = spec.get("size").getAsFloat(); } catch (NumberFormatException ignored) {}
-            }
-            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return new RichNode.Sized(size, List.of(contents));
-        }
         if (obj.has("emoji_deco:glow")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:glow");
             LightMode lightMode = (!spec.has("glow") || spec.get("glow").getAsBoolean())
@@ -167,6 +158,14 @@ public final class EmojiDecoComponentParser {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:player_head");
             String username = stringOf(spec.get("player"), "");
             return new RichNode.Head(username);
+        }
+        if (obj.has("emoji_deco:scale")) {
+            JsonObject spec = obj.getAsJsonObject("emoji_deco:scale");
+            float x = 1f, y = 1f;
+            try { if (spec.has("x") && spec.get("x").isJsonPrimitive()) x = spec.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
+            try { if (spec.has("y") && spec.get("y").isJsonPrimitive()) y = spec.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
+            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
+            return new RichNode.Scaled(x, y, List.of(contents));
         }
         if (obj.has("emoji_deco:offset")) {
             JsonObject spec = obj.getAsJsonObject("emoji_deco:offset");

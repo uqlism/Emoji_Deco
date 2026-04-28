@@ -71,9 +71,9 @@ public class MixinFont {
             cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
             return;
         }
-        if (text instanceof ScaledSequence ss) {
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
-            cir.setReturnValue(self.drawInBatch(ss.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
+        if (text instanceof ScaledSequence sxy) {
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(sxy.scaleX(), sxy.scaleY(), 1.0f);
+            cir.setReturnValue(self.drawInBatch(sxy.inner(), 0f, 0f, color, dropShadow, scaled, buffers, mode, bgColor, packedLight));
             return;
         }
         if (text instanceof OffsetSequence os) {
@@ -121,9 +121,9 @@ public class MixinFont {
             ci.cancel();
             return;
         }
-        if (text instanceof ScaledSequence ss) {
-            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(ss.scale(), ss.scale(), 1.0f);
-            self.drawInBatch8xOutline(ss.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
+        if (text instanceof ScaledSequence sxy) {
+            Matrix4f scaled = new Matrix4f(matrix).translate(x, y, 0f).scale(sxy.scaleX(), sxy.scaleY(), 1.0f);
+            self.drawInBatch8xOutline(sxy.inner(), 0f, 0f, color, outlineColor, scaled, buffers, packedLight);
             ci.cancel();
             return;
         }
@@ -190,12 +190,12 @@ public class MixinFont {
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$width(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
-        if (text instanceof ScaledSequence ss) {
-            cir.setReturnValue(Math.round(self.width(ss.inner()) * ss.scale()));
-            return;
-        }
         if (text instanceof LightSequence gs) {
             cir.setReturnValue(self.width(gs.inner()));
+            return;
+        }
+        if (text instanceof ScaledSequence sxy) {
+            cir.setReturnValue(Math.round(self.width(sxy.inner()) * sxy.scaleX()));
             return;
         }
         if (text instanceof OffsetSequence os) {
