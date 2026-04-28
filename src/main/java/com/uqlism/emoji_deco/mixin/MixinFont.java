@@ -198,7 +198,9 @@ public class MixinFont {
 
     private static boolean isNoGlowFont(Style style) {
         var font = style.getFont();
-        return PlayerHeadRegistry.HEAD_FONT.equals(font) || SpriteRegistry.SPRITE_FONT.equals(font);
+        return PlayerHeadRegistry.HEAD_FONT.equals(font)
+            || PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(font)
+            || SpriteRegistry.SPRITE_FONT.equals(font);
     }
 
     private static boolean hasNoGlowFont(FormattedCharSequence seq) {

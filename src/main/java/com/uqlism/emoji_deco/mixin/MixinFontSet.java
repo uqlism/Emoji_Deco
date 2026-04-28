@@ -37,7 +37,12 @@ public abstract class MixinFontSet {
             String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
-            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, PlayerHeadRegistry.isOverlay(codePoint)));
+            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, false));
+        } else if (PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_)) {
+            String username = PlayerHeadRegistry.getUsername(codePoint);
+            if (username == null) return;
+            ResourceLocation skin = getSkinTexture(username);
+            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, true));
         }
     }
 
@@ -59,7 +64,14 @@ public abstract class MixinFontSet {
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
             if (skin == null) return;
-            BakedGlyph glyph = new HeadGlyphInfo(skin, PlayerHeadRegistry.isOverlay(codePoint)).bake(null);
+            BakedGlyph glyph = new HeadGlyphInfo(skin, false).bake(null);
+            if (glyph != null) cir.setReturnValue(glyph);
+        } else if (PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(this.f_95052_)) {
+            String username = PlayerHeadRegistry.getUsername(codePoint);
+            if (username == null) return;
+            ResourceLocation skin = getSkinTexture(username);
+            if (skin == null) return;
+            BakedGlyph glyph = new HeadGlyphInfo(skin, true).bake(null);
             if (glyph != null) cir.setReturnValue(glyph);
         }
     }
