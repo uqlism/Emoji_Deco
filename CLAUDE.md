@@ -4,93 +4,169 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Emoji & Deco** is a Minecraft Forge mod (1.20.1 / Forge 47.4.10) that adds Markdown-style rich text formatting, a custom shortcode/emoji system, and player head display to Minecraft's text rendering.
+**Emoji & Deco** is a Minecraft Forge mod (1.20.1 / Forge 47.4.10) that adds a rich text system to Minecraft's text rendering. Features include a decorator syntax (`#bold[...]`), a parameterized shortcode system (`:heart:`, `:player.Steve:`), player head glyphs, sprite glyphs, escape sequences, and a graffiti block.
 
-Supported locations: chat, signs, item tooltips, entity name tags, and written books.
+Supported locations: chat, signs, item tooltips, entity name tags, written books, GUI titles/actionbar, graffiti blocks.
 
 ## Build & Run Commands
 
 ```bash
-# Build the mod jar
-./gradlew build
-
-# Run Minecraft client with the mod loaded
-./gradlew runClient
-
-# Run Minecraft server with the mod loaded
-./gradlew runServer
-
-# Run data generation (outputs to src/generated/resources/)
-./gradlew runData
-
-# Generate IDE run configurations
-./gradlew genIntellijRuns   # IntelliJ IDEA
-./gradlew genEclipseRuns    # Eclipse
-
-# Clean build artifacts
+./gradlew build                  # Build the mod jar
+./gradlew runClient              # Run Minecraft client with mod
+./gradlew runServer              # Run Minecraft server with mod
+./gradlew test                   # Run unit tests (JUnit 5)
+./gradlew runData                # Data generation
+./gradlew genIntellijRuns        # Generate IntelliJ run configs
 ./gradlew clean
-
-# Refresh Gradle dependency cache
 ./gradlew --refresh-dependencies
 ```
 
-There are no unit tests; functional testing requires running `runClient` or `runGameTestServer`.
-
 ## Architecture
 
-### Core Text Pipeline
+### Text Pipeline
 
-Text flows through three stages:
+```
+Raw string
+   │
+   ▼ RichTextParser.parse(raw)
+RichNode (IR)
+   │
+   ├─▶ .toComponent()       → Minecraft Component  (chat / tooltip / entity / book)
+   └─▶ RichNode.toSequence(font, node)
+                             → FormattedCharSequence (sign / graffiti — honours scale/glow)
+```
 
-1. **`RichTextParser`** — Parses raw strings into Minecraft `Component` trees, handling inline Markdown syntax (`**bold**`, `*italic*`, `~~strike~~`, `__underline__`) and resolving `:shortcode:` tokens via `ShortcodeManager`.
+**`RichTextParser`** parses raw strings into a `RichNode` tree:
+- `:shortcode:` and `:shortcode.arg1,arg2:` → `ShortcodeManager.resolve()`
+- `#decorator[content]` and `#decorator.arg1,arg2[content]` → `DecoratorManager.resolve()`
+- `\#`, `\:`, `\[`, `\]`, `\.`, `\,`, `\\` — backslash escape sequences
 
-2. **`ComponentTransformer`** — Walks existing `Component` trees recursively and applies the parser to leaf nodes. Used when the text is already a structured Component (e.g., item tooltips).
+**`ComponentTransformer`** walks existing `Component` trees (e.g. incoming chat messages) and applies `RichTextParser` to `LiteralContents` and `TranslatableContents` args.
 
-3. **Mixin injection points** — Mixins in `src/main/java/com/uqlism/emoji_deco/mixin/` intercept Minecraft internals to run the pipeline at the right rendering moments:
-   - `MixinChatScreen` — chat input and live preview
-   - `MixinSignText` — sign block text (intercepts `SignText.getRenderMessages`, covers vanilla + Amendments mod)
-   - `MixinEntityRenderer` — entity name tags
-   - `MixinWrittenBookAccess` — written books
-   - `MixinGui` / `MixinFontSet` — GUI-level font patches
-   - `MixinFont` — header scaling and glow ink fallback for custom glyphs
-   - `MixinBakedGlyph` — Z-offset for head overlay glyphs to prevent z-fighting
+### RichNode (IR)
 
-### Shortcode System
+`RichNode` is a sealed interface with five node types:
 
-Shortcodes are defined as JSON files under `src/main/resources/assets/emoji_deco/shortcodes/`. Each file maps a name (`:name:`) to a Minecraft Component definition (text, font, color, or sprite reference). `ShortcodeManager` loads these at startup and on resource reload (`PreparableReloadListener`).
+| Node | Meaning |
+|---|---|
+| `Text(literal, style, children)` | Text fragment with optional style delta and sub-nodes |
+| `Sized(scale, children)` | Size multiplier (honoured in `toSequence`, ignored in `toComponent`) |
+| `Glowing(lightMode, children)` | Light override — `LightMode.GLOW`, `AMBIENT`, or `BYPASS` |
+| `Sprite(atlas, sprite)` | Sprite glyph via `SPRITE_FONT` |
+| `Head(username)` | Player head glyph pair via `HEAD_FONT` + `HEAD_OVERLAY_FONT` |
 
-### Sprite Rendering
+### Shortcode & Decorator JSON Format
 
-Custom sprites are registered in `SpriteRegistry` and referenced from shortcode JSON. Glyph metadata is in `SpriteGlyphInfo`. The custom font is declared in `assets/emoji_deco/font/sprite.json`.
+Both live in `src/main/resources/assets/emoji_deco/`:
+- `shortcodes/<name>.json` — loaded by `ShortcodeManager` as a resourcepack
+- `decorators/<name>.json` — loaded by `DecoratorManager` as a resourcepack
 
-Shortcode JSON uses `"translate": "emoji_deco:sprite"` with `"with": [atlasName, textureName]` to reference sprites, and `"translate": "emoji_deco:head"` with `"with": [username]` for player head display.
+**Display element types:**
 
-### Player Head Display
+| JSON key | Meaning |
+|---|---|
+| `{"emoji_deco:slot":{}}` | Slot placeholder (decorator only) |
+| `{"emoji_deco:arg":{"index":N,"type":"...","default":...,"suggestions":...}}` | Positional argument |
+| `{"emoji_deco:size":{"size":..., "contents":...}}` | Size wrapper |
+| `{"emoji_deco:glow":{"glow":..., "contents":...}}` | Glow wrapper |
+| `{"emoji_deco:sprite":{"atlas":"...","sprite":"..."}}` | Sprite glyph |
+| `{"emoji_deco:player_head":{"player":"..."}}` | Player head |
+| `{"emoji_deco:player_names":{}}` | Dynamic list of online player names |
+| Standard MC fields | `text`, `color`, `bold`, `italic`, `strikethrough`, `underlined`, `font`, `extra` |
 
-Player heads render as two stacked glyphs (base face + hat overlay) using skin textures. Both use `HEAD_FONT`. The overlay is 9×9 (vs 8×8 base) and its Z position is shifted +0.001f via `MixinBakedGlyph` to prevent z-fighting. Glow ink sac (`drawInBatch8xOutline`) falls back to normal rendering for head and sprite glyphs to avoid artifacts.
+**Argument types:** `"string"` (default), `"boolean"`, `"integer"`, `"float"`. Args expand to a JSON primitive via `EmojiDecoComponentParser.expandDynamicProviders()` before structural parsing.
+
+**`display` arrays** produce a sequence of nodes (e.g. `stone.json` combines text + sprite).
+
+### FormattedCharSequence Wrappers (render/sequence/)
+
+Used by `RichNode.toSequence()` to carry rendering metadata:
+
+| Class | Responsibility |
+|---|---|
+| `ScaledSequence(inner, scale)` | Applies matrix scale in `MixinFont.drawInBatch` |
+| `LightSequence(inner, mode)` | Overrides `packedLight` — `LightMode.GLOW`=0xF000F0, `AMBIENT`=restore original, `BYPASS`=pass-through |
+| `ConcatSequence(parts)` | Concatenates multiple sequences, advancing X between them |
+
+`MixinFont` intercepts `Font.drawInBatch` and `Font.width` at HEAD+RETURN to handle these wrappers and track ambient light depth for `LightMode.AMBIENT`.
+
+### Custom Glyph Rendering
+
+**Sprite glyphs** (`render/registry/SpriteRegistry`):
+- Codepoints 0xE000+, font `emoji_deco:sprite`
+- `MixinFontSet` resolves codepoints → `SpriteGlyphInfo` → `BakedGlyph` with atlas UV
+
+**Player head glyphs** (`render/registry/PlayerHeadRegistry`):
+- Codepoints 0xF000+, ONE codepoint per player used in TWO fonts
+- `HEAD_FONT` (base face 8×8, advance=0) + `HEAD_OVERLAY_FONT` (hat 9×9, advance=9)
+- Both fonts share the codepoint space; font identity determines base vs overlay
+- `MixinBakedGlyph` shifts overlay glyphs to z=0.01f via `OverlayGlyphs.OVERLAYS`
+
+### Graffiti Block
+
+A placeable block that stores up to 10 lines of rich text. Placed with `GraffitiInkItem`. Rendered by `GraffitiRenderer` using `RichNode.toSequence()`.
+
+### Autocomplete (SuggestionState)
+
+`SuggestionState` is **per-screen** — instantiated via `SuggestionState.of(screen)` using a `WeakHashMap`. Each screen holds its own state. Trigger detection (`#` and `:`) respects backslash escapes. Arg completions are data-driven via the `"suggestions"` field in `emoji_deco:arg` specs.
 
 ### Configuration
 
-`Config.java` (Forge config) exposes per-location toggles: `enableChat`, `enableSigns`, `enableItemNames`, `enableEntityNames`, `enableBooks` (all default `true`).
+`Config.java` exposes: `enableChat`, `enableSigns`, `enableItemNames`, `enableEntityNames`, `enableBooks`, `enableGui` (all default `true`).
+
+## Package Structure
+
+```
+com.uqlism.emoji_deco/
+├── text/              RichNode, RichTextParser, EmojiDecoComponentParser,
+│                      ComponentTransformer, DecoratorManager, ShortcodeManager
+├── render/
+│   ├── glyphinfo/     SpriteGlyphInfo, HeadGlyphInfo
+│   ├── registry/      SpriteRegistry, PlayerHeadRegistry
+│   ├── sequence/      ScaledSequence, LightSequence, ConcatSequence, LightMode
+│   └── OverlayGlyphs
+├── client/            ClientEvents, SuggestionState, CompletionRenderer, …
+│   ├── screen/        GraffitiEditScreen
+│   └── renderer/      GraffitiRenderer
+├── mixin/             All @Mixin classes
+├── block/             GraffitiBlock, GraffitiBlockEntity, GraffitiAlignment
+├── item/              GraffitiInkItem
+└── network/           GraffitiUpdatePacket
+```
 
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `EmojiDeco.java` | `@Mod` entry point, registers config and event buses |
-| `text/RichTextParser.java` | Markdown + shortcode parser |
-| `text/ComponentTransformer.java` | Recursive Component tree transformer |
-| `text/ShortcodeManager.java` | JSON shortcode loader / resolver |
-| `text/SpriteRegistry.java` | Sprite/head glyph allocation and component creation |
-| `client/ClientEvents.java` | Item tooltip event handler |
-| `emoji_deco.mixins.json` | Mixin class list (must be updated when adding new mixins) |
-| `gradle.properties` | Mod version, MC version, Forge version |
+| `EmojiDeco.java` | `@Mod` entry point |
+| `text/RichNode.java` | IR sealed interface + `toComponent()` + `toSequence()` |
+| `text/RichTextParser.java` | Raw string → RichNode parser (decorators, shortcodes, escapes) |
+| `text/EmojiDecoComponentParser.java` | JSON display element → RichNode converter |
+| `text/DecoratorManager.java` | Decorator JSON loader / resolver |
+| `text/ShortcodeManager.java` | Shortcode JSON loader / resolver |
+| `render/registry/SpriteRegistry.java` | Sprite codepoint allocation |
+| `render/registry/PlayerHeadRegistry.java` | Player head codepoint allocation (2 fonts) |
+| `client/SuggestionState.java` | Per-screen autocomplete state |
+| `emoji_deco.mixins.json` | Mixin class list (update when adding mixins) |
+| `gradle.properties` | Mod/MC/Forge versions |
 
 ## Adding a New Shortcode
 
-Create `src/main/resources/assets/emoji_deco/shortcodes/<name>.json` following the pattern of `heart.json` or `stone.json`. No Java changes required — `ShortcodeManager` discovers all JSON files in that directory automatically.
+Create `src/main/resources/assets/emoji_deco/shortcodes/<name>.json`. `ShortcodeManager` discovers all JSON files automatically. For parameterized shortcodes include `emoji_deco:arg` in the display; these are stored in `PARAM_REGISTRY` and re-parsed on each call.
+
+## Adding a New Decorator
+
+Create `src/main/resources/assets/emoji_deco/decorators/<name>.json` with `{"enable":true,"display":{...}}`. The display must include `{"emoji_deco:slot":{}}` where the wrapped content should appear.
 
 ## Adding a New Mixin
 
 1. Create the mixin class in `src/main/java/com/uqlism/emoji_deco/mixin/`.
-2. Register it in `src/main/resources/emoji_deco.mixins.json` under the appropriate `"mixins"` or `"client"` array.
+2. Register it in `src/main/resources/emoji_deco.mixins.json` under `"mixins"` or `"client"`.
+
+## Running Tests
+
+```bash
+./gradlew test
+```
+
+Tests live in `src/test/java/com/uqlism/emoji_deco/`. `MinecraftTestBase` calls `SharedConstants.tryDetectVersion()` (no full Bootstrap needed). `ParsingIntegrationTest` injects test data into manager registries via reflection.
