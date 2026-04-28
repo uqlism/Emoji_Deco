@@ -1,9 +1,32 @@
 {
   "enable": true,
+  "preview": [
+    {
+      "text": "c",
+      "color": "red"
+    },
+    {
+      "text": "o",
+      "color": "gold"
+    },
+    {
+      "text": "l",
+      "color": "yellow"
+    },
+    {
+      "text": "o",
+      "color": "green"
+    },
+    {
+      "text": "r",
+      "color": "aqua"
+    }
+  ],
   "display": {
     "text": "",
     "color": {
       "emoji_deco:arg": {
+        "label": "<color>",
         "index": 0,
         "type": "string",
         "default": "white",

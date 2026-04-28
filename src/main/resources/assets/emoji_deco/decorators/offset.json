@@ -5,6 +5,7 @@
       "x": {
         "emoji_deco:arg": {
           "index": 0,
+          "label": "<x>",
           "default": 0,
           "type": "float"
         }
@@ -12,6 +13,7 @@
       "y": {
         "emoji_deco:arg": {
           "index": 1,
+          "label": "<y>",
           "default": 0,
           "type": "float"
         }

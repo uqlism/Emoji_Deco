@@ -105,11 +105,50 @@ public class DecoratorManager implements PreparableReloadListener {
         return argSpec.get("suggestions");
     }
 
-    /** Returns the label string defined in the decorator JSON, or "#name[]" if absent. */
+    /**
+     * Returns the label for autocomplete display.
+     * Priority: explicit top-level "label" > auto-built from arg "label" fields > "#name[]".
+     */
     public static String getLabel(String name) {
         JsonObject json = REGISTRY.get(name);
-        if (json != null && json.has("label") && json.get("label").isJsonPrimitive())
+        if (json == null) return "#" + name + "[]";
+
+        if (json.has("label") && json.get("label").isJsonPrimitive())
             return json.get("label").getAsString();
+
+        if (json.has("display")) {
+            var args = EmojiDecoComponentParser.findAllArgSpecs(json.get("display"));
+            if (!args.isEmpty()) {
+                // Find the last non-hidden arg to know where to stop.
+                int lastVisible = -1;
+                for (var entry : args.entrySet()) {
+                    JsonObject spec = entry.getValue();
+                    boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                            && spec.get("hidden").getAsBoolean();
+                    if (!hidden) lastVisible = entry.getKey();
+                }
+                if (lastVisible >= 0) {
+                    StringBuilder sb = new StringBuilder("#").append(name).append(".");
+                    boolean first = true;
+                    for (var entry : args.entrySet()) {
+                        if (entry.getKey() > lastVisible) break;
+                        if (!first) sb.append(",");
+                        first = false;
+                        JsonObject spec = entry.getValue();
+                        boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                                && spec.get("hidden").getAsBoolean();
+                        if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
+                            sb.append(spec.get("label").getAsString());
+                        else
+                            sb.append("<arg").append(entry.getKey() + 1).append(">");
+                    }
+                    sb.append("[]");
+                    return sb.toString();
+                }
+                // All args are hidden → fall through to "#name[]"
+            }
+        }
+
         return "#" + name + "[]";
     }
 

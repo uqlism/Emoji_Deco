@@ -268,4 +268,29 @@ public final class EmojiDecoComponentParser {
         }
         return null;
     }
+
+    /**
+     * Walks the JSON tree and collects all emoji_deco:arg specs keyed by their index.
+     * First occurrence wins if the same index appears multiple times.
+     */
+    public static java.util.Map<Integer, JsonObject> findAllArgSpecs(JsonElement el) {
+        java.util.Map<Integer, JsonObject> result = new java.util.TreeMap<>();
+        collectArgSpecs(el, result);
+        return result;
+    }
+
+    private static void collectArgSpecs(JsonElement el, java.util.Map<Integer, JsonObject> result) {
+        if (el == null) return;
+        if (el.isJsonObject()) {
+            JsonObject obj = el.getAsJsonObject();
+            if (obj.has("emoji_deco:arg")) {
+                JsonObject spec = obj.getAsJsonObject("emoji_deco:arg");
+                int idx = spec.has("index") ? spec.get("index").getAsInt() : 0;
+                result.putIfAbsent(idx, spec);
+            }
+            for (var entry : obj.entrySet()) collectArgSpecs(entry.getValue(), result);
+        } else if (el.isJsonArray()) {
+            for (JsonElement child : el.getAsJsonArray()) collectArgSpecs(child, result);
+        }
+    }
 }
