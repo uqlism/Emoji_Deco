@@ -1,7 +1,8 @@
 package com.uqlism.emoji_deco.text;
 
 import net.minecraft.client.gui.Font;
-import com.uqlism.emoji_deco.render.SpriteRegistry;
+import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
+import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
@@ -63,7 +64,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
             return c;
         }
         if (this instanceof Sprite s) return SpriteRegistry.createComponent(s.atlas(), s.sprite()).copy();
-        if (this instanceof Head h)   return SpriteRegistry.createHeadComponent(h.username()).copy();
+        if (this instanceof Head h)   return PlayerHeadRegistry.createComponent(h.username()).copy();
         return Component.empty();
     }
 
@@ -99,7 +100,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Sized, RichNode
         } else if (node instanceof Sprite s) {
             addLeaf(font, withInherited(SpriteRegistry.createComponent(s.atlas(), s.sprite()), inherited), scale, lightMode, out);
         } else if (node instanceof Head h) {
-            addLeaf(font, withInherited(SpriteRegistry.createHeadComponent(h.username()), inherited), scale, lightMode, out);
+            addLeaf(font, withInherited(PlayerHeadRegistry.createComponent(h.username()), inherited), scale, lightMode, out);
         }
     }
 

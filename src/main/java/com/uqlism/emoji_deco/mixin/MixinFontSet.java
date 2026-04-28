@@ -4,7 +4,8 @@ import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.HeadGlyphInfo;
 import com.uqlism.emoji_deco.render.SpriteGlyphInfo;
-import com.uqlism.emoji_deco.render.SpriteRegistry;
+import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
+import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.font.FontSet;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
@@ -32,11 +33,11 @@ public abstract class MixinFontSet {
         if (SpriteRegistry.SPRITE_FONT.equals(this.f_95052_)) {
             SpriteRegistry.SpriteKey key = SpriteRegistry.getTexture(codePoint);
             if (key != null) cir.setReturnValue(new SpriteGlyphInfo(key.atlas(), key.sprite()));
-        } else if (SpriteRegistry.HEAD_FONT.equals(this.f_95052_)) {
-            String username = SpriteRegistry.getUsername(codePoint);
+        } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
+            String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
-            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, SpriteRegistry.isOverlay(codePoint)));
+            if (skin != null) cir.setReturnValue(new HeadGlyphInfo(skin, PlayerHeadRegistry.isOverlay(codePoint)));
         }
     }
 
@@ -53,12 +54,12 @@ public abstract class MixinFontSet {
             }
             BakedGlyph glyph = new SpriteGlyphInfo(key.atlas(), key.sprite()).bake(null);
             if (glyph != null) cir.setReturnValue(glyph);
-        } else if (SpriteRegistry.HEAD_FONT.equals(this.f_95052_)) {
-            String username = SpriteRegistry.getUsername(codePoint);
+        } else if (PlayerHeadRegistry.HEAD_FONT.equals(this.f_95052_)) {
+            String username = PlayerHeadRegistry.getUsername(codePoint);
             if (username == null) return;
             ResourceLocation skin = getSkinTexture(username);
             if (skin == null) return;
-            BakedGlyph glyph = new HeadGlyphInfo(skin, SpriteRegistry.isOverlay(codePoint)).bake(null);
+            BakedGlyph glyph = new HeadGlyphInfo(skin, PlayerHeadRegistry.isOverlay(codePoint)).bake(null);
             if (glyph != null) cir.setReturnValue(glyph);
         }
     }

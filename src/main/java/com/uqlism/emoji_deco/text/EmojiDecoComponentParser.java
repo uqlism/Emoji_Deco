@@ -1,7 +1,6 @@
 package com.uqlism.emoji_deco.text;
 
 import com.google.gson.JsonArray;
-import com.uqlism.emoji_deco.render.SpriteRegistry;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -15,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Converts the emoji_deco JSON component format into RichNode trees.
