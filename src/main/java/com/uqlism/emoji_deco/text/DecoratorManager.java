@@ -105,6 +105,32 @@ public class DecoratorManager implements PreparableReloadListener {
         return argSpec.get("suggestions");
     }
 
+    /** Returns the label string defined in the decorator JSON, or "#name[]" if absent. */
+    public static String getLabel(String name) {
+        JsonObject json = REGISTRY.get(name);
+        if (json != null && json.has("label") && json.get("label").isJsonPrimitive())
+            return json.get("label").getAsString();
+        return "#" + name + "[]";
+    }
+
+    /**
+     * Returns a Component built from the preview array defined in the decorator JSON.
+     * Falls back to resolving the decorator with the name as slot content if absent.
+     */
+    public static net.minecraft.network.chat.Component getPreview(String name) {
+        JsonObject json = REGISTRY.get(name);
+        if (json != null && json.has("preview")) {
+            try {
+                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
+                if (node != null) return node.toComponent();
+            } catch (Exception e) {
+                LOGGER.warn("[EmojiDeco] Failed to parse preview for decorator '{}': {}", name, e.getMessage());
+            }
+        }
+        RichNode fallback = resolve(name, new RichNode.Text(name, net.minecraft.network.chat.Style.EMPTY, List.of()));
+        return fallback != null ? fallback.toComponent() : net.minecraft.network.chat.Component.literal(getLabel(name));
+    }
+
     /** Returns all tag names that start with prefix, sorted. */
     public static List<String> getSuggestions(String prefix) {
         return REGISTRY.keySet().stream()

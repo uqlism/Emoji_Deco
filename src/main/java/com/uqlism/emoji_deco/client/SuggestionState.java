@@ -136,12 +136,10 @@ public class SuggestionState {
     private static List<Entry> buildStyleTagSuggestions(String prefix) {
         List<Entry> results = new ArrayList<>();
         DecoratorManager.getSuggestions(prefix).forEach(name -> {
-            RichNode previewNode = DecoratorManager.resolve(name,
-                    new RichNode.Text(name, Style.EMPTY, List.of()));
-            Component preview = previewNode != null
-                    ? previewNode.toComponent()
-                    : Component.literal("#" + name + "[]");
-            results.add(new Entry("#" + name + "[]", preview, name, TriggerType.DECORATOR));
+            results.add(new Entry(
+                    DecoratorManager.getLabel(name),
+                    DecoratorManager.getPreview(name),
+                    name, TriggerType.DECORATOR));
         });
         return results;
     }
