@@ -30,7 +30,7 @@ public class PlayerHeadRegistry {
     private static final Map<String, Integer>         USERNAME_TO_CP = new ConcurrentHashMap<>();
     private static final Map<Integer, String>         CP_TO_USERNAME = new ConcurrentHashMap<>();
     private static final Map<String, ResourceLocation> SKIN_CACHE    = new ConcurrentHashMap<>();
-    private static final AtomicInteger nextCp = new AtomicInteger(0xF000);
+    private static final AtomicInteger nextCp = new AtomicInteger(0xE000);
 
     public static int allocate(String username) {
         return USERNAME_TO_CP.computeIfAbsent(username, k -> {
