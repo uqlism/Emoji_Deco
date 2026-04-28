@@ -1,9 +1,13 @@
 ﻿{
     "enable": true,
-    "aliases": [
-        "石",
-        "テスト"
-    ],
+    "preview": {
+        "emoji_deco:sprite": {
+            "atlas": "minecraft:textures/atlas/blocks.png",
+            "sprite": "block/dirt",
+            "width": 8,
+            "height": 8
+        }
+    },
     "display": {
         "text": "",
         "color": "#ffffff",
@@ -14,9 +18,18 @@
                     "sprite": {
                         "emoji_deco:join": {
                             "parts": [
-                                "block/",
                                 {
                                     "emoji_deco:arg": {
+                                        "label": "<namespace=minecraft>",
+                                        "index": 1,
+                                        "type": "string",
+                                        "default": "minecraft"
+                                    }
+                                },
+                                ":block/",
+                                {
+                                    "emoji_deco:arg": {
+                                        "label": "<block>",
                                         "index": 0,
                                         "type": "string",
                                         "default": ""
