@@ -14,13 +14,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.WeakHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SuggestionState {
 
     public enum TriggerType { SHORTCODE, DECORATOR, DECORATOR_ARG, SHORTCODE_ARG }
 
-    public record Entry(String label, Component preview, String insertion, TriggerType type) {}
+    public record Entry(String label, Supplier<Component> preview, String insertion, TriggerType type) {}
 
     // ── instance state ────────────────────────────────────────────────────────
 
@@ -135,12 +136,11 @@ public class SuggestionState {
 
     private static List<Entry> buildStyleTagSuggestions(String prefix) {
         List<Entry> results = new ArrayList<>();
-        DecoratorManager.getSuggestions(prefix).forEach(name -> {
-            results.add(new Entry(
-                    DecoratorManager.getLabel(name),
-                    DecoratorManager.getPreview(name),
-                    name, TriggerType.DECORATOR));
-        });
+        DecoratorManager.getSuggestions(prefix).forEach(name ->
+                results.add(new Entry(
+                        DecoratorManager.getLabel(name),
+                        () -> DecoratorManager.getPreview(name),
+                        name, TriggerType.DECORATOR)));
         return results;
     }
 
@@ -148,10 +148,16 @@ public class SuggestionState {
         if (prefix.isEmpty()) return Collections.emptyList();
         List<Entry> results = new ArrayList<>();
         ShortcodeManager.getSuggestions(prefix).forEach(code ->
-                results.add(new Entry(ShortcodeManager.getLabel(code), ShortcodeManager.getPreview(code), code, TriggerType.SHORTCODE)));
+                results.add(new Entry(
+                        ShortcodeManager.getLabel(code),
+                        () -> ShortcodeManager.getPreview(code),
+                        code, TriggerType.SHORTCODE)));
         ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
             String canonical = e.getValue();
-            results.add(new Entry(ShortcodeManager.getLabel(canonical), ShortcodeManager.getPreview(canonical), canonical, TriggerType.SHORTCODE));
+            results.add(new Entry(
+                    ShortcodeManager.getLabel(canonical),
+                    () -> ShortcodeManager.getPreview(canonical),
+                    canonical, TriggerType.SHORTCODE));
         });
         return results;
     }
@@ -162,9 +168,9 @@ public class SuggestionState {
                 .filter(v -> v.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT)))
                 .map(v -> {
                     TextColor color = TextColor.parseColor(v);
-                    Component preview = color != null
-                            ? Component.literal("■ " + v).withStyle(Style.EMPTY.withColor(color))
-                            : Component.literal(v);
+                    Supplier<Component> preview = color != null
+                            ? () -> Component.literal("■ " + v).withStyle(Style.EMPTY.withColor(color))
+                            : () -> Component.literal(v);
                     return new Entry(v, preview, v, type);
                 })
                 .collect(Collectors.toList());
