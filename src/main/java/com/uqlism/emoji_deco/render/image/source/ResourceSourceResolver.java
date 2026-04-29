@@ -9,6 +9,7 @@ import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
 import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
+import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -23,7 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * emoji_deco:resource ソースリゾルバ。
+ * emoji_deco:fetch_resource ソースリゾルバ。
  *
  * フォーマット: JSON "format" フィールド > ファイル拡張子 で判別。
  *   GIF  → GifDecoder（アニメーション対応）
@@ -57,7 +58,11 @@ public class ResourceSourceResolver {
                 ? ImageFormatDetector.fromHint(formatHint)
                 : ImageFormatDetector.fromHint(extension(rl.getPath()));
 
-        ImageDecoder decoder = (fmt == Format.GIF) ? new GifDecoder() : new StbDecoder();
+        ImageDecoder decoder = switch (fmt) {
+            case GIF  -> new GifDecoder();
+            case WEBP -> new WebpDecoder();
+            default   -> new StbDecoder();
+        };
 
         ResolvedSource result = resolve(mc, rl, decoder);
         if (result != null) LOADED.put(rl, result);

@@ -3,11 +3,10 @@
   "display": [
     {
       "type": "emoji_deco:image_to_glyph",
-      "width": 16,
-      "height": 16,
+      "width": 8,
+      "height": 8,
       "image": {
         "type": "emoji_deco:decode_image",
-        "format": "png",
         "source": {
           "type": "emoji_deco:fetch_url",
           "url": "https://minecraft.wiki/images/thumb/Wiki_social_media_logo.png/64px-Wiki_social_media_logo.png?fb518"

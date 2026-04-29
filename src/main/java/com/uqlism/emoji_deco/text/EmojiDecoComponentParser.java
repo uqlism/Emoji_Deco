@@ -82,15 +82,16 @@ public final class EmojiDecoComponentParser {
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
 
-            if (obj.has("emoji_deco:arg")) {
-                JsonObject spec = obj.getAsJsonObject("emoji_deco:arg");
-                int    index = spec.has("index") ? spec.get("index").getAsInt()      : 0;
-                String type  = spec.has("type")  ? spec.get("type").getAsString()    : "string";
-                if (index < args.length) return coerceArg(args[index], type);
-                return spec.has("default") ? spec.get("default") : defaultForType(type);
+            String dynType = obj.has("type") ? obj.get("type").getAsString() : null;
+
+            if ("emoji_deco:arg".equals(dynType)) {
+                int    index = obj.has("index")      ? obj.get("index").getAsInt()         : 0;
+                String vtype = obj.has("value_type") ? obj.get("value_type").getAsString() : "string";
+                if (index < args.length) return coerceArg(args[index], vtype);
+                return obj.has("default") ? obj.get("default") : defaultForType(vtype);
             }
 
-            if (obj.has("emoji_deco:player_names")) {
+            if ("emoji_deco:player_names".equals(dynType)) {
                 JsonArray arr = new JsonArray();
                 Minecraft mc = Minecraft.getInstance();
                 if (mc != null && mc.getConnection() != null) {
@@ -102,13 +103,12 @@ public final class EmojiDecoComponentParser {
                 return arr;
             }
 
-            if (obj.has("emoji_deco:join")) {
-                JsonObject spec = obj.getAsJsonObject("emoji_deco:join");
-                String separator = spec.has("separator") && spec.get("separator").isJsonPrimitive()
-                        ? spec.get("separator").getAsString() : "";
-                if (spec.has("parts") && spec.get("parts").isJsonArray()) {
+            if ("emoji_deco:join".equals(dynType)) {
+                String separator = obj.has("separator") && obj.get("separator").isJsonPrimitive()
+                        ? obj.get("separator").getAsString() : "";
+                if (obj.has("parts") && obj.get("parts").isJsonArray()) {
                     java.util.List<String> parts = new java.util.ArrayList<>();
-                    for (JsonElement part : spec.getAsJsonArray("parts")) {
+                    for (JsonElement part : obj.getAsJsonArray("parts")) {
                         JsonElement expanded = expandDynamicProviders(part, args);
                         if (expanded != null && expanded.isJsonPrimitive())
                             parts.add(expanded.getAsString());
@@ -158,7 +158,7 @@ public final class EmojiDecoComponentParser {
                     yield new RichNode.Glowing(mode, List.of(
                             obj.has("contents") ? parseExpanded(obj.get("contents"), slot) : RichNode.empty()));
                 }
-                case "emoji_deco:image" -> parseImageNode(obj);
+                case "emoji_deco:image_to_glyph" -> parseImageNode(obj);
                 case "emoji_deco:rotate" -> {
                     float angle = 0f;
                     try { if (obj.has("angle") && obj.get("angle").isJsonPrimitive()) angle = obj.get("angle").getAsFloat(); } catch (NumberFormatException ignored) {}

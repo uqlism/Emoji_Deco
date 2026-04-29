@@ -23,12 +23,12 @@
         },
         "extra": [
             {
-                "type": "emoji_deco:image",
+                "type": "emoji_deco:image_to_glyph",
                 "width": 8,
                 "height": 8,
                 "advance": 0,
                 "image": {
-                    "type": "emoji_deco:skin",
+                    "type": "emoji_deco:fetch_skin",
                     "player": {
                         "emoji_deco:arg": {
                             "index": 0
@@ -43,12 +43,12 @@
                 "y": -0.5,
                 "z": 0.01,
                 "contents": {
-                    "type": "emoji_deco:image",
+                    "type": "emoji_deco:image_to_glyph",
                     "width": 9,
                     "height": 9,
                     "advance": 9,
                     "image": {
-                        "type": "emoji_deco:skin",
+                        "type": "emoji_deco:fetch_skin",
                         "player": {
                             "emoji_deco:arg": {
                                 "index": 0

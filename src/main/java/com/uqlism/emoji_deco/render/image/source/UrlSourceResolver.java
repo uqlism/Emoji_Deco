@@ -9,6 +9,7 @@ import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
 import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
+import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -57,8 +58,9 @@ public class UrlSourceResolver {
 
                 // デコード
                 ImageDecoder decoder = switch (fmt) {
-                    case GIF -> new GifDecoder();
-                    default  -> new StbDecoder();   // PNG / JPEG / UNKNOWN
+                    case GIF  -> new GifDecoder();
+                    case WEBP -> new WebpDecoder();
+                    default   -> new StbDecoder();
                 };
                 List<ImageDecoder.Frame> frames = decoder.decode(dl.bytes());
                 if (frames.isEmpty()) throw new IOException("No frames decoded from " + url);
@@ -69,7 +71,7 @@ public class UrlSourceResolver {
                 // GL 登録はレンダースレッドで
                 CompletableFuture<ResolvedSource> upload = new CompletableFuture<>();
                 Minecraft.getInstance().execute(() -> {
-                    ResourceLocation rl = ResourceLocation.parse("emoji_deco:url_" + counter.getAndIncrement());
+                    ResourceLocation rl = ResourceLocation.parse("emoji_deco:fetch_url_" + counter.getAndIncrement());
                     if (frames.size() == 1) {
                         Minecraft.getInstance().getTextureManager()
                                 .register(rl, new DynamicTexture(frames.get(0).pixels()));

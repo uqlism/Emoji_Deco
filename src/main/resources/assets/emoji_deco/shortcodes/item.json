@@ -1,11 +1,11 @@
 {
     "enable": true,
     "preview": {
-        "type": "emoji_deco:image",
+        "type": "emoji_deco:image_to_glyph",
         "width": 8,
         "height": 8,
         "image": {
-            "type": "emoji_deco:atlas",
+            "type": "emoji_deco:fetch_atlas",
             "atlas": "minecraft:textures/atlas/blocks.png",
             "sprite": "item/ink_sac"
         }
@@ -15,11 +15,11 @@
         "color": "#ffffff",
         "extra": [
             {
-                "type": "emoji_deco:image",
+                "type": "emoji_deco:image_to_glyph",
                 "width": 8,
                 "height": 8,
                 "image": {
-                    "type": "emoji_deco:atlas",
+                    "type": "emoji_deco:fetch_atlas",
                     "atlas": "minecraft:textures/atlas/blocks.png",
                     "sprite": {
                         "emoji_deco:join": {

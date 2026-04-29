@@ -89,8 +89,9 @@ public class ImageGlyphPool {
         s.lastUsed = tick;
         s.resolved = null;
         s.glyph    = null;
-        s.future   = "emoji_deco:url".equals(typeOf(sourceSpec))
-                ? UrlSourceResolver.resolve(sourceSpec) : null;
+        JsonObject fetchSpec = fetchSpecOf(sourceSpec);
+        s.future   = isAsyncType(typeOf(fetchSpec))
+                ? UrlSourceResolver.resolve(fetchSpec) : null;
         return BASE_CP + idx;
     }
 
@@ -108,7 +109,7 @@ public class ImageGlyphPool {
         synchronized (ImageGlyphPool.class) {
             for (Slot s : slots) {
                 if (s.isEmpty()) continue;
-                if (!"emoji_deco:url".equals(typeOf(s.spec))) s.evict(keyToSlot);
+                if (!isAsyncType(typeOf(fetchSpecOf(s.spec)))) s.evict(keyToSlot);
                 else s.glyph = null;
             }
         }
@@ -155,11 +156,12 @@ public class ImageGlyphPool {
 
     @Nullable
     private static ResolvedSource resolveSync(Slot s) {
-        return switch (typeOf(s.spec)) {
-            case "emoji_deco:atlas"    -> AtlasSourceResolver.resolveSync(s.spec);
-            case "emoji_deco:resource" -> ResourceSourceResolver.resolveSync(s.spec);
-            case "emoji_deco:skin"     -> SkinSourceResolver.resolveSync(s.spec);
-            default                    -> null;
+        JsonObject fetch = fetchSpecOf(s.spec);
+        return switch (typeOf(fetch)) {
+            case "emoji_deco:fetch_atlas"    -> AtlasSourceResolver.resolveSync(fetch);
+            case "emoji_deco:fetch_resource" -> ResourceSourceResolver.resolveSync(fetch);
+            case "emoji_deco:fetch_skin"     -> SkinSourceResolver.resolveSync(fetch);
+            default                          -> null;
         };
     }
 
@@ -196,6 +198,19 @@ public class ImageGlyphPool {
 
     private static String typeOf(@Nullable JsonObject spec) {
         return (spec != null && spec.has("type")) ? spec.get("type").getAsString() : "";
+    }
+
+    private static boolean isAsyncType(String type) {
+        return "emoji_deco:fetch_url".equals(type);
+    }
+
+    /** decode_image ラッパーを剥がして fetch spec を返す。format があれば注入する。 */
+    private static JsonObject fetchSpecOf(JsonObject spec) {
+        if (!"emoji_deco:decode_image".equals(typeOf(spec))) return spec;
+        if (!spec.has("source") || !spec.get("source").isJsonObject()) return spec;
+        JsonObject src = spec.getAsJsonObject("source").deepCopy();
+        if (spec.has("format")) src.addProperty("format", spec.get("format").getAsString());
+        return src;
     }
 
     private static String buildKey(JsonObject spec, @Nullable int[] crop,
