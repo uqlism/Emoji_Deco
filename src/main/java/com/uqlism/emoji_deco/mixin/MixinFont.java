@@ -6,6 +6,7 @@ import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
+import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Style;
@@ -72,7 +73,12 @@ public class MixinFont {
         }
         if (text instanceof AffineSequence as) {
             Matrix4f combined = new Matrix4f(matrix).translate(x, y, 0f).mul(as.localTransform());
+            // Negative determinant means the transform contains a reflection (e.g. #flip).
+            // Flip GL_FRONT_FACE so culled surfaces still render the correct face.
+            boolean flipWinding = as.localTransform().determinant() < 0;
+            if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
             cir.setReturnValue(self.drawInBatch(as.inner(), 0f, 0f, color, dropShadow, combined, buffers, mode, bgColor, packedLight));
+            if (flipWinding) GL11.glFrontFace(GL11.GL_CCW);
             return;
         }
         if (text instanceof ConcatSequence cs) {
@@ -118,7 +124,10 @@ public class MixinFont {
         }
         if (text instanceof AffineSequence as) {
             Matrix4f combined = new Matrix4f(matrix).translate(x, y, 0f).mul(as.localTransform());
+            boolean flipWinding = as.localTransform().determinant() < 0;
+            if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
             self.drawInBatch8xOutline(as.inner(), 0f, 0f, color, outlineColor, combined, buffers, packedLight);
+            if (flipWinding) GL11.glFrontFace(GL11.GL_CCW);
             ci.cancel();
             return;
         }
