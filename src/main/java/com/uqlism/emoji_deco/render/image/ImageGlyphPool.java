@@ -94,7 +94,7 @@ public class ImageGlyphPool {
         return BASE_CP + idx;
     }
 
-    public static void tick() {
+    public static synchronized void tick() {
         tick++;
         long threshold = tick - ANIM_PAUSE_TICKS;
         for (Slot s : slots) {
@@ -120,7 +120,7 @@ public class ImageGlyphPool {
     // ── MixinFontSet から呼ばれる（レンダースレッド） ─────────────────────────
 
     @Nullable
-    public static GlyphInfo getGlyphInfo(int codePoint) {
+    public static synchronized GlyphInfo getGlyphInfo(int codePoint) {
         Slot s = slotAt(codePoint);
         if (s == null) return null;
         float adv = Float.isNaN(s.advance) ? s.w + 1.0f : s.advance;
@@ -128,7 +128,7 @@ public class ImageGlyphPool {
     }
 
     @Nullable
-    public static BakedGlyph getGlyph(int codePoint) {
+    public static synchronized BakedGlyph getGlyph(int codePoint) {
         Slot s = slotAt(codePoint);
         if (s == null) return null;
         s.lastUsed = tick;
