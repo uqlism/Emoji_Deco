@@ -51,9 +51,7 @@
       }
     },
     "extra": [
-      {
-        "emoji_deco:slot": {}
-      }
+      { "type": "emoji_deco:slot" }
     ]
   }
 }

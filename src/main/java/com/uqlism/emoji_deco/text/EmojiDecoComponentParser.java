@@ -149,100 +149,93 @@ public final class EmojiDecoComponentParser {
     }
 
     private static RichNode parseObject(JsonObject obj, @Nullable RichNode slot) {
-        if (obj.has("emoji_deco:slot")) {
-            return slot != null ? slot : RichNode.empty();
-        }
-        if (obj.has("emoji_deco:glow")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:glow");
-            LightMode lightMode = (!spec.has("glow") || spec.get("glow").getAsBoolean())
-                    ? LightMode.GLOW : LightMode.AMBIENT;
-            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return new RichNode.Glowing(lightMode, List.of(contents));
-        }
-        // ── 新フォーマット: image_to_char + ソースノード ─────────────────────
-        if (obj.has("emoji_deco:image")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:image");
-            int w = intOf(spec, "width",  8);
-            int h = intOf(spec, "height", 8);
-            float advance = advanceOf(spec);
-            JsonElement imageEl = spec.get("image");
-            if (imageEl == null || !imageEl.isJsonObject()) return RichNode.empty();
-            JsonObject imageObj = imageEl.getAsJsonObject();
-            // image は source ノード単体か、crop(source) のどちらか
-            int[] crop = null;
-            JsonObject pipelineObj = imageObj;
-            if (imageObj.has("emoji_deco:crop")) {
-                JsonObject cropSpec = imageObj.getAsJsonObject("emoji_deco:crop");
-                crop = parseCrop(cropSpec.get("uv"));
-                pipelineObj = cropSpec;
-            }
-            JsonObject src = findImageSource(pipelineObj);
-            if (src == null) return RichNode.empty();
-            return new RichNode.Image(src, crop, w, h, advance);
-        }
-        if (obj.has("emoji_deco:rotate")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:rotate");
-            float angle = 0f;
-            try { if (spec.has("angle") && spec.get("angle").isJsonPrimitive()) angle = spec.get("angle").getAsFloat(); } catch (NumberFormatException ignored) {}
-            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return new RichNode.Rotated(angle, List.of(contents));
-        }
-        if (obj.has("emoji_deco:scale")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:scale");
-            float x = 1f, y = 1f;
-            try { if (spec.has("x") && spec.get("x").isJsonPrimitive()) x = spec.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
-            try { if (spec.has("y") && spec.get("y").isJsonPrimitive()) y = spec.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
-            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return new RichNode.Scaled(x, y, List.of(contents));
-        }
-        if (obj.has("emoji_deco:offset")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:offset");
-            float x = 0f, y = 0f, z = 0f;
-            try { if (spec.has("x") && spec.get("x").isJsonPrimitive()) x = spec.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
-            try { if (spec.has("y") && spec.get("y").isJsonPrimitive()) y = spec.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
-            try { if (spec.has("z") && spec.get("z").isJsonPrimitive()) z = spec.get("z").getAsFloat(); } catch (NumberFormatException ignored) {}
-            RichNode contents = spec.has("contents") ? parseExpanded(spec.get("contents"), slot) : RichNode.empty();
-            return new RichNode.Offset(x, y, z, List.of(contents));
-        }
-        if (obj.has("emoji_deco:apply_shortcode")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:apply_shortcode");
-            String shortcode = stringOf(spec.get("shortcode"), "");
-            if (shortcode.isEmpty() || !ShortcodeManager.has(shortcode)) return RichNode.empty();
-            String[] callArgs = extractArgsArray(spec);
-            String key = "s:" + shortcode;
-            Set<String> stack = RESOLVING.get();
-            if (stack.contains(key)) {
-                LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode detected: '{}'", shortcode);
-                return RichNode.empty();
-            }
-            stack.add(key);
-            try {
-                return ShortcodeManager.resolve(shortcode, callArgs);
-            } finally {
-                stack.remove(key);
-            }
-        }
-        if (obj.has("emoji_deco:apply_decorator")) {
-            JsonObject spec = obj.getAsJsonObject("emoji_deco:apply_decorator");
-            String decorator = stringOf(spec.get("decorator"), "");
-            if (decorator.isEmpty() || !DecoratorManager.has(decorator)) return RichNode.empty();
-            RichNode slotNode = spec.has("slot") ? parseExpanded(spec.get("slot"), slot) : RichNode.empty();
-            String[] callArgs = extractArgsArray(spec);
-            String key = "d:" + decorator;
-            Set<String> stack = RESOLVING.get();
-            if (stack.contains(key)) {
-                LOGGER.warn("[EmojiDeco] Cyclic apply_decorator detected: '{}'", decorator);
-                return slotNode;
-            }
-            stack.add(key);
-            try {
-                RichNode result = DecoratorManager.resolve(decorator, slotNode, callArgs);
-                return result != null ? result : slotNode;
-            } finally {
-                stack.remove(key);
-            }
+        if (obj.has("type")) {
+            return switch (stringOf(obj.get("type"), "")) {
+                case "emoji_deco:slot" -> slot != null ? slot : RichNode.empty();
+                case "emoji_deco:glow" -> {
+                    LightMode mode = (!obj.has("glow") || obj.get("glow").getAsBoolean())
+                            ? LightMode.GLOW : LightMode.AMBIENT;
+                    yield new RichNode.Glowing(mode, List.of(
+                            obj.has("contents") ? parseExpanded(obj.get("contents"), slot) : RichNode.empty()));
+                }
+                case "emoji_deco:image" -> parseImageNode(obj);
+                case "emoji_deco:rotate" -> {
+                    float angle = 0f;
+                    try { if (obj.has("angle") && obj.get("angle").isJsonPrimitive()) angle = obj.get("angle").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    yield new RichNode.Rotated(angle, List.of(
+                            obj.has("contents") ? parseExpanded(obj.get("contents"), slot) : RichNode.empty()));
+                }
+                case "emoji_deco:scale" -> {
+                    float x = 1f, y = 1f;
+                    try { if (obj.has("x") && obj.get("x").isJsonPrimitive()) x = obj.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    try { if (obj.has("y") && obj.get("y").isJsonPrimitive()) y = obj.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    yield new RichNode.Scaled(x, y, List.of(
+                            obj.has("contents") ? parseExpanded(obj.get("contents"), slot) : RichNode.empty()));
+                }
+                case "emoji_deco:offset" -> {
+                    float x = 0f, y = 0f, z = 0f;
+                    try { if (obj.has("x") && obj.get("x").isJsonPrimitive()) x = obj.get("x").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    try { if (obj.has("y") && obj.get("y").isJsonPrimitive()) y = obj.get("y").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    try { if (obj.has("z") && obj.get("z").isJsonPrimitive()) z = obj.get("z").getAsFloat(); } catch (NumberFormatException ignored) {}
+                    yield new RichNode.Offset(x, y, z, List.of(
+                            obj.has("contents") ? parseExpanded(obj.get("contents"), slot) : RichNode.empty()));
+                }
+                case "emoji_deco:apply_shortcode" -> parseApplyShortcode(obj);
+                case "emoji_deco:apply_decorator" -> parseApplyDecorator(obj, slot);
+                default -> RichNode.empty();
+            };
         }
         return parseStandard(obj, slot);
+    }
+
+    private static RichNode parseImageNode(JsonObject obj) {
+        int w = intOf(obj, "width", 8);
+        int h = intOf(obj, "height", 8);
+        float advance = advanceOf(obj);
+        JsonElement imageEl = obj.get("image");
+        if (imageEl == null || !imageEl.isJsonObject()) return RichNode.empty();
+        JsonObject imageObj = imageEl.getAsJsonObject();
+        if (!imageObj.has("type")) return RichNode.empty();
+        int[] crop = imageObj.has("uv") ? parseCrop(imageObj.get("uv")) : null;
+        return new RichNode.Image(imageObj, crop, w, h, advance);
+    }
+
+    private static RichNode parseApplyShortcode(JsonObject obj) {
+        String shortcode = stringOf(obj.get("shortcode"), "");
+        if (shortcode.isEmpty() || !ShortcodeManager.has(shortcode)) return RichNode.empty();
+        String[] callArgs = extractArgsArray(obj);
+        String key = "s:" + shortcode;
+        Set<String> stack = RESOLVING.get();
+        if (stack.contains(key)) {
+            LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode detected: '{}'", shortcode);
+            return RichNode.empty();
+        }
+        stack.add(key);
+        try {
+            return ShortcodeManager.resolve(shortcode, callArgs);
+        } finally {
+            stack.remove(key);
+        }
+    }
+
+    private static RichNode parseApplyDecorator(JsonObject obj, @Nullable RichNode slot) {
+        String decorator = stringOf(obj.get("decorator"), "");
+        if (decorator.isEmpty() || !DecoratorManager.has(decorator)) return RichNode.empty();
+        RichNode slotNode = obj.has("slot") ? parseExpanded(obj.get("slot"), slot) : RichNode.empty();
+        String[] callArgs = extractArgsArray(obj);
+        String key = "d:" + decorator;
+        Set<String> stack = RESOLVING.get();
+        if (stack.contains(key)) {
+            LOGGER.warn("[EmojiDeco] Cyclic apply_decorator detected: '{}'", decorator);
+            return slotNode;
+        }
+        stack.add(key);
+        try {
+            RichNode result = DecoratorManager.resolve(decorator, slotNode, callArgs);
+            return result != null ? result : slotNode;
+        } finally {
+            stack.remove(key);
+        }
     }
 
     private static RichNode parseStandard(JsonObject obj, @Nullable RichNode slot) {
@@ -283,26 +276,6 @@ public final class EmojiDecoComponentParser {
     }
 
     // ── image pipeline ─────────────────────────────────────────────────────────
-
-    /**
-     * image pipeline object から画像ソース spec を抽出する。
-     * 認識するキー: emoji_deco:skin / emoji_deco:url / emoji_deco:atlas / emoji_deco:resource
-     */
-    @Nullable
-    private static JsonObject findImageSource(JsonObject obj) {
-        if (obj.has("emoji_deco:skin"))     return buildSrc("skin",     obj.getAsJsonObject("emoji_deco:skin"));
-        if (obj.has("emoji_deco:url"))      return buildSrc("url",      obj.getAsJsonObject("emoji_deco:url"));
-        if (obj.has("emoji_deco:atlas"))    return buildSrc("atlas",    obj.getAsJsonObject("emoji_deco:atlas"));
-        if (obj.has("emoji_deco:resource")) return buildSrc("resource", obj.getAsJsonObject("emoji_deco:resource"));
-        return null;
-    }
-
-    private static JsonObject buildSrc(String type, JsonObject params) {
-        JsonObject src = new JsonObject();
-        src.addProperty("type", type);
-        for (var e : params.entrySet()) src.add(e.getKey(), e.getValue());
-        return src;
-    }
 
     private static float advanceOf(JsonObject spec) {
         return (spec.has("advance") && spec.get("advance").isJsonPrimitive())

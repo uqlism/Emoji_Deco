@@ -31,19 +31,19 @@ class ParsingIntegrationTest extends MinecraftTestBase {
         // Decorators
         putDecorator("bold",
                 """
-                {"text":"","bold":true,"extra":[{"emoji_deco:slot":{}}]}
+                {"text":"","bold":true,"extra":[{"type":"emoji_deco:slot"}]}
                 """);
         putDecorator("italic",
                 """
-                {"text":"","italic":true,"extra":[{"emoji_deco:slot":{}}]}
+                {"text":"","italic":true,"extra":[{"type":"emoji_deco:slot"}]}
                 """);
         putDecorator("color",
                 """
-                {"text":"","color":{"emoji_deco:arg":{"index":0,"default":"white"}},"extra":[{"emoji_deco:slot":{}}]}
+                {"text":"","color":{"emoji_deco:arg":{"index":0,"default":"white"}},"extra":[{"type":"emoji_deco:slot"}]}
                 """);
         putDecorator("size",
                 """
-                {"emoji_deco:scale":{"x":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"y":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"contents":{"emoji_deco:slot":{}}}}
+                {"type":"emoji_deco:scale","x":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"y":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"contents":{"type":"emoji_deco:slot"}}
                 """);
 
         // Shortcodes

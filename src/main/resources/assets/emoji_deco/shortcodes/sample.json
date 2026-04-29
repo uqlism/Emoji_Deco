@@ -1,0 +1,33 @@
+{
+    "enable": true,
+    "display": [
+        {
+            "type": "emoji_deco:apply_shortcode",
+            "shortcode": "player",
+            "args": [
+                {
+                    "emoji_deco:arg": {
+                        "index": 0,
+                        "type": "string",
+                        "default": "",
+                        "label": "<player>",
+                        "suggestions": { "emoji_deco:player_names": {} }
+                    }
+                }
+            ]
+        },
+        " ",
+        {
+            "type": "emoji_deco:apply_decorator",
+            "decorator": "color",
+            "args": ["yellow"],
+            "slot": {
+                "emoji_deco:arg": {
+                    "index": 0,
+                    "type": "string",
+                    "default": ""
+                }
+            }
+        }
+    ]
+}

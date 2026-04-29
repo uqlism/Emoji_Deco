@@ -1,82 +1,63 @@
 {
-  "enable": true,
-  "args": [
-    {
-      "type": "string",
-      "default": "",
-      "suggestions": {
-        "emoji_deco:player_names": {}
-      }
-    }
-  ],
-  "display": {
-    "text": "",
-    "color": "#ffffff",
-    "italic": false,
-    "hoverEvent": {
-      "action": "show_text",
-      "contents": {
-        "emoji_deco:arg": {
-          "index": 0
+    "enable": true,
+    "args": [
+        {
+            "type": "string",
+            "default": "",
+            "suggestions": {
+                "emoji_deco:player_names": {}
+            }
         }
-      }
-    },
-    "extra": [
-      {
-        "emoji_deco:image": {
-          "width": 8,
-          "height": 8,
-          "advance": 0,
-          "image": {
-            "emoji_deco:crop": {
-              "emoji_deco:skin": {
-                "player": {
-                  "emoji_deco:arg": {
+    ],
+    "display": {
+        "text": "",
+        "color": "#ffffff",
+        "italic": false,
+        "hoverEvent": {
+            "action": "show_text",
+            "contents": {
+                "emoji_deco:arg": {
                     "index": 0
-                  }
                 }
-              },
-              "uv": [
-                8,
-                8,
-                16,
-                16
-              ]
             }
-          }
-        }
-      },
-      {
-        "emoji_deco:offset": {
-          "x": -0.5,
-          "y": -0.5,
-          "z": 0.01,
-          "contents": {
-            "emoji_deco:image": {
-              "width": 9,
-              "height": 9,
-              "advance": 9,
-              "image": {
-                "emoji_deco:crop": {
-                  "emoji_deco:skin": {
+        },
+        "extra": [
+            {
+                "type": "emoji_deco:image",
+                "width": 8,
+                "height": 8,
+                "advance": 0,
+                "image": {
+                    "type": "emoji_deco:skin",
                     "player": {
-                      "emoji_deco:arg": {
-                        "index": 0
-                      }
-                    }
-                  },
-                  "uv": [
-                    40,
-                    8,
-                    48,
-                    16
-                  ]
+                        "emoji_deco:arg": {
+                            "index": 0
+                        }
+                    },
+                    "uv": [8, 8, 16, 16]
                 }
-              }
+            },
+            {
+                "type": "emoji_deco:offset",
+                "x": -0.5,
+                "y": -0.5,
+                "z": 0.01,
+                "contents": {
+                    "type": "emoji_deco:image",
+                    "width": 9,
+                    "height": 9,
+                    "advance": 9,
+                    "image": {
+                        "type": "emoji_deco:skin",
+                        "player": {
+                            "emoji_deco:arg": {
+                                "index": 0
+                            }
+                        },
+                        "uv": [40, 8, 48, 16]
+                    }
+                }
             }
-          }
-        }
-      }
-    ]
-  }
+        ]
+    }
 }
