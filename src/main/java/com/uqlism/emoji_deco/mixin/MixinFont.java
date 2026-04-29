@@ -220,6 +220,10 @@ public class MixinFont {
             return;
         }
         if (text instanceof AffineSequence as) {
+            if (as.useInnerWidth()) {
+                cir.setReturnValue(self.width(as.inner()));
+                return;
+            }
             // Transform the bounding box corners through localTransform and return the max X extent.
             // JOML naming: mCR = column C, row R.  result.x = m00*vx + m10*vy + m30
             float w = self.width(as.inner());

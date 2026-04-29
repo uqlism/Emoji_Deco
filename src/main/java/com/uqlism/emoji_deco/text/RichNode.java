@@ -117,13 +117,13 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
         } else if (node instanceof Offset o) {
             wrapAffine(font, o.children(), lightMode, inherited, out,
-                    new Matrix4f().translate(o.x(), o.y(), o.z()));
+                    new Matrix4f().translate(o.x(), o.y(), o.z()), true);
         } else if (node instanceof Scaled s) {
             wrapAffine(font, s.children(), lightMode, inherited, out, seq -> {
                 float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
                 float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : 0f;
                 return new Matrix4f().translate(ox, oy, 0f).scale(s.scaleX(), s.scaleY(), 1f);
-            });
+            }, false);
         } else if (node instanceof Rotated r) {
             wrapAffine(font, r.children(), lightMode, inherited, out, seq -> {
                 float cx = font.width(seq) / 2f;
@@ -132,32 +132,34 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                         .translate(cx, cy, 0f)
                         .rotateZ((float) Math.toRadians(r.angle()))
                         .translate(-cx, -cy, 0f);
-            });
+            }, true);
         }
     }
 
     private static void wrapAffine(Font font, List<RichNode> children,
                                     LightMode lightMode, Style inherited,
-                                    List<FormattedCharSequence> out, Matrix4f matrix) {
+                                    List<FormattedCharSequence> out, Matrix4f matrix,
+                                    boolean useInnerWidth) {
         List<FormattedCharSequence> inner = new ArrayList<>();
         for (RichNode child : children)
             collectSegments(font, child, lightMode, inherited, inner);
         if (!inner.isEmpty()) {
             FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
-            out.add(new AffineSequence(seq, matrix));
+            out.add(new AffineSequence(seq, matrix, useInnerWidth));
         }
     }
 
     private static void wrapAffine(Font font, List<RichNode> children,
                                     LightMode lightMode, Style inherited,
                                     List<FormattedCharSequence> out,
-                                    java.util.function.Function<FormattedCharSequence, Matrix4f> matrixFn) {
+                                    java.util.function.Function<FormattedCharSequence, Matrix4f> matrixFn,
+                                    boolean useInnerWidth) {
         List<FormattedCharSequence> inner = new ArrayList<>();
         for (RichNode child : children)
             collectSegments(font, child, lightMode, inherited, inner);
         if (!inner.isEmpty()) {
             FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
-            out.add(new AffineSequence(seq, matrixFn.apply(seq)));
+            out.add(new AffineSequence(seq, matrixFn.apply(seq), useInnerWidth));
         }
     }
 
