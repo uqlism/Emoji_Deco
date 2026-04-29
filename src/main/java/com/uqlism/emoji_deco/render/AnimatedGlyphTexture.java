@@ -14,9 +14,10 @@ import java.util.concurrent.Executor;
 /**
  * 事前デコード済みフレームリストから生成されるアニメーションテクスチャ。
  *
- * GL テクスチャは 1フレーム分のサイズで確保し、tick(gameTick) の呼び出し時に
- * gameTick % totalLoopTicks でフレームを決定してアップロードする。
- * 絶対時刻ベースのため、オフスクリーン復帰時も整合性が保たれる。
+ * コードポイント ↔ ResourceLocation のマッピングは永続。
+ * GL テクスチャ（VRAM）は ImageGlyphPool から unloadGpu() が呼ばれたとき解放され、
+ * 次回 getGlyph() 時に ensureGpu() で NativeImage から再アップロードする。
+ * NativeImage（RAM）は close() まで保持し続ける。
  */
 public class AnimatedGlyphTexture extends AbstractTexture {
 
@@ -25,8 +26,9 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     private final int   totalLoopTicks;
     private final int   frameW, frameH;
     private final boolean animated;
-    private int currentFrame = 0;
-    private boolean closed = false;
+    private int  currentFrame = 0;
+    private boolean closed    = false;
+    private boolean gpuLoaded = false;
 
     private AnimatedGlyphTexture(List<ImageDecoder.Frame> frames) {
         this.frames   = frames;
@@ -39,29 +41,48 @@ public class AnimatedGlyphTexture extends AbstractTexture {
         int sum = 0;
         for (int i = 0; i < n; i++) {
             cumulativeTicks[i] = sum;
-            sum += Math.max(1, frames.get(i).durationMs() / 50);  // ms → tick
+            sum += Math.max(1, frames.get(i).durationMs() / 50);
         }
         totalLoopTicks = Math.max(1, sum);
     }
 
-    /**
-     * フレームリストから生成する。レンダースレッドから呼ぶこと。
-     * frames の所有権は移る（close() で解放される）。
-     */
+    /** フレームリストから生成する。レンダースレッドから呼ぶこと。 */
     public static AnimatedGlyphTexture fromFrames(List<ImageDecoder.Frame> frames) {
         if (frames.isEmpty()) throw new IllegalArgumentException("Empty frame list");
         AnimatedGlyphTexture tex = new AnimatedGlyphTexture(frames);
-        TextureUtil.prepareImage(tex.getId(), tex.frameW, tex.frameH);
-        RenderSystem.bindTexture(tex.getId());
-        frames.get(0).pixels().upload(0, 0, 0, false);
+        tex.ensureGpu();
         return tex;
     }
 
+    // ── GPU ストリーミング ────────────────────────────────────────────────────
+
     /**
-     * 絶対 tick からフレームを決定してアップロードする。レンダースレッドから呼ぶこと。
+     * GL テクスチャが未ロードなら現フレームをアップロードする。
+     * レンダースレッドから getGlyph() 経由で呼ばれる。
      */
+    public void ensureGpu() {
+        if (closed || gpuLoaded) return;
+        TextureUtil.prepareImage(getId(), frameW, frameH);
+        RenderSystem.bindTexture(getId());
+        frames.get(currentFrame).pixels().upload(0, 0, 0, false);
+        gpuLoaded = true;
+    }
+
+    /**
+     * GL テクスチャ ID を解放して VRAM を返却する。NativeImage は保持。
+     * 長時間描画されなかったとき ImageGlyphPool から呼ばれる。
+     */
+    public void unloadGpu() {
+        if (!gpuLoaded) return;
+        releaseId();   // id を NOT_ASSIGNED に戻す（次の getId() で新規割り当て）
+        gpuLoaded = false;
+    }
+
+    // ── アニメーション ────────────────────────────────────────────────────────
+
+    /** 絶対 tick からフレームを決定してアップロードする。レンダースレッドから呼ぶこと。 */
     public void tick(long gameTick) {
-        if (!animated || closed) return;
+        if (!animated || closed || !gpuLoaded) return;
         int t = (int)(gameTick % totalLoopTicks);
         int newFrame = 0;
         for (int i = frames.size() - 1; i > 0; i--) {
@@ -76,26 +97,21 @@ public class AnimatedGlyphTexture extends AbstractTexture {
 
     public boolean isAnimated() { return animated; }
 
-    /** AbstractTexture が要求する load() は使用しない。 */
-    @Override
-    public void load(ResourceManager rm) {}
+    @Override public void load(ResourceManager rm) {}
 
     /**
-     * TextureManager がリソースリロード時に reset() → close() → load() を呼ぶが、
+     * TextureManager がリソースリロード時に reset() を呼ぶが、
      * このテクスチャは ImageGlyphPool が管理するため何もしない。
-     * reset() をオーバーライドしないと close() が呼ばれて NativeImage が解放されクラッシュする。
      */
     @Override
     public void reset(TextureManager manager, ResourceManager resourceManager,
-                      ResourceLocation location, Executor executor) {
-        // リソースリロードに影響されない — ImageGlyphPool.onResourceReload() で管理する
-    }
+                      ResourceLocation location, Executor executor) {}
 
     @Override
     public void close() {
         if (closed) return;
         closed = true;
+        if (gpuLoaded) { releaseId(); gpuLoaded = false; }
         frames.forEach(f -> f.pixels().close());
-        releaseId();
     }
 }

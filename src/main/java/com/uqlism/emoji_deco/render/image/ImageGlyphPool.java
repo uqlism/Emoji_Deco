@@ -35,8 +35,11 @@ public class ImageGlyphPool {
     public static final ResourceLocation IMAGE_FONT = ResourceLocation.parse("emoji_deco:image");
     public static final int  BASE_CP         = 0xD000;
     /** 0xD000+2048 = 0xD800（サロゲート開始）の直前まで安全に使用できる最大値 */
-    private static final int POOL_SIZE       = 2048;
+    private static final int  POOL_SIZE        = 2048;
+    /** この tick 数以上描画されなければアニメーションを停止する（1秒） */
     private static final long ANIM_PAUSE_TICKS = 20L;
+    /** この tick 数以上描画されなければ GL テクスチャを解放する（5秒） */
+    private static final long GPU_UNLOAD_TICKS = 100L;
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -104,10 +107,14 @@ public class ImageGlyphPool {
 
     public static synchronized void tick() {
         tick++;
-        long threshold = tick - ANIM_PAUSE_TICKS;
+        long animThreshold = tick - ANIM_PAUSE_TICKS;
+        long gpuThreshold  = tick - GPU_UNLOAD_TICKS;
         for (Slot s : slots) {
-            if (s.resolved instanceof ResolvedSource.Animated a && s.lastUsed >= threshold) {
-                a.animator().tick(tick);
+            if (!(s.resolved instanceof ResolvedSource.Animated a)) continue;
+            if (s.lastUsed >= animThreshold) {
+                a.animator().tick(tick);           // アクティブ: アニメーション進行
+            } else if (s.lastUsed < gpuThreshold) {
+                a.animator().unloadGpu();          // 長時間非表示: VRAM 解放
             }
         }
     }
@@ -154,6 +161,8 @@ public class ImageGlyphPool {
         }
 
         if (s.resolved == null) return null;
+        // 非表示期間中に GL テクスチャが解放されていれば再アップロード
+        if (s.resolved instanceof ResolvedSource.Animated a) a.animator().ensureGpu();
         if (s.glyph   == null) s.glyph = bake(s);
         return s.glyph;
     }
