@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.render.image;
 
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.blaze3d.font.SheetGlyphInfo;
+import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.source.AtlasSourceResolver;
 import com.uqlism.emoji_deco.render.image.source.ResourceSourceResolver;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
@@ -10,6 +11,7 @@ import net.minecraft.client.gui.font.GlyphRenderTypes;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -19,29 +21,33 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * 固定サイズ（POOL_SIZE スロット）のコードポイントプール。
+ * コードポイントプール（0xD000–0xD7FF、最大 2048 スロット）。
  *
- * tick 最適化: アニメーションは ANIM_PAUSE_TICKS 以内に描画されたスロットのみ進める。
- * 退避クリーンアップ: LRU 退避時に Animated スロットの animator.close() を呼ぶ。
+ * LRU 退避は行わない。コードポイントを再利用すると既存の Component が
+ * 別の画像を指してしまう（黒四角・壊れた表示）ため、一度割り当てたスロットは
+ * ゲームプレイ中は解放しない。プール満杯時は新規画像を tofu として表示する。
+ *
+ * リソースリロード時: URL 以外のスロットは evict、URL スロットは glyph のみクリア。
+ * tick 最適化: ANIM_PAUSE_TICKS 以内に描画されたアニメーションスロットのみ進める。
  */
 public class ImageGlyphPool {
 
     public static final ResourceLocation IMAGE_FONT = ResourceLocation.parse("emoji_deco:image");
-    public static final int BASE_CP    = 0xD000;
-    private static final int POOL_SIZE = 256;
+    public static final int  BASE_CP         = 0xD000;
+    /** 0xD000+2048 = 0xD800（サロゲート開始）の直前まで安全に使用できる最大値 */
+    private static final int POOL_SIZE       = 2048;
     private static final long ANIM_PAUSE_TICKS = 20L;
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     // ── スロット ──────────────────────────────────────────────────────────────
 
-    /** 1スロット分の全状態。key == null なら空きスロット。 */
     private static final class Slot {
-        // 割り当て時に確定する不変情報
         String     key;
         ImageSpec  imageSpec;
         int[]      crop;
         int        w, h;
         float      advance;
-        // 実行時に変化する状態
         long       lastUsed;
         ResolvedSource resolved;
         BakedGlyph     glyph;
@@ -49,7 +55,6 @@ public class ImageGlyphPool {
 
         boolean isEmpty() { return key == null; }
 
-        /** LRU 退避。Animated なら animator を close() する。 */
         void evict(Map<String, Integer> index) {
             if (resolved instanceof ResolvedSource.Animated a) a.animator().close();
             index.remove(key);
@@ -66,6 +71,7 @@ public class ImageGlyphPool {
 
     private static final Map<String, Integer> keyToSlot = new HashMap<>();
     private static long tick = 0L;
+    private static boolean poolFullLogged = false;
 
     private ImageGlyphPool() {}
 
@@ -79,6 +85,8 @@ public class ImageGlyphPool {
         if (existing != null) { slots[existing].lastUsed = tick; return BASE_CP + existing; }
 
         int idx = claimSlot(key);
+        if (idx < 0) return 0; // pool full → tofu (0 はフォントに存在しないコードポイント)
+
         Slot s     = slots[idx];
         s.key      = key;
         s.imageSpec = imageSpec;
@@ -110,14 +118,19 @@ public class ImageGlyphPool {
                 if (s.isEmpty()) continue;
                 boolean isUrl = s.imageSpec instanceof ImageSpec.Decoded d
                     && d.source() instanceof BinarySource.Url;
-                if (!isUrl) s.evict(keyToSlot);
-                else s.glyph = null;
+                if (!isUrl) {
+                    s.evict(keyToSlot);
+                } else {
+                    // URL テクスチャはコードポイントを維持し glyph だけ再ベイク
+                    s.glyph = null;
+                }
             }
+            poolFullLogged = false; // リロード後は警告をリセット
         }
         ResourceSourceResolver.onResourceReload();
     }
 
-    // ── MixinFontSet から呼ばれる（レンダースレッド） ─────────────────────────
+    // ── MixinFontSet から呼ばれる ──────────────────────────────────────────────
 
     @Nullable
     public static synchronized GlyphInfo getGlyphInfo(int codePoint) {
@@ -183,18 +196,20 @@ public class ImageGlyphPool {
         return new BakedGlyph(rt, u0, u1, v0, v1, 0f, s.w, 3f, 3f + s.h);
     }
 
+    /** 空きスロットを確保して返す。プールが満杯なら -1 を返す（LRU 退避は行わない）。 */
     private static int claimSlot(String key) {
         for (int i = 0; i < POOL_SIZE; i++) {
-            if (slots[i].isEmpty()) { slots[i].key = key; keyToSlot.put(key, i); return i; }
+            if (slots[i].isEmpty()) {
+                slots[i].key = key;
+                keyToSlot.put(key, i);
+                return i;
+            }
         }
-        int oldest = 0;
-        for (int i = 1; i < POOL_SIZE; i++) {
-            if (slots[i].lastUsed < slots[oldest].lastUsed) oldest = i;
+        if (!poolFullLogged) {
+            LOGGER.warn("[EmojiDeco] Image glyph pool is full ({} slots). New images will appear as tofu.", POOL_SIZE);
+            poolFullLogged = true;
         }
-        slots[oldest].evict(keyToSlot);
-        slots[oldest].key = key;
-        keyToSlot.put(key, oldest);
-        return oldest;
+        return -1;
     }
 
     private static String buildKey(ImageSpec imageSpec, @Nullable int[] crop,
