@@ -31,12 +31,12 @@ public sealed interface ParsedNode permits
     record Many(List<ParsedNode> items) implements ParsedNode {}
 
     /** Inline image glyph. w/h/advance are always literals; imageSpec may contain expressions. */
-    record Image(ParsedImageSpec imageSpec, @Nullable int[] crop, int w, int h, float advance)
+    record Image(ParsedImageSpec imageSpec, @Nullable int[] crop, FloatVal w, FloatVal h, FloatVal advance)
             implements ParsedNode {
         @Override public boolean equals(Object o) {
             if (!(o instanceof Image i)) return false;
             return Objects.equals(imageSpec, i.imageSpec) && Arrays.equals(crop, i.crop)
-                    && w == i.w && h == i.h && Float.compare(advance, i.advance) == 0;
+                    && Objects.equals(w, i.w) && Objects.equals(h, i.h) && Objects.equals(advance, i.advance);
         }
         @Override public int hashCode() {
             return Objects.hash(imageSpec, Arrays.hashCode(crop), w, h, advance);

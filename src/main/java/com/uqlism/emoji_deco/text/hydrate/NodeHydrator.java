@@ -102,7 +102,10 @@ public final class NodeHydrator {
     private static RichNode hydrateImage(ParsedNode.Image img, HydrateContext.Tracked ctx) {
         ImageSpec spec = evalImageSpec(img.imageSpec(), ctx);
         if (spec == null) return RichNode.empty();
-        return new RichNode.Image(spec, img.crop(), img.w(), img.h(), img.advance());
+        int w = Math.round(evalFloat(img.w(), ctx));
+        int h = Math.round(evalFloat(img.h(), ctx));
+        float advance = evalFloat(img.advance(), ctx);
+        return new RichNode.Image(spec, img.crop(), w, h, advance);
     }
 
     private static RichNode hydrateGlow(ParsedNode.Glow g, HydrateContext.Tracked ctx) {

@@ -106,10 +106,9 @@ public final class ParsedNodeParser {
     // ── Image ─────────────────────────────────────────────────────────────────
 
     private static ParsedNode parseImage(JsonObject obj, @Nullable JsonArray topArgSpecs) {
-        int   w       = intOf(obj, "width",   8);
-        int   h       = intOf(obj, "height",  8);
-        float advance = obj.has("advance") && obj.get("advance").isJsonPrimitive()
-                ? obj.get("advance").getAsFloat() : Float.NaN;
+        ParsedNode.FloatVal w       = parseFloat(obj.get("width"),   8f,        topArgSpecs);
+        ParsedNode.FloatVal h       = parseFloat(obj.get("height"),  8f,        topArgSpecs);
+        ParsedNode.FloatVal advance = parseFloat(obj.get("advance"), Float.NaN, topArgSpecs);
         JsonElement imageEl = obj.get("image");
         if (imageEl == null || !imageEl.isJsonObject()) return ParsedNode.empty();
         JsonObject imageObj = imageEl.getAsJsonObject();
