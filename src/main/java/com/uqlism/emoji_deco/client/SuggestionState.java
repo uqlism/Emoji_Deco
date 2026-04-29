@@ -162,7 +162,8 @@ public class SuggestionState {
         ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
             String alias     = e.getKey();
             String canonical = e.getValue();
-            if (addedCanonicals.contains(canonical)) return;
+            if (addedCanonicals.contains(canonical)) return; // canonical 既出
+            if (ShortcodeManager.has(alias)) return;         // alias キー自体が正規名 → getSuggestions 側で既に出る
             addedCanonicals.add(canonical);
             results.add(new Entry(
                     ":" + alias + ":",
