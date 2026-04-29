@@ -1,5 +1,7 @@
 package com.uqlism.emoji_deco.render.image.source;
 
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
@@ -84,7 +86,11 @@ public class ResourceSourceResolver {
             int h = frames.get(0).pixels().getHeight();
 
             if (frames.size() == 1) {
-                mc.getTextureManager().register(rl, new DynamicTexture(frames.get(0).pixels()));
+                NativeImage pixels = frames.get(0).pixels();
+                DynamicTexture tex = new DynamicTexture(pixels);
+                TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
+                tex.upload();
+                mc.getTextureManager().register(rl, tex);
                 return new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h);
             }
             AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);

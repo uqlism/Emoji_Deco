@@ -1,5 +1,7 @@
 package com.uqlism.emoji_deco.render.image.source;
 
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
@@ -107,8 +109,12 @@ public class UrlSourceResolver {
                     ResourceLocation rl = ResourceLocation.parse(
                             "emoji_deco:fetch_url_" + counter.getAndIncrement());
                     if (frames.size() == 1) {
-                        Minecraft.getInstance().getTextureManager()
-                                .register(rl, new DynamicTexture(frames.get(0).pixels()));
+                        NativeImage pixels = frames.get(0).pixels();
+                        DynamicTexture tex = new DynamicTexture(pixels);
+                        TextureUtil.prepareImage(
+                                tex.getId(), pixels.getWidth(), pixels.getHeight());
+                        tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
+                        Minecraft.getInstance().getTextureManager().register(rl, tex);
                         upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
                     } else {
                         AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
