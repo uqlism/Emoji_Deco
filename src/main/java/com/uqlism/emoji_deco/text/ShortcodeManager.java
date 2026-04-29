@@ -234,7 +234,11 @@ public class ShortcodeManager implements PreparableReloadListener {
 
     public static RichNode resolve(String code, String[] args) {
         JsonElement display = PARAM_REGISTRY.get(code);
-        if (display != null) return EmojiDecoComponentParser.parse(display, null, args);
+        if (display != null) {
+            JsonObject json = JSON_REGISTRY.get(code);
+            JsonArray topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
+            return EmojiDecoComponentParser.parse(display, null, args, topArgSpecs);
+        }
         return REGISTRY.getOrDefault(code, new RichNode.Text(":" + code + ":", Style.EMPTY, List.of()));
     }
 

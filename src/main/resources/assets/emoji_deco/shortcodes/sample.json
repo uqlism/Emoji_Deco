@@ -1,18 +1,14 @@
 {
     "enable": true,
+    "args": [
+        { "value_type": "string", "default": "", "label": "<player>", "suggestions": { "type": "emoji_deco:player_names" } }
+    ],
     "display": [
         {
             "type": "emoji_deco:apply_shortcode",
             "shortcode": "player",
             "args": [
-                {
-                    "type": "emoji_deco:arg",
-                    "index": 0,
-                    "value_type": "string",
-                    "default": "",
-                    "label": "<player>",
-                    "suggestions": { "type": "emoji_deco:player_names" }
-                }
+                { "type": "emoji_deco:arg", "index": 0 }
             ]
         },
         " ",
@@ -20,12 +16,7 @@
             "type": "emoji_deco:apply_decorator",
             "decorator": "color",
             "args": ["yellow"],
-            "slot": {
-                "type": "emoji_deco:arg",
-                "index": 0,
-                "value_type": "string",
-                "default": ""
-            }
+            "slot": { "type": "emoji_deco:arg", "index": 0 }
         }
     ]
 }

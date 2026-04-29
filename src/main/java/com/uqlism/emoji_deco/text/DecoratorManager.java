@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -82,7 +83,8 @@ public class DecoratorManager implements PreparableReloadListener {
         JsonObject json = REGISTRY.get(name);
         if (json == null) return null;
         try {
-            return EmojiDecoComponentParser.parse(json.get("display"), slotNode, args);
+            JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
+            return EmojiDecoComponentParser.parse(json.get("display"), slotNode, args, topArgSpecs);
         } catch (Exception e) {
             LOGGER.error("[EmojiDeco] Failed to resolve style tag '{}': {}", name, e.getMessage());
         }
@@ -94,12 +96,20 @@ public class DecoratorManager implements PreparableReloadListener {
     }
 
     /**
-     * Returns the raw "suggestions" JsonElement for the emoji_deco:arg at argIndex
-     * inside the given decorator's display JSON, or null if absent.
+     * Returns the raw "suggestions" JsonElement for the arg at argIndex, or null if absent.
+     * Checks the top-level "args" array first, then falls back to scanning the display JSON.
      */
     public static com.google.gson.JsonElement getArgSuggestionsSpec(String tagName, int argIndex) {
         JsonObject json = REGISTRY.get(tagName);
-        if (json == null || !json.has("display")) return null;
+        if (json == null) return null;
+        if (json.has("args") && json.get("args").isJsonArray()) {
+            JsonArray topArgs = json.getAsJsonArray("args");
+            if (argIndex >= 0 && argIndex < topArgs.size() && topArgs.get(argIndex).isJsonObject()) {
+                JsonObject spec = topArgs.get(argIndex).getAsJsonObject();
+                if (spec.has("suggestions")) return spec.get("suggestions");
+            }
+        }
+        if (!json.has("display")) return null;
         JsonObject argSpec = EmojiDecoComponentParser.findArgSpec(json.get("display"), argIndex);
         if (argSpec == null || !argSpec.has("suggestions")) return null;
         return argSpec.get("suggestions");
@@ -116,40 +126,50 @@ public class DecoratorManager implements PreparableReloadListener {
         if (json.has("label") && json.get("label").isJsonPrimitive())
             return json.get("label").getAsString();
 
-        if (json.has("display")) {
-            var args = EmojiDecoComponentParser.findAllArgSpecs(json.get("display"));
-            if (!args.isEmpty()) {
-                // Find the last non-hidden arg to know where to stop.
-                int lastVisible = -1;
+        var args = effectiveArgSpecs(json);
+        if (!args.isEmpty()) {
+            int lastVisible = -1;
+            for (var entry : args.entrySet()) {
+                JsonObject spec = entry.getValue();
+                boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                        && spec.get("hidden").getAsBoolean();
+                if (!hidden) lastVisible = entry.getKey();
+            }
+            if (lastVisible >= 0) {
+                StringBuilder sb = new StringBuilder("#").append(name).append(".");
+                boolean first = true;
                 for (var entry : args.entrySet()) {
+                    if (entry.getKey() > lastVisible) break;
+                    if (!first) sb.append(",");
+                    first = false;
                     JsonObject spec = entry.getValue();
                     boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
                             && spec.get("hidden").getAsBoolean();
-                    if (!hidden) lastVisible = entry.getKey();
+                    if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
+                        sb.append(spec.get("label").getAsString());
+                    else
+                        sb.append("<arg").append(entry.getKey() + 1).append(">");
                 }
-                if (lastVisible >= 0) {
-                    StringBuilder sb = new StringBuilder("#").append(name).append(".");
-                    boolean first = true;
-                    for (var entry : args.entrySet()) {
-                        if (entry.getKey() > lastVisible) break;
-                        if (!first) sb.append(",");
-                        first = false;
-                        JsonObject spec = entry.getValue();
-                        boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
-                                && spec.get("hidden").getAsBoolean();
-                        if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
-                            sb.append(spec.get("label").getAsString());
-                        else
-                            sb.append("<arg").append(entry.getKey() + 1).append(">");
-                    }
-                    sb.append("[]");
-                    return sb.toString();
-                }
-                // All args are hidden → fall through to "#name[]"
+                sb.append("[]");
+                return sb.toString();
             }
         }
 
         return "#" + name + "[]";
+    }
+
+    /** display 内スキャン結果をベースにトップレベル args で上書きした有効スペックマップを返す。 */
+    private static java.util.Map<Integer, JsonObject> effectiveArgSpecs(JsonObject json) {
+        java.util.Map<Integer, JsonObject> specs = json.has("display")
+                ? new java.util.TreeMap<>(EmojiDecoComponentParser.findAllArgSpecs(json.get("display")))
+                : new java.util.TreeMap<>();
+        if (json.has("args") && json.get("args").isJsonArray()) {
+            JsonArray topArgs = json.getAsJsonArray("args");
+            for (int i = 0; i < topArgs.size(); i++) {
+                if (topArgs.get(i).isJsonObject()) specs.put(i, topArgs.get(i).getAsJsonObject());
+            }
+        }
+        return specs;
     }
 
     /**

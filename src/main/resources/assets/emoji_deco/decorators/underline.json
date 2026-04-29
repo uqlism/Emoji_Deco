@@ -1,14 +1,11 @@
 {
   "enable": true,
+  "args": [
+    { "value_type": "boolean", "default": true, "hidden": true }
+  ],
   "display": {
     "text": "",
-    "underlined": {
-      "type": "emoji_deco:arg",
-      "index": 0,
-      "default": true,
-      "value_type": "boolean",
-      "hidden": true
-    },
+    "underlined": { "type": "emoji_deco:arg", "index": 0 },
     "extra": [
       { "type": "emoji_deco:slot" }
     ]

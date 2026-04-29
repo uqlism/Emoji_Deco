@@ -1,5 +1,17 @@
 {
   "enable": true,
+  "args": [
+    {
+      "value_type": "string",
+      "default": "white",
+      "label": "<color>",
+      "suggestions": [
+        "aqua", "black", "blue", "dark_aqua", "dark_blue",
+        "dark_gray", "dark_green", "dark_purple", "dark_red",
+        "gold", "gray", "green", "light_purple", "red", "white", "yellow"
+      ]
+    }
+  ],
   "preview": [
     { "text": "c", "color": "red" },
     { "text": "o", "color": "gold" },
@@ -9,18 +21,7 @@
   ],
   "display": {
     "text": "",
-    "color": {
-      "type": "emoji_deco:arg",
-      "label": "<color>",
-      "index": 0,
-      "value_type": "string",
-      "default": "white",
-      "suggestions": [
-        "aqua", "black", "blue", "dark_aqua", "dark_blue",
-        "dark_gray", "dark_green", "dark_purple", "dark_red",
-        "gold", "gray", "green", "light_purple", "red", "white", "yellow"
-      ]
-    },
+    "color": { "type": "emoji_deco:arg", "index": 0 },
     "extra": [
       { "type": "emoji_deco:slot" }
     ]

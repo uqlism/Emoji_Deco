@@ -1,13 +1,7 @@
 {
     "enable": true,
     "args": [
-        {
-            "type": "string",
-            "default": "",
-            "suggestions": {
-                "type": "emoji_deco:player_names"
-            }
-        }
+        { "value_type": "string", "default": "", "suggestions": { "type": "emoji_deco:player_names" } }
     ],
     "display": {
         "text": "",
@@ -15,10 +9,7 @@
         "italic": false,
         "hoverEvent": {
             "action": "show_text",
-            "contents": {
-                "type": "emoji_deco:arg",
-                "index": 0
-            }
+            "contents": { "type": "emoji_deco:arg", "index": 0 }
         },
         "extra": [
             {
@@ -28,10 +19,7 @@
                 "advance": 0,
                 "image": {
                     "type": "emoji_deco:fetch_skin",
-                    "player": {
-                        "type": "emoji_deco:arg",
-                        "index": 0
-                    },
+                    "player": { "type": "emoji_deco:arg", "index": 0 },
                     "uv": [8, 8, 16, 16]
                 }
             },
@@ -47,10 +35,7 @@
                     "advance": 9,
                     "image": {
                         "type": "emoji_deco:fetch_skin",
-                        "player": {
-                            "type": "emoji_deco:arg",
-                            "index": 0
-                        },
+                        "player": { "type": "emoji_deco:arg", "index": 0 },
                         "uv": [40, 8, 48, 16]
                     }
                 }

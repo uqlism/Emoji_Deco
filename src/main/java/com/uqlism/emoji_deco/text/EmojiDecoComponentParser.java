@@ -57,8 +57,13 @@ public final class EmojiDecoComponentParser {
     }
 
     public static RichNode parse(JsonElement el, @Nullable RichNode slot, String[] args) {
+        return parse(el, slot, args, null);
+    }
+
+    public static RichNode parse(JsonElement el, @Nullable RichNode slot, String[] args,
+                                 @Nullable JsonArray topLevelArgSpecs) {
         if (el == null || el.isJsonNull()) return RichNode.empty();
-        return parseExpanded(expandDynamicProviders(el, args), slot);
+        return parseExpanded(expandDynamicProviders(el, args, topLevelArgSpecs), slot);
     }
 
     /**
@@ -67,7 +72,7 @@ public final class EmojiDecoComponentParser {
      */
     public static List<String> resolveStringList(JsonElement el) {
         if (el == null) return Collections.emptyList();
-        JsonElement expanded = expandDynamicProviders(el, EMPTY_ARGS);
+        JsonElement expanded = expandDynamicProviders(el, EMPTY_ARGS, null);
         if (!expanded.isJsonArray()) return Collections.emptyList();
         List<String> result = new ArrayList<>();
         for (JsonElement item : expanded.getAsJsonArray()) {
@@ -78,7 +83,8 @@ public final class EmojiDecoComponentParser {
 
     // ── dynamic expansion ─────────────────────────────────────────────────────
 
-    private static JsonElement expandDynamicProviders(JsonElement el, String[] args) {
+    private static JsonElement expandDynamicProviders(JsonElement el, String[] args,
+                                                      @Nullable JsonArray topLevelArgSpecs) {
         if (el == null || el.isJsonNull() || el.isJsonPrimitive()) return el;
 
         if (el.isJsonObject()) {
@@ -87,10 +93,15 @@ public final class EmojiDecoComponentParser {
             String dynType = obj.has("type") ? obj.get("type").getAsString() : null;
 
             if ("emoji_deco:arg".equals(dynType)) {
-                int    index = obj.has("index")      ? obj.get("index").getAsInt()         : 0;
-                String vtype = obj.has("value_type") ? obj.get("value_type").getAsString() : "string";
+                int index = obj.has("index") ? obj.get("index").getAsInt() : 0;
+                JsonObject top = topArgSpec(topLevelArgSpecs, index);
+                String vtype = "string";
+                if      (obj.has("value_type"))                    vtype = obj.get("value_type").getAsString();
+                else if (top != null && top.has("value_type"))     vtype = top.get("value_type").getAsString();
                 if (index < args.length) return coerceArg(args[index], vtype);
-                return obj.has("default") ? obj.get("default") : defaultForType(vtype);
+                if (obj.has("default"))                            return obj.get("default");
+                if (top != null && top.has("default"))             return top.get("default");
+                return defaultForType(vtype);
             }
 
             if ("emoji_deco:player_names".equals(dynType)) {
@@ -111,7 +122,7 @@ public final class EmojiDecoComponentParser {
                 if (obj.has("parts") && obj.get("parts").isJsonArray()) {
                     java.util.List<String> parts = new java.util.ArrayList<>();
                     for (JsonElement part : obj.getAsJsonArray("parts")) {
-                        JsonElement expanded = expandDynamicProviders(part, args);
+                        JsonElement expanded = expandDynamicProviders(part, args, topLevelArgSpecs);
                         if (expanded != null && expanded.isJsonPrimitive())
                             parts.add(expanded.getAsString());
                     }
@@ -122,18 +133,25 @@ public final class EmojiDecoComponentParser {
 
             JsonObject result = new JsonObject();
             for (var entry : obj.entrySet())
-                result.add(entry.getKey(), expandDynamicProviders(entry.getValue(), args));
+                result.add(entry.getKey(), expandDynamicProviders(entry.getValue(), args, topLevelArgSpecs));
             return result;
         }
 
         if (el.isJsonArray()) {
             JsonArray result = new JsonArray();
             for (JsonElement item : el.getAsJsonArray())
-                result.add(expandDynamicProviders(item, args));
+                result.add(expandDynamicProviders(item, args, topLevelArgSpecs));
             return result;
         }
 
         return el;
+    }
+
+    @Nullable
+    private static JsonObject topArgSpec(@Nullable JsonArray specs, int index) {
+        if (specs == null || index < 0 || index >= specs.size()) return null;
+        JsonElement el = specs.get(index);
+        return el.isJsonObject() ? el.getAsJsonObject() : null;
     }
 
     // ── structural parsing ────────────────────────────────────────────────────

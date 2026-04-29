@@ -1,5 +1,9 @@
 {
     "enable": true,
+    "args": [
+        { "value_type": "string", "default": "",          "label": "<item>" },
+        { "value_type": "string", "default": "minecraft", "label": "<namespace=minecraft>" }
+    ],
     "preview": {
         "type": "emoji_deco:image_to_glyph",
         "width": 8,
@@ -24,21 +28,9 @@
                     "sprite": {
                         "type": "emoji_deco:join",
                         "parts": [
-                            {
-                                "type": "emoji_deco:arg",
-                                "label": "<namespace=minecraft>",
-                                "index": 1,
-                                "value_type": "string",
-                                "default": "minecraft"
-                            },
+                            { "type": "emoji_deco:arg", "index": 1 },
                             ":item/",
-                            {
-                                "type": "emoji_deco:arg",
-                                "label": "<item>",
-                                "index": 0,
-                                "value_type": "string",
-                                "default": ""
-                            }
+                            { "type": "emoji_deco:arg", "index": 0 }
                         ]
                     }
                 }
