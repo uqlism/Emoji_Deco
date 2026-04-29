@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.RichTextParser;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 
 import net.minecraft.client.gui.Gui;
 import net.minecraft.network.chat.Component;

@@ -1,4 +1,9 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.parse;
+
+import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.registry.DecoratorManager;
+import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 
 import net.minecraft.network.chat.Style;
 

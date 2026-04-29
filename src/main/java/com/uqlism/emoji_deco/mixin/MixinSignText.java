@@ -1,8 +1,8 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
-import com.uqlism.emoji_deco.text.RichNode;
-import com.uqlism.emoji_deco.text.RichTextParser;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;

@@ -5,7 +5,7 @@ import com.mojang.math.Axis;
 import com.uqlism.emoji_deco.block.GraffitiAlignment;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
-import com.uqlism.emoji_deco.text.RichNode;
+import com.uqlism.emoji_deco.text.ir.RichNode;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;

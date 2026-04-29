@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco;
 
-import com.uqlism.emoji_deco.text.RichTextParser;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

@@ -11,7 +11,7 @@ import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.NodeHydrator;
+import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

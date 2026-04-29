@@ -1,4 +1,9 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.hydrate;
+
+import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.registry.DecoratorManager;
+import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.BinarySource;
@@ -42,7 +47,7 @@ public final class NodeHydrator {
 
     // ── Core dispatch ─────────────────────────────────────────────────────────
 
-    static RichNode hydrateTracked(ParsedNode node, HydrateContext.Tracked ctx) {
+    public static RichNode hydrateTracked(ParsedNode node, HydrateContext.Tracked ctx) {
         if (node instanceof ParsedNode.Text t)          return hydrateText(t, ctx);
         if (node instanceof ParsedNode.Many m)          return hydrateMany(m, ctx);
         if (node instanceof ParsedNode.Image img)       return hydrateImage(img, ctx);

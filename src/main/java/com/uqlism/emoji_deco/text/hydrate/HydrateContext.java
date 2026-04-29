@@ -1,4 +1,6 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.hydrate;
+
+import com.uqlism.emoji_deco.text.ir.RichNode;
 
 import com.google.gson.JsonArray;
 import org.jetbrains.annotations.Nullable;

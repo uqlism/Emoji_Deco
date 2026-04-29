@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.ir;
 
 import net.minecraft.client.gui.Font;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;

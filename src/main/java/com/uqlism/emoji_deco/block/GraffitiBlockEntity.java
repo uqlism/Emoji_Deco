@@ -1,11 +1,11 @@
 package com.uqlism.emoji_deco.block;
 
 import com.uqlism.emoji_deco.Registration;
-import com.uqlism.emoji_deco.text.HydrateContext;
-import com.uqlism.emoji_deco.text.NodeHydrator;
-import com.uqlism.emoji_deco.text.ParsedNode;
-import com.uqlism.emoji_deco.text.RichNode;
-import com.uqlism.emoji_deco.text.RichTextParser;
+import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
+import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
+import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;

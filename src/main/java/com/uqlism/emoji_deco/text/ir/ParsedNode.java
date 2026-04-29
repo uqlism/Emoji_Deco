@@ -1,4 +1,4 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.ir;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
@@ -90,7 +90,7 @@ public sealed interface ParsedNode permits
             @Nullable BoolVal   obfuscated,
             @Nullable String    font) {
         public static final ParsedStyle EMPTY = new ParsedStyle(null, null, null, null, null, null, null);
-        boolean isEmpty() {
+        public boolean isEmpty() {
             return color == null && bold == null && italic == null && strikethrough == null
                     && underlined == null && obfuscated == null && font == null;
         }

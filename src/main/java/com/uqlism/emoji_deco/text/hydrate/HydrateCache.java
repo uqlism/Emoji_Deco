@@ -1,4 +1,6 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.hydrate;
+
+import com.uqlism.emoji_deco.text.ir.RichNode;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;

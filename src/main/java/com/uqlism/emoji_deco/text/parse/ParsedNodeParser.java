@@ -1,4 +1,6 @@
-package com.uqlism.emoji_deco.text;
+package com.uqlism.emoji_deco.text.parse;
+
+import com.uqlism.emoji_deco.text.ir.ParsedNode;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

@@ -2,12 +2,12 @@ package com.uqlism.emoji_deco;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.uqlism.emoji_deco.text.DecoratorManager;
-import com.uqlism.emoji_deco.text.ParsedNode;
-import com.uqlism.emoji_deco.text.ParsedNodeParser;
-import com.uqlism.emoji_deco.text.RichNode;
-import com.uqlism.emoji_deco.text.RichTextParser;
-import com.uqlism.emoji_deco.text.ShortcodeManager;
+import com.uqlism.emoji_deco.text.registry.DecoratorManager;
+import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.parse.ParsedNodeParser;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
+import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.junit.jupiter.api.BeforeAll;

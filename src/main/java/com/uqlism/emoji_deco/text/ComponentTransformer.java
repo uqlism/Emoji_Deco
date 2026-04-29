@@ -1,5 +1,7 @@
 package com.uqlism.emoji_deco.text;
 
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
+
 import net.minecraft.network.chat.*;
 import net.minecraft.network.chat.contents.LiteralContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
