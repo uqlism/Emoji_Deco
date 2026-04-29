@@ -122,9 +122,26 @@ repositories {
     // }
 }
 
+jarJar.enable()
+
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // TwelveMonkeys WebP ImageIO — jarJar でモッド jar に同梱する
+    def twelvemonkeys = '3.10.1'
+    ['imageio-webp', 'imageio-core'].each { mod ->
+        implementation("com.twelvemonkeys.imageio:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.imageio', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
+    ['common-lang', 'common-io', 'common-image'].each { mod ->
+        implementation("com.twelvemonkeys.common:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.common', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
     testRuntimeOnly  'org.junit.jupiter:junit-jupiter-engine:5.10.0'

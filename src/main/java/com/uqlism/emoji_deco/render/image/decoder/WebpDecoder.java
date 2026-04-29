@@ -1,203 +1,145 @@
 package com.uqlism.emoji_deco.render.image.decoder;
 
-import com.mojang.blaze3d.platform.NativeImage;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
- * WebP デコーダ。
- * 静止画 WebP は STB (NativeImage) に委譲。
- * アニメーション WebP は RIFF を自前でパースし、各 ANMF フレームを STB でデコードして
- * GifDecoder 同様にキャンバス合成する。
+ * WebP デコーダ。TwelveMonkeys ImageIO (imageio-webp) を使用して静止画・アニメーション
+ * 両方の WebP をデコードする。TwelveMonkeys が存在しない場合は STB にフォールバック
+ * （静止画のみ）。フレームのピクセルデータは ImageReader.read(i) で取得し、
+ * フレーム位置・継続時間・dispose/blend はバイナリ RIFF を直接解析して取得する。
  */
 public class WebpDecoder implements ImageDecoder {
 
     @Override
     public List<Frame> decode(byte[] data) throws IOException {
-        if (isAnimated(data)) return decodeAnimated(data);
+        Iterator<ImageReader> readers = ImageIO.getImageReadersBySuffix("webp");
+        if (readers.hasNext()) {
+            return decodeWithImageIO(readers.next(), data);
+        }
+        // TwelveMonkeys が存在しない場合は STB で静止画のみ試みる
         return new StbDecoder().decode(data);
     }
 
-    // ── アニメーション検出 ────────────────────────────────────────────────────
+    // ── ImageIO デコード ──────────────────────────────────────────────────────
 
-    /**
-     * VP8X チャンクの Animation フラグ (bit 1 = 0x02) が立っているか確認する。
-     * libwebp では ANIMATION_FLAG = 0x00000002。
-     */
-    private static boolean isAnimated(byte[] data) {
-        if (data.length < 30) return false;
-        ByteBuffer buf = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
-        int pos = 12; // skip RIFF/WEBP header
-        while (pos + 8 <= data.length) {
-            int chunkSize = buf.getInt(pos + 4);
-            if (chunkSize < 0 || chunkSize > data.length) break;
-            if (matches(data, pos, "VP8X") && pos + 9 <= data.length) {
-                return (data[pos + 8] & 0x02) != 0;
+    private static List<Frame> decodeWithImageIO(ImageReader reader, byte[] data) throws IOException {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            reader.setInput(iis, false);
+
+            int numFrames;
+            try {
+                numFrames = reader.getNumImages(true);
+            } catch (Exception e) {
+                numFrames = 1;
             }
-            pos += 8 + chunkSize + (chunkSize & 1);
-        }
-        return false;
-    }
+            if (numFrames <= 0) throw new IOException("WebP has no frames");
 
-    // ── アニメーション WebP デコード ─────────────────────────────────────────
+            // フレームメタデータは RIFF バイナリから直接取得（ImageIO メタデータ API は不確実）
+            List<ANMFMeta> binaryMeta = parseANMFFrames(data);
+            int[] canvas = parseCanvasSize(data);
 
-    private static List<Frame> decodeAnimated(byte[] data) throws IOException {
-        ByteBuffer buf = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
+            int canvasW = canvas != null ? canvas[0] : reader.getWidth(0);
+            int canvasH = canvas != null ? canvas[1] : reader.getHeight(0);
 
-        int canvasW = 0, canvasH = 0;
-        int bgColorBgra = 0; // from ANIM chunk
+            BufferedImage canvasBuf = new BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB);
+            List<Frame> result = new ArrayList<>(numFrames);
 
-        // 1st pass: VP8X (canvas size) と ANIM (background color) を収集
-        int pos = 12;
-        while (pos + 8 <= data.length) {
-            int chunkSize = buf.getInt(pos + 4);
-            if (chunkSize < 0 || chunkSize > data.length) break;
-            if (matches(data, pos, "VP8X") && chunkSize >= 10) {
-                // VP8X data: byte0=flags, bytes1-3=reserved, bytes4-6=canvasW-1, bytes7-9=canvasH-1
-                canvasW = read24le(buf, pos + 12) + 1;
-                canvasH = read24le(buf, pos + 15) + 1;
-            } else if (matches(data, pos, "ANIM") && chunkSize >= 6) {
-                bgColorBgra = buf.getInt(pos + 8); // BGRA (LE int: bits 0-7=B, 8-15=G, 16-23=R, 24-31=A)
-            }
-            pos += 8 + chunkSize + (chunkSize & 1);
-        }
-        if (canvasW <= 0 || canvasH <= 0)
-            throw new IOException("Animated WebP missing canvas size");
+            for (int i = 0; i < numFrames; i++) {
+                BufferedImage frame = reader.read(i);
+                if (frame == null) continue;
 
-        BufferedImage canvas = new BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB);
-        fillBg(canvas, bgColorBgra);
-
-        List<Frame> result = new ArrayList<>();
-        boolean prevDispose = false;
-
-        // 2nd pass: ANMF フレームを処理
-        pos = 12;
-        while (pos + 8 <= data.length) {
-            int chunkSize = buf.getInt(pos + 4);
-            if (chunkSize < 0 || chunkSize > data.length) break;
-            int chunkEnd = pos + 8 + chunkSize;
-
-            if (matches(data, pos, "ANMF") && chunkSize >= 16) {
-                int base  = pos + 8;
-                int fx    = read24le(buf, base)      * 2;
-                int fy    = read24le(buf, base + 3)  * 2;
-                int fw    = read24le(buf, base + 6)  + 1;
-                int fh    = read24le(buf, base + 9)  + 1;
-                int durMs = read24le(buf, base + 12);
-                int flags = data[base + 15] & 0xFF;
-                // bit 0: dispose (0=keep, 1=dispose to background)
-                // bit 1: blend   (0=alpha-blend, 1=overwrite)
-                boolean dispose = (flags & 0x01) != 0;
-                boolean noBlend = (flags & 0x02) != 0;
-
-                if (prevDispose) fillBg(canvas, bgColorBgra);
-
-                byte[] fwp = buildFrameWebp(data, base + 16, chunkEnd, fw, fh);
-                try (NativeImage ni = NativeImage.read(new ByteArrayInputStream(fwp))) {
-                    int dw = Math.min(fw, ni.getWidth());
-                    int dh = Math.min(fh, ni.getHeight());
-                    BufferedImage frameBuf = toBufferedImage(ni, dw, dh);
-                    Graphics2D g = canvas.createGraphics();
-                    g.setComposite(noBlend ? AlphaComposite.Src : AlphaComposite.SrcOver);
-                    g.drawImage(frameBuf, fx, fy, null);
-                    g.dispose();
+                int fx = 0, fy = 0, durationMs = 100;
+                boolean alphaBlend = true, dispose = false;
+                if (i < binaryMeta.size()) {
+                    ANMFMeta m = binaryMeta.get(i);
+                    fx = m.x; fy = m.y; durationMs = m.durationMs;
+                    alphaBlend = m.alphaBlend; dispose = m.dispose;
                 }
 
-                result.add(new Frame(GifDecoder.toNativeImage(canvas), Math.max(20, durMs)));
-                prevDispose = dispose;
+                Graphics2D g = canvasBuf.createGraphics();
+                g.setComposite(alphaBlend ? AlphaComposite.SrcOver : AlphaComposite.Src);
+                g.drawImage(frame, fx, fy, null);
+                g.dispose();
+
+                result.add(new Frame(GifDecoder.toNativeImage(canvasBuf), Math.max(20, durationMs)));
+
+                if (dispose) {
+                    Graphics2D gc = canvasBuf.createGraphics();
+                    gc.setComposite(AlphaComposite.Clear);
+                    gc.fillRect(fx, fy, frame.getWidth(), frame.getHeight());
+                    gc.dispose();
+                }
             }
 
-            pos = chunkEnd + (chunkSize & 1);
+            if (result.isEmpty()) throw new IOException("No frames decoded from WebP");
+            return result;
+        } finally {
+            reader.dispose();
         }
-
-        if (result.isEmpty()) throw new IOException("No ANMF frames found in animated WebP");
-        return result;
     }
 
-    // ── ユーティリティ ───────────────────────────────────────────────────────
+    // ── RIFF バイナリ解析 ─────────────────────────────────────────────────────
 
-    /**
-     * ANMF 内部サブチャンク列 (VP8/VP8L/VP8X/ALPH …) を RIFF/WEBP でラップして STB が読める WebP にする。
-     * ALPH から始まるフレーム（アニメーション全体の VP8X は省略されているケース）は
-     * VP8X チャンク (ALPHA_FLAG=0x10) を先頭に補完して Extended WebP 形式にする。
-     */
-    private static byte[] buildFrameWebp(byte[] data, int start, int end, int fw, int fh) {
-        int innerLen = end - start;
-        // ALPH チャンクで始まる = VP8X なしで alpha + VP8 が格納されている ANMF フレーム
-        boolean needsVP8X = innerLen >= 4 && matches(data, start, "ALPH");
-        // VP8X chunk: 4 (FourCC) + 4 (size) + 10 (data) = 18 bytes
-        int vp8xLen = needsVP8X ? 18 : 0;
-        int riffPayload = 4 + vp8xLen + innerLen; // "WEBP" + optional VP8X + inner chunks
-        byte[] out = new byte[8 + riffPayload];
-        // RIFF ヘッダ
-        out[0]='R'; out[1]='I'; out[2]='F'; out[3]='F';
-        out[4]=(byte)riffPayload; out[5]=(byte)(riffPayload>>8);
-        out[6]=(byte)(riffPayload>>16); out[7]=(byte)(riffPayload>>24);
-        out[8]='W'; out[9]='E'; out[10]='B'; out[11]='P';
-        int off = 12;
-        if (needsVP8X) {
-            // VP8X FourCC + size=10
-            out[off++]='V'; out[off++]='P'; out[off++]='8'; out[off++]='X';
-            out[off++]=10;  out[off++]=0;   out[off++]=0;   out[off++]=0;
-            // flags: ALPHA_FLAG=0x10 (libwebp ALPHA_FLAG)
-            out[off++]=0x10; out[off++]=0; out[off++]=0; out[off++]=0; // flags + reserved
-            int wm1=fw-1, hm1=fh-1;
-            out[off++]=(byte)wm1;     out[off++]=(byte)(wm1>>8);  out[off++]=(byte)(wm1>>16);
-            out[off++]=(byte)hm1;     out[off++]=(byte)(hm1>>8);  out[off++]=(byte)(hm1>>16);
-        }
-        System.arraycopy(data, start, out, off, innerLen);
-        return out;
-    }
-
-    /**
-     * NativeImage (ABGR: bits 0-7=R, 8-15=G, 16-23=B, 24-31=A) を
-     * BufferedImage (TYPE_INT_ARGB) に変換する。
-     */
-    private static BufferedImage toBufferedImage(NativeImage ni, int w, int h) {
-        BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                int p = ni.getPixelRGBA(x, y);
-                int r = p         & 0xFF;
-                int g = (p >>  8) & 0xFF;
-                int b = (p >> 16) & 0xFF;
-                int a = (p >> 24) & 0xFF;
-                bi.setRGB(x, y, (a << 24) | (r << 16) | (g << 8) | b);
+    /** VP8X チャンクからキャンバスサイズを返す。VP8X が存在しない場合は null。 */
+    private static int[] parseCanvasSize(byte[] data) {
+        if (data.length < 30) return null;
+        int pos = 12;
+        if (data[pos]=='V' && data[pos+1]=='P' && data[pos+2]=='8' && data[pos+3]=='X') {
+            int size = read32le(data, pos + 4);
+            if (size >= 10 && pos + 18 <= data.length) {
+                int w = read24le(data, pos + 12) + 1;
+                int h = read24le(data, pos + 15) + 1;
+                return new int[]{w, h};
             }
         }
-        return bi;
+        return null;
     }
 
-    /** キャンバスを ANIM 背景色 (BGRA LE int) で塗りつぶす。 */
-    private static void fillBg(BufferedImage canvas, int bgColorBgra) {
-        int b = bgColorBgra         & 0xFF;
-        int g = (bgColorBgra >>  8) & 0xFF;
-        int r = (bgColorBgra >> 16) & 0xFF;
-        int a = (bgColorBgra >> 24) & 0xFF;
-        Graphics2D gfx = canvas.createGraphics();
-        gfx.setComposite(AlphaComposite.Src);
-        gfx.setColor(new Color(r, g, b, a));
-        gfx.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        gfx.dispose();
+    /** すべての ANMF チャンクのメタデータ（位置・時間・dispose/blend）を返す。 */
+    private static List<ANMFMeta> parseANMFFrames(byte[] data) {
+        List<ANMFMeta> list = new ArrayList<>();
+        if (data.length < 12) return list;
+        int pos = 12;
+        while (pos + 8 <= data.length) {
+            int size = read32le(data, pos + 4);
+            if (size < 0) break;
+            if (data[pos]=='A' && data[pos+1]=='N' && data[pos+2]=='M' && data[pos+3]=='F'
+                    && pos + 24 <= data.length) {
+                ANMFMeta m = new ANMFMeta();
+                m.x          = read24le(data, pos +  8) * 2;
+                m.y          = read24le(data, pos + 11) * 2;
+                m.durationMs = read24le(data, pos + 20);
+                byte flags   = data[pos + 23];
+                m.alphaBlend = ((flags >> 1) & 1) == 0; // bit1=1 → no blend
+                m.dispose    = (flags & 1) != 0;         // bit0=1 → dispose
+                list.add(m);
+            }
+            pos += 8 + size + (size & 1);
+        }
+        return list;
     }
 
-    private static boolean matches(byte[] data, int pos, String tag) {
-        return pos + 4 <= data.length
-            && data[pos]     == (byte)tag.charAt(0)
-            && data[pos + 1] == (byte)tag.charAt(1)
-            && data[pos + 2] == (byte)tag.charAt(2)
-            && data[pos + 3] == (byte)tag.charAt(3);
+    private static int read24le(byte[] d, int p) {
+        return (d[p] & 0xFF) | ((d[p+1] & 0xFF) << 8) | ((d[p+2] & 0xFF) << 16);
     }
 
-    private static int read24le(ByteBuffer buf, int pos) {
-        return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8) | ((buf.get(pos + 2) & 0xFF) << 16);
+    private static int read32le(byte[] d, int p) {
+        return (d[p] & 0xFF) | ((d[p+1] & 0xFF) << 8) | ((d[p+2] & 0xFF) << 16) | ((d[p+3] & 0xFF) << 24);
+    }
+
+    private static class ANMFMeta {
+        int x, y, durationMs;
+        boolean alphaBlend, dispose;
     }
 }
