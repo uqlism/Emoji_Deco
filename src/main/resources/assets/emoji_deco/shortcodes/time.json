@@ -1,7 +1,0 @@
-{
-  "enable": true,
-  "display": {
-    "type": "emoji_deco:time",
-    "time": "gametime"
-  }
-}
