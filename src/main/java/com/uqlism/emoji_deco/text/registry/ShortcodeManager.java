@@ -115,14 +115,14 @@ public class ShortcodeManager implements PreparableReloadListener {
     // ── Hydration ─────────────────────────────────────────────────────────────
 
     public static RichNode hydrateWith(String code, String[] args, @Nullable RichNode slot) {
-        String canonical = ALIASES.getOrDefault(code, code);
-        ParsedNode node  = PARSED_REGISTRY.get(canonical);
+        // ALIASES は使わない — 正規名のみ描画対象（alias はサジェスト専用）
+        ParsedNode node  = PARSED_REGISTRY.get(code);
         if (node == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
 
-        JsonObject json = JSON_REGISTRY.get(canonical);
+        JsonObject json = JSON_REGISTRY.get(code);
         JsonArray  topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
         HydrateContext ctx  = new HydrateContext(args, topArgSpecs, slot);
-        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(canonical, k -> new HydrateCache());
+        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(code, k -> new HydrateCache());
         long tick = NodeHydrator.currentTick();
 
         RichNode cached = cache.lookup(ctx, slot, tick);
@@ -150,8 +150,7 @@ public class ShortcodeManager implements PreparableReloadListener {
 
     /** Used by NodeHydrator to check before resolving apply_shortcode. */
     public static boolean hasParsed(String code) {
-        String canonical = ALIASES.getOrDefault(code, code);
-        return PARSED_REGISTRY.containsKey(canonical);
+        return PARSED_REGISTRY.containsKey(code);
     }
 
     public static List<String> getSuggestions(String prefix) {
@@ -171,8 +170,7 @@ public class ShortcodeManager implements PreparableReloadListener {
     // ── Label / Preview / Suggestions (autocomplete) ─────────────────────────
 
     public static String getLabel(String code) {
-        String canonical = ALIASES.getOrDefault(code, code);
-        JsonObject json = JSON_REGISTRY.get(canonical);
+        JsonObject json = JSON_REGISTRY.get(code);
         if (json == null) return ":" + code + ":";
 
         if (json.has("label") && json.get("label").isJsonPrimitive())
@@ -187,7 +185,7 @@ public class ShortcodeManager implements PreparableReloadListener {
                         && spec.get("hidden").getAsBoolean())) lastVisible = e.getKey();
             }
             if (lastVisible >= 0) {
-                StringBuilder sb = new StringBuilder(":").append(canonical).append(".");
+                StringBuilder sb = new StringBuilder(":").append(code).append(".");
                 boolean first = true;
                 for (var e : args.entrySet()) {
                     if (e.getKey() > lastVisible) break;
@@ -204,12 +202,11 @@ public class ShortcodeManager implements PreparableReloadListener {
                 return sb.toString();
             }
         }
-        return ":" + canonical + ":";
+        return ":" + code + ":";
     }
 
     public static net.minecraft.network.chat.Component getPreview(String code) {
-        String canonical = ALIASES.getOrDefault(code, code);
-        JsonObject json = JSON_REGISTRY.get(canonical);
+        JsonObject json = JSON_REGISTRY.get(code);
         if (json != null && json.has("preview")) {
             try {
                 RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
@@ -218,12 +215,11 @@ public class ShortcodeManager implements PreparableReloadListener {
                 LOGGER.warn("[EmojiDeco] Failed to parse preview for shortcode '{}': {}", code, e.getMessage());
             }
         }
-        return resolve(canonical).toComponent();
+        return resolve(code).toComponent();
     }
 
     public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
-        String canonical = ALIASES.getOrDefault(code, code);
-        JsonObject json = JSON_REGISTRY.get(canonical);
+        JsonObject json = JSON_REGISTRY.get(code);
         if (json == null) return null;
         JsonObject spec = topLevelArgSpec(json, argIndex);
         if (spec != null && spec.has("suggestions")) return spec.get("suggestions");
