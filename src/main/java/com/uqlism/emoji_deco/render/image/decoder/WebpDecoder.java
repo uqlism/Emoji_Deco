@@ -100,7 +100,7 @@ public class WebpDecoder implements ImageDecoder {
 
                 if (prevDispose) fillBg(canvas, bgColorBgra);
 
-                byte[] fwp = buildFrameWebp(data, base + 16, chunkEnd);
+                byte[] fwp = buildFrameWebp(data, base + 16, chunkEnd, fw, fh);
                 try (NativeImage ni = NativeImage.read(new ByteArrayInputStream(fwp))) {
                     int dw = Math.min(fw, ni.getWidth());
                     int dh = Math.min(fh, ni.getHeight());
@@ -124,15 +124,36 @@ public class WebpDecoder implements ImageDecoder {
 
     // ── ユーティリティ ───────────────────────────────────────────────────────
 
-    /** ANMF 内部サブチャンク列 (VP8/VP8L/VP8X …) を RIFF/WEBP でラップして STB が読める WebP にする */
-    private static byte[] buildFrameWebp(byte[] data, int start, int end) {
+    /**
+     * ANMF 内部サブチャンク列 (VP8/VP8L/VP8X/ALPH …) を RIFF/WEBP でラップして STB が読める WebP にする。
+     * ALPH から始まるフレーム（アニメーション全体の VP8X は省略されているケース）は
+     * VP8X チャンク (ALPHA_FLAG=0x10) を先頭に補完して Extended WebP 形式にする。
+     */
+    private static byte[] buildFrameWebp(byte[] data, int start, int end, int fw, int fh) {
         int innerLen = end - start;
-        byte[] out = new byte[12 + innerLen];
-        out[0] = 'R'; out[1] = 'I'; out[2] = 'F'; out[3] = 'F';
-        int sz = 4 + innerLen; // "WEBP" + chunks
-        out[4] = (byte)sz; out[5] = (byte)(sz >> 8); out[6] = (byte)(sz >> 16); out[7] = (byte)(sz >> 24);
-        out[8] = 'W'; out[9] = 'E'; out[10] = 'B'; out[11] = 'P';
-        System.arraycopy(data, start, out, 12, innerLen);
+        // ALPH チャンクで始まる = VP8X なしで alpha + VP8 が格納されている ANMF フレーム
+        boolean needsVP8X = innerLen >= 4 && matches(data, start, "ALPH");
+        // VP8X chunk: 4 (FourCC) + 4 (size) + 10 (data) = 18 bytes
+        int vp8xLen = needsVP8X ? 18 : 0;
+        int riffPayload = 4 + vp8xLen + innerLen; // "WEBP" + optional VP8X + inner chunks
+        byte[] out = new byte[8 + riffPayload];
+        // RIFF ヘッダ
+        out[0]='R'; out[1]='I'; out[2]='F'; out[3]='F';
+        out[4]=(byte)riffPayload; out[5]=(byte)(riffPayload>>8);
+        out[6]=(byte)(riffPayload>>16); out[7]=(byte)(riffPayload>>24);
+        out[8]='W'; out[9]='E'; out[10]='B'; out[11]='P';
+        int off = 12;
+        if (needsVP8X) {
+            // VP8X FourCC + size=10
+            out[off++]='V'; out[off++]='P'; out[off++]='8'; out[off++]='X';
+            out[off++]=10;  out[off++]=0;   out[off++]=0;   out[off++]=0;
+            // flags: ALPHA_FLAG=0x10 (libwebp ALPHA_FLAG)
+            out[off++]=0x10; out[off++]=0; out[off++]=0; out[off++]=0; // flags + reserved
+            int wm1=fw-1, hm1=fh-1;
+            out[off++]=(byte)wm1;     out[off++]=(byte)(wm1>>8);  out[off++]=(byte)(wm1>>16);
+            out[off++]=(byte)hm1;     out[off++]=(byte)(hm1>>8);  out[off++]=(byte)(hm1>>16);
+        }
+        System.arraycopy(data, start, out, off, innerLen);
         return out;
     }
 
