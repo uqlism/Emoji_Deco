@@ -116,7 +116,12 @@ public class ShortcodeManager implements PreparableReloadListener {
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
             String t = obj.has("type") ? obj.get("type").getAsString() : "";
-            if ("emoji_deco:arg".equals(t) || "emoji_deco:player_names".equals(t) || "emoji_deco:time".equals(t)) return true;
+            if ("emoji_deco:arg".equals(t) || "emoji_deco:player_names".equals(t)
+                    || "emoji_deco:time".equals(t)
+                    // apply_shortcode / apply_decorator は呼び先が URL フェッチを含む可能性があるため
+                    // ロード時に一括プリパースするとプール枯渇・ForkJoinPool 飽和を起こす
+                    || "emoji_deco:apply_shortcode".equals(t)
+                    || "emoji_deco:apply_decorator".equals(t)) return true;
             for (var e : obj.entrySet()) if (isDynamic(e.getValue())) return true;
         } else if (el.isJsonArray()) {
             for (JsonElement child : el.getAsJsonArray()) if (isDynamic(child)) return true;
