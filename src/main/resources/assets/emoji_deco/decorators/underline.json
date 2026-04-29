@@ -3,12 +3,11 @@
   "display": {
     "text": "",
     "underlined": {
-      "emoji_deco:arg": {
-        "index": 0,
-        "default": true,
-        "type": "boolean",
-        "hidden": true
-      }
+      "type": "emoji_deco:arg",
+      "index": 0,
+      "default": true,
+      "value_type": "boolean",
+      "hidden": true
     },
     "extra": [
       { "type": "emoji_deco:slot" }

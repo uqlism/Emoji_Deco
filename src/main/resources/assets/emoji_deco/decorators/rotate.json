@@ -3,12 +3,11 @@
     "display": {
         "type": "emoji_deco:rotate",
         "angle": {
-            "emoji_deco:arg": {
-                "index": 0,
-                "label": "<angle>",
-                "default": 0,
-                "type": "float"
-            }
+            "type": "emoji_deco:arg",
+            "index": 0,
+            "label": "<angle>",
+            "default": 0,
+            "value_type": "float"
         },
         "contents": { "type": "emoji_deco:slot" }
     }

@@ -6,13 +6,12 @@
             "shortcode": "player",
             "args": [
                 {
-                    "emoji_deco:arg": {
-                        "index": 0,
-                        "type": "string",
-                        "default": "",
-                        "label": "<player>",
-                        "suggestions": { "emoji_deco:player_names": {} }
-                    }
+                    "type": "emoji_deco:arg",
+                    "index": 0,
+                    "value_type": "string",
+                    "default": "",
+                    "label": "<player>",
+                    "suggestions": { "type": "emoji_deco:player_names" }
                 }
             ]
         },
@@ -22,11 +21,10 @@
             "decorator": "color",
             "args": ["yellow"],
             "slot": {
-                "emoji_deco:arg": {
-                    "index": 0,
-                    "type": "string",
-                    "default": ""
-                }
+                "type": "emoji_deco:arg",
+                "index": 0,
+                "value_type": "string",
+                "default": ""
             }
         }
     ]

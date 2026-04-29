@@ -5,7 +5,7 @@
             "type": "string",
             "default": "",
             "suggestions": {
-                "emoji_deco:player_names": {}
+                "type": "emoji_deco:player_names"
             }
         }
     ],
@@ -16,9 +16,8 @@
         "hoverEvent": {
             "action": "show_text",
             "contents": {
-                "emoji_deco:arg": {
-                    "index": 0
-                }
+                "type": "emoji_deco:arg",
+                "index": 0
             }
         },
         "extra": [
@@ -30,9 +29,8 @@
                 "image": {
                     "type": "emoji_deco:fetch_skin",
                     "player": {
-                        "emoji_deco:arg": {
-                            "index": 0
-                        }
+                        "type": "emoji_deco:arg",
+                        "index": 0
                     },
                     "uv": [8, 8, 16, 16]
                 }
@@ -50,9 +48,8 @@
                     "image": {
                         "type": "emoji_deco:fetch_skin",
                         "player": {
-                            "emoji_deco:arg": {
-                                "index": 0
-                            }
+                            "type": "emoji_deco:arg",
+                            "index": 0
                         },
                         "uv": [40, 8, 48, 16]
                     }

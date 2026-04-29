@@ -3,19 +3,17 @@
     "display": {
         "type": "emoji_deco:scale",
         "x": {
-            "emoji_deco:arg": {
-                "index": 0,
-                "label": "<size>",
-                "default": 1.0,
-                "type": "float"
-            }
+            "type": "emoji_deco:arg",
+            "index": 0,
+            "label": "<size>",
+            "default": 1.0,
+            "value_type": "float"
         },
         "y": {
-            "emoji_deco:arg": {
-                "index": 0,
-                "default": 1.0,
-                "type": "float"
-            }
+            "type": "emoji_deco:arg",
+            "index": 0,
+            "default": 1.0,
+            "value_type": "float"
         },
         "contents": { "type": "emoji_deco:slot" }
     }

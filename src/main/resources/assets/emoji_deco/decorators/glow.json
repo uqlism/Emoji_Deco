@@ -3,11 +3,10 @@
     "display": {
         "type": "emoji_deco:glow",
         "glow": {
-            "emoji_deco:arg": {
-                "index": 0,
-                "default": true,
-                "type": "boolean"
-            }
+            "type": "emoji_deco:arg",
+            "index": 0,
+            "default": true,
+            "value_type": "boolean"
         },
         "contents": { "type": "emoji_deco:slot" }
     }

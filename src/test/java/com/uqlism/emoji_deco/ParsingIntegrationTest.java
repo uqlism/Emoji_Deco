@@ -39,11 +39,11 @@ class ParsingIntegrationTest extends MinecraftTestBase {
                 """);
         putDecorator("color",
                 """
-                {"text":"","color":{"emoji_deco:arg":{"index":0,"default":"white"}},"extra":[{"type":"emoji_deco:slot"}]}
+                {"text":"","color":{"type":"emoji_deco:arg","index":0,"default":"white"},"extra":[{"type":"emoji_deco:slot"}]}
                 """);
         putDecorator("size",
                 """
-                {"type":"emoji_deco:scale","x":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"y":{"emoji_deco:arg":{"index":0,"default":1.0,"type":"float"}},"contents":{"type":"emoji_deco:slot"}}
+                {"type":"emoji_deco:scale","x":{"type":"emoji_deco:arg","index":0,"default":1.0,"value_type":"float"},"y":{"type":"emoji_deco:arg","index":0,"default":1.0,"value_type":"float"},"contents":{"type":"emoji_deco:slot"}}
                 """);
 
         // Shortcodes

@@ -115,7 +115,8 @@ public class ShortcodeManager implements PreparableReloadListener {
     private static boolean isDynamic(JsonElement el) {
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
-            if (obj.has("emoji_deco:arg") || obj.has("emoji_deco:player_names")) return true;
+            String t = obj.has("type") ? obj.get("type").getAsString() : "";
+            if ("emoji_deco:arg".equals(t) || "emoji_deco:player_names".equals(t)) return true;
             for (var e : obj.entrySet()) if (isDynamic(e.getValue())) return true;
         } else if (el.isJsonArray()) {
             for (JsonElement child : el.getAsJsonArray()) if (isDynamic(child)) return true;

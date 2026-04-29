@@ -1,54 +1,25 @@
 {
   "enable": true,
   "preview": [
-    {
-      "text": "c",
-      "color": "red"
-    },
-    {
-      "text": "o",
-      "color": "gold"
-    },
-    {
-      "text": "l",
-      "color": "yellow"
-    },
-    {
-      "text": "o",
-      "color": "green"
-    },
-    {
-      "text": "r",
-      "color": "aqua"
-    }
+    { "text": "c", "color": "red" },
+    { "text": "o", "color": "gold" },
+    { "text": "l", "color": "yellow" },
+    { "text": "o", "color": "green" },
+    { "text": "r", "color": "aqua" }
   ],
   "display": {
     "text": "",
     "color": {
-      "emoji_deco:arg": {
-        "label": "<color>",
-        "index": 0,
-        "type": "string",
-        "default": "white",
-        "suggestions": [
-          "aqua",
-          "black",
-          "blue",
-          "dark_aqua",
-          "dark_blue",
-          "dark_gray",
-          "dark_green",
-          "dark_purple",
-          "dark_red",
-          "gold",
-          "gray",
-          "green",
-          "light_purple",
-          "red",
-          "white",
-          "yellow"
-        ]
-      }
+      "type": "emoji_deco:arg",
+      "label": "<color>",
+      "index": 0,
+      "value_type": "string",
+      "default": "white",
+      "suggestions": [
+        "aqua", "black", "blue", "dark_aqua", "dark_blue",
+        "dark_gray", "dark_green", "dark_purple", "dark_red",
+        "gold", "gray", "green", "light_purple", "red", "white", "yellow"
+      ]
     },
     "extra": [
       { "type": "emoji_deco:slot" }

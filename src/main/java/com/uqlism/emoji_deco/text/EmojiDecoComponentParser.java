@@ -338,9 +338,8 @@ public final class EmojiDecoComponentParser {
         if (el == null) return null;
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
-            if (obj.has("emoji_deco:arg")) {
-                JsonObject spec = obj.getAsJsonObject("emoji_deco:arg");
-                if ((spec.has("index") ? spec.get("index").getAsInt() : 0) == index) return spec;
+            if ("emoji_deco:arg".equals(obj.has("type") ? obj.get("type").getAsString() : null)) {
+                if ((obj.has("index") ? obj.get("index").getAsInt() : 0) == index) return obj;
             }
             for (var entry : obj.entrySet()) {
                 JsonObject found = findArgSpec(entry.getValue(), index);
@@ -369,10 +368,9 @@ public final class EmojiDecoComponentParser {
         if (el == null) return;
         if (el.isJsonObject()) {
             JsonObject obj = el.getAsJsonObject();
-            if (obj.has("emoji_deco:arg")) {
-                JsonObject spec = obj.getAsJsonObject("emoji_deco:arg");
-                int idx = spec.has("index") ? spec.get("index").getAsInt() : 0;
-                result.putIfAbsent(idx, spec);
+            if ("emoji_deco:arg".equals(obj.has("type") ? obj.get("type").getAsString() : null)) {
+                int idx = obj.has("index") ? obj.get("index").getAsInt() : 0;
+                result.putIfAbsent(idx, obj);
             }
             for (var entry : obj.entrySet()) collectArgSpecs(entry.getValue(), result);
         } else if (el.isJsonArray()) {
