@@ -1,6 +1,7 @@
 package com.uqlism.emoji_deco.block;
 
 import com.uqlism.emoji_deco.Registration;
+import com.uqlism.emoji_deco.text.EmojiDecoComponentParser;
 import com.uqlism.emoji_deco.text.RichNode;
 import com.uqlism.emoji_deco.text.RichTextParser;
 import net.minecraft.core.BlockPos;
@@ -58,16 +59,19 @@ public class GraffitiBlockEntity extends BlockEntity {
      * Call only on the client thread (renderer).
      */
     public RichNode[] getRichLines() {
-        if (parsedCache == null) {
-            parsedCache = new RichNode[displayedLines];
-            for (int i = 0; i < displayedLines; i++) {
-                String raw = lines[i];
-                parsedCache[i] = (raw != null && !raw.isEmpty())
-                        ? RichTextParser.parse(raw)
-                        : RichNode.empty();
-            }
+        if (parsedCache != null) return parsedCache;
+        RichNode[] result = new RichNode[displayedLines];
+        boolean anyDynamic = false;
+        for (int i = 0; i < displayedLines; i++) {
+            EmojiDecoComponentParser.clearDynamic();
+            String raw = lines[i];
+            result[i] = (raw != null && !raw.isEmpty())
+                    ? RichTextParser.parse(raw)
+                    : RichNode.empty();
+            if (EmojiDecoComponentParser.isDynamic()) anyDynamic = true;
         }
-        return parsedCache;
+        if (!anyDynamic) parsedCache = result;
+        return result;
     }
 
     public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {

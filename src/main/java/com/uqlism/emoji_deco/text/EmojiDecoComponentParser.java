@@ -48,6 +48,12 @@ public final class EmojiDecoComponentParser {
      */
     private static final ThreadLocal<Set<String>> RESOLVING = ThreadLocal.withInitial(HashSet::new);
 
+    /** Set to true during a parse call that consumed an emoji_deco:time provider. */
+    private static final ThreadLocal<Boolean> DYNAMIC_FLAG = ThreadLocal.withInitial(() -> false);
+
+    public static void  clearDynamic() { DYNAMIC_FLAG.set(false); }
+    public static boolean isDynamic()  { return DYNAMIC_FLAG.get(); }
+
     private EmojiDecoComponentParser() {}
 
     // ── public API ────────────────────────────────────────────────────────────
@@ -114,6 +120,25 @@ public final class EmojiDecoComponentParser {
                             .forEach(arr::add);
                 }
                 return arr;
+            }
+
+            if ("emoji_deco:time".equals(dynType)) {
+                DYNAMIC_FLAG.set(true);
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                long gameTime   = (mc != null && mc.level != null) ? mc.level.getGameTime()          : 0L;
+                long dayTime    = (mc != null && mc.level != null) ? mc.level.getDayTime()            : 0L;
+                float partial   = (mc != null)                     ? mc.getPartialTick()              : 0f;
+                String timeType = obj.has("time") && obj.get("time").isJsonPrimitive()
+                        ? obj.get("time").getAsString() : "gametime";
+                float raw = switch (timeType) {
+                    case "daytime" -> (float)(dayTime % 24000L) + partial;
+                    case "day"     -> (float)(dayTime / 24000L);
+                    default        -> (float)gameTime + partial;   // "gametime"
+                };
+                float scale = 1f, offset = 0f;
+                try { if (obj.has("scale")  && obj.get("scale") .isJsonPrimitive()) scale  = obj.get("scale") .getAsFloat(); } catch (Exception ignored) {}
+                try { if (obj.has("offset") && obj.get("offset").isJsonPrimitive()) offset = obj.get("offset").getAsFloat(); } catch (Exception ignored) {}
+                return new JsonPrimitive(raw * scale + offset);
             }
 
             if ("emoji_deco:join".equals(dynType)) {

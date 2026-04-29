@@ -92,10 +92,16 @@ public class MixinFont {
             Matrix4f combined = new Matrix4f(matrix).translate(x, y, 0f).mul(as.localTransform());
             // Negative determinant means the transform contains a reflection (e.g. #flip).
             // Flip GL_FRONT_FACE so culled surfaces still render the correct face.
+            // Flush the buffer BEFORE resetting GL state — drawInBatch only queues vertices;
+            // the actual GL draw happens at flush time, so the state must still be active then.
             boolean flipWinding = as.localTransform().determinant() < 0;
             if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
-            cir.setReturnValue(self.drawInBatch(as.inner(), 0f, 0f, color, dropShadow, combined, buffers, mode, bgColor, packedLight));
-            if (flipWinding) GL11.glFrontFace(GL11.GL_CCW);
+            int ret = self.drawInBatch(as.inner(), 0f, 0f, color, dropShadow, combined, buffers, mode, bgColor, packedLight);
+            if (flipWinding) {
+                if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+                GL11.glFrontFace(GL11.GL_CCW);
+            }
+            cir.setReturnValue(ret);
             return;
         }
         if (text instanceof ConcatSequence cs) {
@@ -144,7 +150,10 @@ public class MixinFont {
             boolean flipWinding = as.localTransform().determinant() < 0;
             if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
             self.drawInBatch8xOutline(as.inner(), 0f, 0f, color, outlineColor, combined, buffers, packedLight);
-            if (flipWinding) GL11.glFrontFace(GL11.GL_CCW);
+            if (flipWinding) {
+                if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+                GL11.glFrontFace(GL11.GL_CCW);
+            }
             ci.cancel();
             return;
         }
