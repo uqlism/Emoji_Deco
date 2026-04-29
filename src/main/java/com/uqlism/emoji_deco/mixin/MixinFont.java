@@ -34,6 +34,8 @@ public class MixinFont {
      */
     private static final ThreadLocal<Integer> drawDepth    = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<Integer> ambientLight = new ThreadLocal<>();
+    /** Re-entry guard: prevents the recursive drawInBatch call we make from triggering this inject again. */
+    private static final ThreadLocal<Boolean> inComponentTransform = ThreadLocal.withInitial(() -> false);
 
     private static void enterDraw(int packedLight) {
         int d = drawDepth.get();
@@ -62,10 +64,11 @@ public class MixinFont {
     // Fast-path: components whose getString() contains no '#' or ':' are skipped at
     // negligible cost. Already-transformed components (from specific hooks) pass the
     // fast-path because markup characters are gone after parsing — no double transform.
-    // @Inject + cancel: allows us to also correct x for callers that centre text
-    // using font.width(rawComponent) before calling drawInBatch. Without the x
-    // correction, the transformed (shorter) content lands far to the left.
-    // The inner recursive call has no '#'/':', so the fast-path exits immediately.
+    // @Inject + cancel: also corrects x for callers that centre text by calling
+    // font.width(rawComponent) before drawInBatch (e.g. Supplementaries pedestal).
+    // inComponentTransform guards against mutual recursion: text containing ':'
+    // (e.g. "journeymap:waypoint") may still have ':' in getString() after transform,
+    // which would re-trigger this inject infinitely without the guard.
     @Inject(method = "m_272077_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$transformDrawBatchComponent(
             Component text, float x, float y,
@@ -73,14 +76,20 @@ public class MixinFont {
             Matrix4f matrix, MultiBufferSource buffers,
             Font.DisplayMode mode, int bgColor, int packedLight,
             CallbackInfoReturnable<Integer> cir) {
+        if (inComponentTransform.get()) return;
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
         Component transformed = ComponentTransformer.transform(text);
         Font self = (Font)(Object)this;
         float adj = (self.width(text) - self.width(transformed)) / 2.0f;
-        cir.setReturnValue(self.drawInBatch(
-                transformed, x + adj, y, color, dropShadow,
-                matrix, buffers, mode, bgColor, packedLight));
+        inComponentTransform.set(true);
+        try {
+            cir.setReturnValue(self.drawInBatch(
+                    transformed, x + adj, y, color, dropShadow,
+                    matrix, buffers, mode, bgColor, packedLight));
+        } finally {
+            inComponentTransform.set(false);
+        }
     }
 
     // ── drawInBatch(FormattedCharSequence) ────────────────────────────────────
