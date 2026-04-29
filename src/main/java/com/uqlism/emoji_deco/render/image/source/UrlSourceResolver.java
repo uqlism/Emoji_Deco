@@ -20,6 +20,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -32,40 +37,75 @@ public class UrlSourceResolver {
     private static final int MAX_BYTES  = 2 * 1024 * 1024;
     private static final int TIMEOUT_MS = 5_000;
     private static final AtomicInteger counter = new AtomicInteger(0);
-    private static final Map<String, CompletableFuture<ResolvedSource>> CACHE = new ConcurrentHashMap<>();
 
-    public static CompletableFuture<ResolvedSource> resolve(String url, @Nullable String format) {
-        if (!url.startsWith("https://") && !url.startsWith("http://"))
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Only http/https URLs are allowed"));
-        String cacheKey = url + "\0" + (format != null ? format : "");
-        return CACHE.computeIfAbsent(cacheKey, k -> fetch(url, format));
+    private record CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
+        boolean isExpired() {
+            return expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt;
+        }
     }
 
-    private static CompletableFuture<ResolvedSource> fetch(String url, @Nullable String formatHint) {
+    private static final Map<String, CacheEntry> CACHE = new ConcurrentHashMap<>();
+
+    public static CompletableFuture<ResolvedSource> resolve(
+            String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
+        if (!url.startsWith("https://") && !url.startsWith("http://"))
+            return CompletableFuture.failedFuture(
+                    new IllegalArgumentException("Only http/https URLs are allowed"));
+
+        String cacheKey = url + "\0" + (format != null ? format : "");
+        long expiresAt = ttlSeconds > 0
+                ? System.currentTimeMillis() + (long) ttlSeconds * 1000
+                : Long.MAX_VALUE;
+
+        return CACHE.compute(cacheKey, (k, existing) -> {
+            if (existing != null && !existing.isExpired()) return existing;
+            return new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
+        }).future();
+    }
+
+    // ── fetch ─────────────────────────────────────────────────────────────────
+
+    private static CompletableFuture<ResolvedSource> fetch(
+            String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                DownloadResult dl = download(url);
+                byte[] bytes;
+                String contentTypeHint = null;
 
-                // フォーマット判定: JSON 明示 > Content-Type > マジックバイト
-                String hint = (formatHint != null) ? formatHint : dl.contentType();
-                Format fmt = ImageFormatDetector.detect(dl.bytes(), hint);
+                if (diskCache) {
+                    Path cacheFile = diskCacheFile(url, format);
+                    if (Files.exists(cacheFile) && !isDiskExpired(cacheFile, ttlSeconds)) {
+                        bytes = Files.readAllBytes(cacheFile);
+                    } else {
+                        DownloadResult dl = download(url);
+                        bytes = dl.bytes();
+                        contentTypeHint = dl.contentType();
+                        writeDiskCache(cacheFile, bytes);
+                    }
+                } else {
+                    DownloadResult dl = download(url);
+                    bytes = dl.bytes();
+                    contentTypeHint = dl.contentType();
+                }
 
-                // デコード
+                String hint = format != null ? format : contentTypeHint;
+                Format fmt = ImageFormatDetector.detect(bytes, hint);
+
                 ImageDecoder decoder = switch (fmt) {
                     case GIF  -> new GifDecoder();
                     case WEBP -> new WebpDecoder();
                     default   -> new StbDecoder();
                 };
-                List<ImageDecoder.Frame> frames = decoder.decode(dl.bytes());
+                List<ImageDecoder.Frame> frames = decoder.decode(bytes);
                 if (frames.isEmpty()) throw new IOException("No frames decoded from " + url);
 
                 int w = frames.get(0).pixels().getWidth();
                 int h = frames.get(0).pixels().getHeight();
 
-                // GL 登録はレンダースレッドで
                 CompletableFuture<ResolvedSource> upload = new CompletableFuture<>();
                 Minecraft.getInstance().execute(() -> {
-                    ResourceLocation rl = ResourceLocation.parse("emoji_deco:fetch_url_" + counter.getAndIncrement());
+                    ResourceLocation rl = ResourceLocation.parse(
+                            "emoji_deco:fetch_url_" + counter.getAndIncrement());
                     if (frames.size() == 1) {
                         Minecraft.getInstance().getTextureManager()
                                 .register(rl, new DynamicTexture(frames.get(0).pixels()));
@@ -84,6 +124,46 @@ public class UrlSourceResolver {
             }
         });
     }
+
+    // ── disk cache ────────────────────────────────────────────────────────────
+
+    private static Path diskCacheFile(String url, @Nullable String format) {
+        String key = url + "\0" + (format != null ? format : "");
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(key.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 16; i++) sb.append(String.format("%02x", hash[i]));
+            return cacheDir().resolve(sb.toString() + ".bin");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean isDiskExpired(Path file, int ttlSeconds) {
+        if (ttlSeconds <= 0) return false;
+        try {
+            long age = System.currentTimeMillis() - Files.getLastModifiedTime(file).toMillis();
+            return age > (long) ttlSeconds * 1000;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    private static void writeDiskCache(Path file, byte[] bytes) {
+        try {
+            Files.createDirectories(file.getParent());
+            Files.write(file, bytes);
+        } catch (IOException e) {
+            LOGGER.warn("[EmojiDeco] Failed to write disk cache {}: {}", file, e.getMessage());
+        }
+    }
+
+    private static Path cacheDir() {
+        return Minecraft.getInstance().gameDirectory.toPath().resolve("emoji_deco_cache");
+    }
+
+    // ── HTTP download ─────────────────────────────────────────────────────────
 
     private static DownloadResult download(String urlStr) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();

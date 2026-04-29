@@ -90,7 +90,7 @@ public class ImageGlyphPool {
         s.resolved = null;
         s.glyph    = null;
         s.future   = (imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u)
-                ? UrlSourceResolver.resolve(u.url(), d.format()) : null;
+                ? UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds()) : null;
         return BASE_CP + idx;
     }
 

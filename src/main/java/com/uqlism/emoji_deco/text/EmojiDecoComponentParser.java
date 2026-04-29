@@ -249,7 +249,11 @@ public final class EmojiDecoComponentParser {
         return switch (stringOf(obj.get("type"), "")) {
             case "emoji_deco:fetch_url" -> {
                 String url = stringOf(obj.get("url"), "");
-                yield url.isEmpty() ? null : new BinarySource.Url(url);
+                if (url.isEmpty()) yield null;
+                boolean diskCache = obj.has("disk_cache") && obj.get("disk_cache").getAsBoolean();
+                int ttl = obj.has("ttl") && obj.get("ttl").isJsonPrimitive()
+                        ? obj.get("ttl").getAsInt() : 0;
+                yield new BinarySource.Url(url, diskCache, ttl);
             }
             case "emoji_deco:fetch_resource" -> {
                 String path = stringOf(obj.get("path"), "");
