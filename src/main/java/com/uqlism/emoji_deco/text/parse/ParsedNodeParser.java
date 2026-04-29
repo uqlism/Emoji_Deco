@@ -69,11 +69,11 @@ public final class ParsedNodeParser {
                     parseFloat(obj.get("z"), 0f, topArgSpecs),
                     obj.has("contents") ? parse(obj.get("contents"), topArgSpecs) : ParsedNode.empty());
             case "emoji_deco:apply_shortcode" -> {
-                String name = str(obj.get("shortcode"), "");
+                ParsedNode.StringVal name = parseString(obj.get("shortcode"), topArgSpecs);
                 yield new ParsedNode.ApplyShortcode(name, parseCallArgs(obj.get("args"), topArgSpecs));
             }
             case "emoji_deco:apply_decorator" -> {
-                String name = str(obj.get("decorator"), "");
+                ParsedNode.StringVal name = parseString(obj.get("decorator"), topArgSpecs);
                 ParsedNode slot = obj.has("slot")
                         ? parse(obj.get("slot"), topArgSpecs) : ParsedNode.empty();
                 yield new ParsedNode.ApplyDecorator(name, slot, parseCallArgs(obj.get("args"), topArgSpecs));

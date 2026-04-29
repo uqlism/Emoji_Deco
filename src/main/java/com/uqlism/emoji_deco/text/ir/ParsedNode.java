@@ -54,8 +54,8 @@ public sealed interface ParsedNode permits
     /** An arg reference in a structural position — hydrates to RichNode.Text(argValue). */
     record ArgAsText(int index, String defaultVal) implements ParsedNode {}
 
-    record ApplyShortcode(String shortcode, List<StringVal> callArgs) implements ParsedNode {}
-    record ApplyDecorator(String decorator, ParsedNode slot, List<StringVal> callArgs) implements ParsedNode {}
+    record ApplyShortcode(StringVal shortcode, List<StringVal> callArgs) implements ParsedNode {}
+    record ApplyDecorator(StringVal decorator, ParsedNode slot, List<StringVal> callArgs) implements ParsedNode {}
 
     static ParsedNode empty() { return new Many(List.of()); }
 

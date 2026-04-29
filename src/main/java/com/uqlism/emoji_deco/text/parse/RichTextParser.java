@@ -40,7 +40,7 @@ public class RichTextParser {
                         flushP(children, text, litStart, pos);
                         List<ParsedNode.StringVal> ca = new ArrayList<>();
                         for (String a : argsArr) ca.add(new ParsedNode.StringVal.Literal(a));
-                        children.add(new ParsedNode.ApplyShortcode(code, ca));
+                        children.add(new ParsedNode.ApplyShortcode(new ParsedNode.StringVal.Literal(code), ca));
                         pos = close + 1; litStart = pos; continue;
                     }
                 }
@@ -63,7 +63,7 @@ public class RichTextParser {
                             ParsedNode slot = parseInlineToParsed(text.substring(contentStart + 1, bc));
                             List<ParsedNode.StringVal> ca = new ArrayList<>();
                             for (String a : argsArr) ca.add(new ParsedNode.StringVal.Literal(a));
-                            children.add(new ParsedNode.ApplyDecorator(tagName, slot, ca));
+                            children.add(new ParsedNode.ApplyDecorator(new ParsedNode.StringVal.Literal(tagName), slot, ca));
                             pos = bc + 1; litStart = pos; continue;
                         }
                     }

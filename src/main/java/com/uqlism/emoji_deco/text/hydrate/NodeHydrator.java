@@ -129,28 +129,30 @@ public final class NodeHydrator {
     }
 
     private static RichNode hydrateApplyShortcode(ParsedNode.ApplyShortcode sc, HydrateContext.Tracked ctx) {
-        if (!ShortcodeManager.hasParsed(sc.shortcode())) return RichNode.empty();
+        String name = evalString(sc.shortcode(), ctx);
+        if (!ShortcodeManager.hasParsed(name)) return RichNode.empty();
         String[] callArgs = sc.callArgs().stream().map(a -> evalString(a, ctx)).toArray(String[]::new);
-        String key = "s:" + sc.shortcode();
+        String key = "s:" + name;
         if (!RESOLVING.get().add(key)) {
-            LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode: '{}'", sc.shortcode());
+            LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode: '{}'", name);
             return RichNode.empty();
         }
-        try { return ShortcodeManager.hydrateWith(sc.shortcode(), callArgs, null); }
+        try { return ShortcodeManager.hydrateWith(name, callArgs, null); }
         finally { RESOLVING.get().remove(key); }
     }
 
     private static RichNode hydrateApplyDecorator(ParsedNode.ApplyDecorator d, HydrateContext.Tracked ctx) {
-        if (!DecoratorManager.hasParsed(d.decorator())) return RichNode.empty();
+        String name = evalString(d.decorator(), ctx);
+        if (!DecoratorManager.hasParsed(name)) return RichNode.empty();
         RichNode slot     = hydrateTracked(d.slot(), ctx);
         String[] callArgs = d.callArgs().stream().map(a -> evalString(a, ctx)).toArray(String[]::new);
-        String key = "d:" + d.decorator();
+        String key = "d:" + name;
         if (!RESOLVING.get().add(key)) {
-            LOGGER.warn("[EmojiDeco] Cyclic apply_decorator: '{}'", d.decorator());
+            LOGGER.warn("[EmojiDeco] Cyclic apply_decorator: '{}'", name);
             return slot;
         }
         try {
-            RichNode result = DecoratorManager.hydrateWith(d.decorator(), slot, callArgs);
+            RichNode result = DecoratorManager.hydrateWith(name, slot, callArgs);
             return result != null ? result : slot;
         } finally { RESOLVING.get().remove(key); }
     }
