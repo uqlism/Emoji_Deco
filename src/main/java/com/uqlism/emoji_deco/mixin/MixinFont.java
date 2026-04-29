@@ -6,15 +6,18 @@ import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
 import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
+import com.uqlism.emoji_deco.text.ComponentTransformer;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -52,7 +55,22 @@ public class MixinFont {
         return current;
     }
 
-    // ── drawInBatch ───────────────────────────────────────────────────────────
+    // ── drawInBatch(Component) → catch-all transform ──────────────────────────
+
+    // m_272077_ = drawInBatch(Component, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
+    // This intercepts every Component-based text draw (including third-party mod
+    // pedestals, item frames, etc.) so markup/shortcodes work without per-mod mixins.
+    // Fast-path: components whose getString() contains no '#' or ':' are skipped at
+    // negligible cost. Already-transformed components (from specific hooks) pass the
+    // fast-path because markup characters are gone after parsing — no double transform.
+    @ModifyVariable(method = "m_272077_", at = @At("HEAD"), argsOnly = true, remap = false)
+    private Component runicink$transformDrawBatchComponent(Component component) {
+        String raw = component.getString();
+        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return component;
+        return ComponentTransformer.transform(component);
+    }
+
+    // ── drawInBatch(FormattedCharSequence) ────────────────────────────────────
 
     // m_272191_ = drawInBatch(FormattedCharSequence, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
     @Inject(method = "m_272191_", at = @At("HEAD"), cancellable = true, remap = false)
@@ -194,7 +212,19 @@ public class MixinFont {
             return;
         }
         if (text instanceof AffineSequence as) {
-            cir.setReturnValue(self.width(as.inner()));
+            // Transform the bounding box corners through localTransform and return the max X extent.
+            // JOML naming: mCR = column C, row R.  result.x = m00*vx + m10*vy + m30
+            float w = self.width(as.inner());
+            float h = self.lineHeight;
+            org.joml.Matrix4f m = as.localTransform();
+            float maxX = 0f;
+            for (int i = 0; i < 4; i++) {
+                float vx = (i == 1 || i == 2) ? w : 0f;
+                float vy = (i == 2 || i == 3) ? h : 0f;
+                float tx = m.m00() * vx + m.m10() * vy + m.m30();
+                if (tx > maxX) maxX = tx;
+            }
+            cir.setReturnValue(Math.max(0, Math.round(maxX)));
             return;
         }
         if (text instanceof ConcatSequence cs) {
