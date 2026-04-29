@@ -95,7 +95,12 @@ public class MixinFont {
             // Flush the buffer BEFORE resetting GL state — drawInBatch only queues vertices;
             // the actual GL draw happens at flush time, so the state must still be active then.
             boolean flipWinding = as.localTransform().determinant() < 0;
-            if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
+            if (flipWinding) {
+                // Flush any geometry accumulated before this sequence (e.g. preceding plain text
+                // in a ConcatSequence) so it is drawn with the current GL_CCW state, not GL_CW.
+                if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+                GL11.glFrontFace(GL11.GL_CW);
+            }
             int ret = self.drawInBatch(as.inner(), 0f, 0f, color, dropShadow, combined, buffers, mode, bgColor, packedLight);
             if (flipWinding) {
                 if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
@@ -148,7 +153,10 @@ public class MixinFont {
         if (text instanceof AffineSequence as) {
             Matrix4f combined = new Matrix4f(matrix).translate(x, y, 0f).mul(as.localTransform());
             boolean flipWinding = as.localTransform().determinant() < 0;
-            if (flipWinding) GL11.glFrontFace(GL11.GL_CW);
+            if (flipWinding) {
+                if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+                GL11.glFrontFace(GL11.GL_CW);
+            }
             self.drawInBatch8xOutline(as.inner(), 0f, 0f, color, outlineColor, combined, buffers, packedLight);
             if (flipWinding) {
                 if (buffers instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
