@@ -179,7 +179,26 @@ public class ShortcodeManager implements PreparableReloadListener {
                 LOGGER.warn("[EmojiDeco] Failed to parse preview for shortcode '{}': {}", code, e.getMessage());
             }
         }
+        // display が URL ソースを含む場合は toComponent() で大量フェッチが起きるため
+        // オートコンプリート一覧ではテキストのみ表示する
+        if (json != null && displayHasUrlSource(json.get("display"))) {
+            return net.minecraft.network.chat.Component.literal(":" + code + ":");
+        }
         return resolve(code).toComponent();
+    }
+
+    private static boolean displayHasUrlSource(@Nullable com.google.gson.JsonElement el) {
+        if (el == null) return false;
+        if (el.isJsonObject()) {
+            com.google.gson.JsonObject obj = el.getAsJsonObject();
+            if ("emoji_deco:fetch_url".equals(obj.has("type") ? obj.get("type").getAsString() : ""))
+                return true;
+            for (var e : obj.entrySet()) if (displayHasUrlSource(e.getValue())) return true;
+        } else if (el.isJsonArray()) {
+            for (com.google.gson.JsonElement item : el.getAsJsonArray())
+                if (displayHasUrlSource(item)) return true;
+        }
+        return false;
     }
 
     public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
