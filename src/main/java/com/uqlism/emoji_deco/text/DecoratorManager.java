@@ -11,7 +11,9 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -26,7 +28,16 @@ public class DecoratorManager implements PreparableReloadListener {
     public static final DecoratorManager INSTANCE = new DecoratorManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Map<String, JsonObject> REGISTRY = new ConcurrentHashMap<>();
+    /** ParsedNode per decorator — parsed at load time. */
+    private static final Map<String, ParsedNode>  PARSED_REGISTRY = new ConcurrentHashMap<>();
+    /** Per-decorator hydration result cache. */
+    private static final Map<String, HydrateCache> HYDRATE_CACHES  = new ConcurrentHashMap<>();
+    /** Full JSON per decorator — for label / preview / suggestion lookup. */
+    private static final Map<String, JsonObject>  JSON_REGISTRY   = new ConcurrentHashMap<>();
+
+    private record LoadResult(
+            Map<String, ParsedNode> parsedRegistry,
+            Map<String, JsonObject> jsonRegistry) {}
 
     @Override
     public CompletableFuture<Void> reload(
@@ -41,14 +52,18 @@ public class DecoratorManager implements PreparableReloadListener {
                 .supplyAsync(() -> loadAll(resourceManager), backgroundExecutor)
                 .thenCompose(stage::wait)
                 .thenAcceptAsync(loaded -> {
-                    REGISTRY.clear();
-                    REGISTRY.putAll(loaded);
-                    LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", REGISTRY.size());
+                    PARSED_REGISTRY.clear();
+                    PARSED_REGISTRY.putAll(loaded.parsedRegistry());
+                    JSON_REGISTRY.clear();
+                    JSON_REGISTRY.putAll(loaded.jsonRegistry());
+                    HYDRATE_CACHES.clear();
+                    LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", PARSED_REGISTRY.size());
                 }, gameExecutor);
     }
 
-    private static Map<String, JsonObject> loadAll(ResourceManager resourceManager) {
-        Map<String, JsonObject> result = new HashMap<>();
+    private static LoadResult loadAll(ResourceManager resourceManager) {
+        Map<String, ParsedNode> parsed = new HashMap<>();
+        Map<String, JsonObject> json   = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "decorators", path -> path.getPath().endsWith(".json"));
 
@@ -57,50 +72,76 @@ public class DecoratorManager implements PreparableReloadListener {
             try (InputStreamReader reader = new InputStreamReader(
                     entry.getValue().open(), StandardCharsets.UTF_8)) {
 
-                JsonObject json = GsonHelper.parse(reader);
+                JsonObject j = GsonHelper.parse(reader);
+                if (j.has("enable") && !j.get("enable").getAsBoolean()) continue;
+                if (!j.has("display")) continue;
 
-                if (json.has("enable") && !json.get("enable").getAsBoolean()) continue;
-                if (!json.has("display")) continue;
-
-                // "decorators/bold.json" -> "bold"
                 String path = location.getPath();
                 String name = path.substring("decorators/".length(), path.length() - ".json".length());
 
-                result.put(name, json);
+                JsonArray topArgSpecs = j.has("args") ? j.getAsJsonArray("args") : null;
+                parsed.put(name, ParsedNodeParser.parse(j.get("display"), topArgSpecs));
+                json.put(name, j);
 
             } catch (Exception e) {
                 LOGGER.error("[EmojiDeco] Failed to load decorator {}: {}", location, e.getMessage());
             }
         }
+        return new LoadResult(parsed, json);
+    }
+
+    // ── Hydration ─────────────────────────────────────────────────────────────
+
+    @Nullable
+    public static RichNode hydrateWith(String name, RichNode slotNode, String[] args) {
+        ParsedNode node = PARSED_REGISTRY.get(name);
+        if (node == null) return null;
+
+        JsonObject json = JSON_REGISTRY.get(name);
+        JsonArray  topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
+        HydrateContext ctx   = new HydrateContext(args, topArgSpecs, slotNode);
+        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(name, k -> new HydrateCache());
+        long tick = NodeHydrator.currentTick();
+
+        RichNode cached = cache.lookup(ctx, slotNode, tick);
+        if (cached != null) return cached;
+
+        HydrateContext.Tracked tracked = ctx.track();
+        RichNode result = NodeHydrator.hydrateTracked(node, tracked);
+        cache.store(tracked.extractPattern(), result, tick);
         return result;
     }
 
-    public static boolean has(String name) {
-        return REGISTRY.containsKey(name);
-    }
-
+    @Nullable
     public static RichNode resolve(String name, RichNode slotNode, String[] args) {
-        JsonObject json = REGISTRY.get(name);
-        if (json == null) return null;
-        try {
-            JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
-            return EmojiDecoComponentParser.parse(json.get("display"), slotNode, args, topArgSpecs);
-        } catch (Exception e) {
-            LOGGER.error("[EmojiDeco] Failed to resolve style tag '{}': {}", name, e.getMessage());
-        }
-        return slotNode;
+        return hydrateWith(name, slotNode, args);
     }
 
+    @Nullable
     public static RichNode resolve(String name, RichNode slotNode) {
-        return resolve(name, slotNode, new String[0]);
+        return hydrateWith(name, slotNode, new String[0]);
     }
 
-    /**
-     * Returns the raw "suggestions" JsonElement for the arg at argIndex, or null if absent.
-     * Checks the top-level "args" array first, then falls back to scanning the display JSON.
-     */
+    public static void gcCaches(long currentTick) {
+        HYDRATE_CACHES.values().forEach(c -> c.gc(currentTick));
+    }
+
+    // ── Queries ───────────────────────────────────────────────────────────────
+
+    public static boolean has(String name)       { return PARSED_REGISTRY.containsKey(name); }
+    public static boolean hasParsed(String name) { return PARSED_REGISTRY.containsKey(name); }
+
+    public static List<String> getSuggestions(String prefix) {
+        return PARSED_REGISTRY.keySet().stream()
+                .filter(k -> k.startsWith(prefix))
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    // ── Label / Preview (autocomplete) ────────────────────────────────────────
+
     public static com.google.gson.JsonElement getArgSuggestionsSpec(String tagName, int argIndex) {
-        JsonObject json = REGISTRY.get(tagName);
+        JsonObject json = JSON_REGISTRY.get(tagName);
         if (json == null) return null;
         if (json.has("args") && json.get("args").isJsonArray()) {
             JsonArray topArgs = json.getAsJsonArray("args");
@@ -115,12 +156,8 @@ public class DecoratorManager implements PreparableReloadListener {
         return argSpec.get("suggestions");
     }
 
-    /**
-     * Returns the label for autocomplete display.
-     * Priority: explicit top-level "label" > auto-built from arg "label" fields > "#name[]".
-     */
     public static String getLabel(String name) {
-        JsonObject json = REGISTRY.get(name);
+        JsonObject json = JSON_REGISTRY.get(name);
         if (json == null) return "#" + name + "[]";
 
         if (json.has("label") && json.get("label").isJsonPrimitive())
@@ -129,36 +166,58 @@ public class DecoratorManager implements PreparableReloadListener {
         var args = effectiveArgSpecs(json);
         if (!args.isEmpty()) {
             int lastVisible = -1;
-            for (var entry : args.entrySet()) {
-                JsonObject spec = entry.getValue();
-                boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
-                        && spec.get("hidden").getAsBoolean();
-                if (!hidden) lastVisible = entry.getKey();
+            for (var e : args.entrySet()) {
+                JsonObject spec = e.getValue();
+                if (!(spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                        && spec.get("hidden").getAsBoolean())) lastVisible = e.getKey();
             }
             if (lastVisible >= 0) {
                 StringBuilder sb = new StringBuilder("#").append(name).append(".");
                 boolean first = true;
-                for (var entry : args.entrySet()) {
-                    if (entry.getKey() > lastVisible) break;
+                for (var e : args.entrySet()) {
+                    if (e.getKey() > lastVisible) break;
                     if (!first) sb.append(",");
                     first = false;
-                    JsonObject spec = entry.getValue();
+                    JsonObject spec = e.getValue();
                     boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
                             && spec.get("hidden").getAsBoolean();
                     if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
                         sb.append(spec.get("label").getAsString());
-                    else
-                        sb.append("<arg").append(entry.getKey() + 1).append(">");
+                    else sb.append("<arg").append(e.getKey() + 1).append(">");
                 }
                 sb.append("[]");
                 return sb.toString();
             }
         }
-
         return "#" + name + "[]";
     }
 
-    /** display 内スキャン結果をベースにトップレベル args で上書きした有効スペックマップを返す。 */
+    public static net.minecraft.network.chat.Component getPreview(String name) {
+        JsonObject json = JSON_REGISTRY.get(name);
+        if (json != null && json.has("preview")) {
+            try {
+                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
+                if (node != null) return node.toComponent();
+            } catch (Exception e) {
+                LOGGER.warn("[EmojiDeco] Failed to parse preview for decorator '{}': {}", name, e.getMessage());
+            }
+        }
+        RichNode slot     = new RichNode.Text(name, net.minecraft.network.chat.Style.EMPTY, List.of());
+        RichNode fallback = resolve(name, slot);
+        return fallback != null ? fallback.toComponent()
+                : net.minecraft.network.chat.Component.literal(getLabel(name));
+    }
+
+    static boolean isValidTagName(String name) {
+        if (name.isEmpty()) return false;
+        for (char c : name.toCharArray()) {
+            if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') return false;
+        }
+        return true;
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+
     private static java.util.Map<Integer, JsonObject> effectiveArgSpecs(JsonObject json) {
         java.util.Map<Integer, JsonObject> specs = json.has("display")
                 ? new java.util.TreeMap<>(EmojiDecoComponentParser.findAllArgSpecs(json.get("display")))
@@ -170,39 +229,5 @@ public class DecoratorManager implements PreparableReloadListener {
             }
         }
         return specs;
-    }
-
-    /**
-     * Returns a Component built from the preview array defined in the decorator JSON.
-     * Falls back to resolving the decorator with the name as slot content if absent.
-     */
-    public static net.minecraft.network.chat.Component getPreview(String name) {
-        JsonObject json = REGISTRY.get(name);
-        if (json != null && json.has("preview")) {
-            try {
-                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
-                if (node != null) return node.toComponent();
-            } catch (Exception e) {
-                LOGGER.warn("[EmojiDeco] Failed to parse preview for decorator '{}': {}", name, e.getMessage());
-            }
-        }
-        RichNode fallback = resolve(name, new RichNode.Text(name, net.minecraft.network.chat.Style.EMPTY, List.of()));
-        return fallback != null ? fallback.toComponent() : net.minecraft.network.chat.Component.literal(getLabel(name));
-    }
-
-    /** Returns all tag names that start with prefix, sorted. */
-    public static List<String> getSuggestions(String prefix) {
-        return REGISTRY.keySet().stream()
-                .filter(key -> key.startsWith(prefix))
-                .sorted()
-                .collect(Collectors.toList());
-    }
-
-    static boolean isValidTagName(String name) {
-        if (name.isEmpty()) return false;
-        for (char c : name.toCharArray()) {
-            if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') return false;
-        }
-        return true;
     }
 }

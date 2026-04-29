@@ -48,12 +48,6 @@ public final class EmojiDecoComponentParser {
      */
     private static final ThreadLocal<Set<String>> RESOLVING = ThreadLocal.withInitial(HashSet::new);
 
-    /** Set to true during a parse call that consumed an emoji_deco:time provider. */
-    private static final ThreadLocal<Boolean> DYNAMIC_FLAG = ThreadLocal.withInitial(() -> false);
-
-    public static void  clearDynamic() { DYNAMIC_FLAG.set(false); }
-    public static boolean isDynamic()  { return DYNAMIC_FLAG.get(); }
-
     private EmojiDecoComponentParser() {}
 
     // ── public API ────────────────────────────────────────────────────────────
@@ -123,7 +117,6 @@ public final class EmojiDecoComponentParser {
             }
 
             if ("emoji_deco:time".equals(dynType)) {
-                DYNAMIC_FLAG.set(true);
                 net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
                 long gameTime   = (mc != null && mc.level != null) ? mc.level.getGameTime()          : 0L;
                 long dayTime    = (mc != null && mc.level != null) ? mc.level.getDayTime()            : 0L;
@@ -256,7 +249,7 @@ public final class EmojiDecoComponentParser {
                 BinarySource source = parseBinarySource(obj.getAsJsonObject("source"));
                 yield source != null ? new ImageSpec.Decoded(format, source) : null;
             }
-            case "emoji_deco:fetch_atlas" -> {
+case "emoji_deco:fetch_atlas" -> {
                 String atlas  = stringOf(obj.get("atlas"),  "");
                 String sprite = stringOf(obj.get("sprite"), "");
                 yield atlas.isEmpty() || sprite.isEmpty() ? null : new ImageSpec.Atlas(atlas, sprite);

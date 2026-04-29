@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -30,20 +29,19 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static final ShortcodeManager INSTANCE = new ShortcodeManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Pre-parsed nodes for shortcodes without dynamic content */
-    private static final Map<String, RichNode> REGISTRY = new ConcurrentHashMap<>();
-    /** Raw display JSON for shortcodes that contain dynamic nodes — parsed per call */
-    private static final Map<String, JsonElement> PARAM_REGISTRY = new ConcurrentHashMap<>();
-    /** Full JSON for all shortcodes — used for label/preview lookup */
-    private static final Map<String, JsonObject> JSON_REGISTRY = new ConcurrentHashMap<>();
+    /** ParsedNode for every shortcode — parsed at load time, hydrated on demand. */
+    private static final Map<String, ParsedNode>  PARSED_REGISTRY = new ConcurrentHashMap<>();
+    /** Per-shortcode hydration result cache (pattern → RichNode). */
+    private static final Map<String, HydrateCache> HYDRATE_CACHES  = new ConcurrentHashMap<>();
+    /** Full JSON for all shortcodes — used for label / preview / suggestion lookup. */
+    private static final Map<String, JsonObject>  JSON_REGISTRY   = new ConcurrentHashMap<>();
     /** alias text → canonical shortcode name */
-    private static final Map<String, String> ALIASES = new ConcurrentHashMap<>();
+    private static final Map<String, String>      ALIASES         = new ConcurrentHashMap<>();
 
     private record LoadResult(
-            Map<String, RichNode>    registry,
-            Map<String, JsonElement> paramRegistry,
-            Map<String, JsonObject>  jsonRegistry,
-            Map<String, String>      aliases) {}
+            Map<String, ParsedNode> parsedRegistry,
+            Map<String, JsonObject> jsonRegistry,
+            Map<String, String>     aliases) {}
 
     @Override
     public CompletableFuture<Void> reload(
@@ -58,24 +56,22 @@ public class ShortcodeManager implements PreparableReloadListener {
                 .supplyAsync(() -> loadAll(resourceManager), backgroundExecutor)
                 .thenCompose(stage::wait)
                 .thenAcceptAsync(result -> {
-                    REGISTRY.clear();
-                    REGISTRY.putAll(result.registry());
-                    PARAM_REGISTRY.clear();
-                    PARAM_REGISTRY.putAll(result.paramRegistry());
+                    PARSED_REGISTRY.clear();
+                    PARSED_REGISTRY.putAll(result.parsedRegistry());
                     JSON_REGISTRY.clear();
                     JSON_REGISTRY.putAll(result.jsonRegistry());
                     ALIASES.clear();
                     ALIASES.putAll(result.aliases());
-                    LOGGER.info("[EmojiDeco] Loaded {} shortcode(s) ({} parametric), {} alias(es)",
-                            REGISTRY.size() + PARAM_REGISTRY.size(), PARAM_REGISTRY.size(), ALIASES.size());
+                    HYDRATE_CACHES.clear();
+                    LOGGER.info("[EmojiDeco] Loaded {} shortcode(s), {} alias(es)",
+                            PARSED_REGISTRY.size(), ALIASES.size());
                 }, gameExecutor);
     }
 
     private static LoadResult loadAll(ResourceManager resourceManager) {
-        Map<String, RichNode>    loaded        = new HashMap<>();
-        Map<String, JsonElement> paramLoaded   = new HashMap<>();
-        Map<String, JsonObject>  jsonLoaded    = new HashMap<>();
-        Map<String, String>      loadedAliases = new HashMap<>();
+        Map<String, ParsedNode> parsed  = new HashMap<>();
+        Map<String, JsonObject> json    = new HashMap<>();
+        Map<String, String>     aliases = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "shortcodes", path -> path.getPath().endsWith(".json"));
 
@@ -84,176 +80,74 @@ public class ShortcodeManager implements PreparableReloadListener {
             try (InputStreamReader reader = new InputStreamReader(
                     entry.getValue().open(), StandardCharsets.UTF_8)) {
 
-                JsonObject json = GsonHelper.parse(reader);
-                if (json.has("enable") && !json.get("enable").getAsBoolean()) continue;
-                if (!json.has("display")) continue;
+                JsonObject j = GsonHelper.parse(reader);
+                if (j.has("enable") && !j.get("enable").getAsBoolean()) continue;
+                if (!j.has("display")) continue;
 
                 String path = location.getPath();
                 String name = path.substring("shortcodes/".length(), path.length() - ".json".length());
 
-                JsonElement display = json.get("display");
-                if (isDynamic(display)) {
-                    paramLoaded.put(name, display);
-                } else {
-                    loaded.put(name, EmojiDecoComponentParser.parse(display, null));
-                }
-                jsonLoaded.put(name, json);
+                JsonArray topArgSpecs = j.has("args") ? j.getAsJsonArray("args") : null;
+                parsed.put(name, ParsedNodeParser.parse(j.get("display"), topArgSpecs));
+                json.put(name, j);
 
-                if (json.has("aliases") && json.get("aliases").isJsonArray()) {
-                    for (JsonElement alias : json.getAsJsonArray("aliases")) {
-                        String aliasStr = alias.getAsString().trim();
-                        if (!aliasStr.isEmpty()) loadedAliases.put(aliasStr, name);
+                if (j.has("aliases") && j.get("aliases").isJsonArray()) {
+                    for (JsonElement alias : j.getAsJsonArray("aliases")) {
+                        String a = alias.getAsString().trim();
+                        if (!a.isEmpty()) aliases.put(a, name);
                     }
                 }
             } catch (Exception e) {
                 LOGGER.error("[EmojiDeco] Failed to load shortcode {}: {}", location, e.getMessage());
             }
         }
-        return new LoadResult(loaded, paramLoaded, jsonLoaded, loadedAliases);
+        return new LoadResult(parsed, json, aliases);
     }
 
-    private static boolean isDynamic(JsonElement el) {
-        if (el.isJsonObject()) {
-            JsonObject obj = el.getAsJsonObject();
-            String t = obj.has("type") ? obj.get("type").getAsString() : "";
-            if ("emoji_deco:arg".equals(t) || "emoji_deco:player_names".equals(t)
-                    || "emoji_deco:time".equals(t)
-                    // apply_shortcode / apply_decorator は呼び先が URL フェッチを含む可能性があるため
-                    // ロード時に一括プリパースするとプール枯渇・ForkJoinPool 飽和を起こす
-                    || "emoji_deco:apply_shortcode".equals(t)
-                    || "emoji_deco:apply_decorator".equals(t)) return true;
-            for (var e : obj.entrySet()) if (isDynamic(e.getValue())) return true;
-        } else if (el.isJsonArray()) {
-            for (JsonElement child : el.getAsJsonArray()) if (isDynamic(child)) return true;
-        }
-        return false;
+    // ── Hydration ─────────────────────────────────────────────────────────────
+
+    public static RichNode hydrateWith(String code, String[] args, @Nullable RichNode slot) {
+        String canonical = ALIASES.getOrDefault(code, code);
+        ParsedNode node  = PARSED_REGISTRY.get(canonical);
+        if (node == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
+
+        JsonObject json = JSON_REGISTRY.get(canonical);
+        JsonArray  topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
+        HydrateContext ctx  = new HydrateContext(args, topArgSpecs, slot);
+        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(canonical, k -> new HydrateCache());
+        long tick = NodeHydrator.currentTick();
+
+        RichNode cached = cache.lookup(ctx, slot, tick);
+        if (cached != null) return cached;
+
+        HydrateContext.Tracked tracked = ctx.track();
+        RichNode result = NodeHydrator.hydrateTracked(node, tracked);
+        cache.store(tracked.extractPattern(), result, tick);
+        return result;
     }
 
-    /**
-     * Returns the label for autocomplete display.
-     * Priority: explicit top-level "label" > auto-built from arg "label" fields > ":code:".
-     */
-    public static String getLabel(String code) {
-        JsonObject json = JSON_REGISTRY.get(code);
-        if (json == null) return ":" + code + ":";
+    public static RichNode resolve(String code, String[] args) { return hydrateWith(code, args, null); }
+    public static RichNode resolve(String code)               { return hydrateWith(code, new String[0], null); }
 
-        if (json.has("label") && json.get("label").isJsonPrimitive())
-            return json.get("label").getAsString();
-
-        // トップレベル args → display 内スキャン の順で effective なスペックを構築
-        var args = effectiveArgSpecs(json);
-        if (!args.isEmpty()) {
-            int lastVisible = -1;
-            for (var entry : args.entrySet()) {
-                JsonObject spec = entry.getValue();
-                boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
-                        && spec.get("hidden").getAsBoolean();
-                if (!hidden) lastVisible = entry.getKey();
-            }
-            if (lastVisible >= 0) {
-                StringBuilder sb = new StringBuilder(":").append(code).append(".");
-                boolean first = true;
-                for (var entry : args.entrySet()) {
-                    if (entry.getKey() > lastVisible) break;
-                    if (!first) sb.append(",");
-                    first = false;
-                    JsonObject spec = entry.getValue();
-                    boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
-                            && spec.get("hidden").getAsBoolean();
-                    if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
-                        sb.append(spec.get("label").getAsString());
-                    else
-                        sb.append("<arg").append(entry.getKey() + 1).append(">");
-                }
-                sb.append(":");
-                return sb.toString();
-            }
-        }
-
-        return ":" + code + ":";
+    public static void gcCaches(long currentTick) {
+        HYDRATE_CACHES.values().forEach(c -> c.gc(currentTick));
     }
 
-    /** Returns a Component for autocomplete preview. Falls back to resolving with empty args. */
-    public static net.minecraft.network.chat.Component getPreview(String code) {
-        JsonObject json = JSON_REGISTRY.get(code);
-        if (json != null && json.has("preview")) {
-            try {
-                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
-                if (node != null) return node.toComponent();
-            } catch (Exception e) {
-                LOGGER.warn("[EmojiDeco] Failed to parse preview for shortcode '{}': {}", code, e.getMessage());
-            }
-        }
-        return resolve(code).toComponent();
-    }
-
-    public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
-        // トップレベル args を優先
-        JsonObject json = JSON_REGISTRY.get(code);
-        if (json != null) {
-            JsonObject spec = topLevelArgSpec(json, argIndex);
-            if (spec != null && spec.has("suggestions")) return spec.get("suggestions");
-        }
-        // display 内のインライン emoji_deco:arg にフォールバック
-        JsonElement display = PARAM_REGISTRY.get(code);
-        if (display == null) return null;
-        JsonObject argSpec = EmojiDecoComponentParser.findArgSpec(display, argIndex);
-        if (argSpec == null || !argSpec.has("suggestions")) return null;
-        return argSpec.get("suggestions");
-    }
-
-    /**
-     * トップレベル "args" 配列と display 内スキャン結果をマージした有効スペックマップを返す。
-     * トップレベルが優先される。
-     */
-    private static java.util.Map<Integer, JsonObject> effectiveArgSpecs(JsonObject json) {
-        // display 内スキャンをベースにする
-        JsonElement display = json.get("display");
-        java.util.Map<Integer, JsonObject> specs = display != null
-                ? EmojiDecoComponentParser.findAllArgSpecs(display)
-                : new java.util.TreeMap<>();
-
-        // トップレベル args で上書き
-        if (json.has("args") && json.get("args").isJsonArray()) {
-            JsonArray topArgs = json.getAsJsonArray("args");
-            for (int i = 0; i < topArgs.size(); i++) {
-                if (topArgs.get(i).isJsonObject())
-                    specs.put(i, topArgs.get(i).getAsJsonObject());
-            }
-        }
-        return specs;
-    }
-
-    /** トップレベル "args" 配列の指定インデックスのスペックを返す。なければ null。 */
-    private static @Nullable JsonObject topLevelArgSpec(JsonObject json, int argIndex) {
-        if (!json.has("args") || !json.get("args").isJsonArray()) return null;
-        JsonArray topArgs = json.getAsJsonArray("args");
-        if (argIndex < 0 || argIndex >= topArgs.size()) return null;
-        JsonElement el = topArgs.get(argIndex);
-        return el.isJsonObject() ? el.getAsJsonObject() : null;
-    }
+    // ── Queries ───────────────────────────────────────────────────────────────
 
     public static boolean has(String code) {
-        return REGISTRY.containsKey(code) || PARAM_REGISTRY.containsKey(code);
+        return PARSED_REGISTRY.containsKey(code) || ALIASES.containsKey(code);
     }
 
-    public static RichNode resolve(String code, String[] args) {
-        JsonElement display = PARAM_REGISTRY.get(code);
-        if (display != null) {
-            JsonObject json = JSON_REGISTRY.get(code);
-            JsonArray topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
-            return EmojiDecoComponentParser.parse(display, null, args, topArgSpecs);
-        }
-        return REGISTRY.getOrDefault(code, new RichNode.Text(":" + code + ":", Style.EMPTY, List.of()));
-    }
-
-    public static RichNode resolve(String code) {
-        return resolve(code, new String[0]);
+    /** Used by NodeHydrator to check before resolving apply_shortcode. */
+    public static boolean hasParsed(String code) {
+        String canonical = ALIASES.getOrDefault(code, code);
+        return PARSED_REGISTRY.containsKey(canonical);
     }
 
     public static List<String> getSuggestions(String prefix) {
-        return Stream.concat(REGISTRY.keySet().stream(), PARAM_REGISTRY.keySet().stream())
-                .filter(key -> key.startsWith(prefix))
+        return PARSED_REGISTRY.keySet().stream()
+                .filter(k -> k.startsWith(prefix))
                 .sorted()
                 .collect(Collectors.toList());
     }
@@ -263,5 +157,96 @@ public class ShortcodeManager implements PreparableReloadListener {
                 .filter(e -> e.getKey().startsWith(prefix))
                 .sorted(Map.Entry.comparingByKey())
                 .collect(Collectors.toList());
+    }
+
+    // ── Label / Preview / Suggestions (autocomplete) ─────────────────────────
+
+    public static String getLabel(String code) {
+        String canonical = ALIASES.getOrDefault(code, code);
+        JsonObject json = JSON_REGISTRY.get(canonical);
+        if (json == null) return ":" + code + ":";
+
+        if (json.has("label") && json.get("label").isJsonPrimitive())
+            return json.get("label").getAsString();
+
+        var args = effectiveArgSpecs(json);
+        if (!args.isEmpty()) {
+            int lastVisible = -1;
+            for (var e : args.entrySet()) {
+                JsonObject spec = e.getValue();
+                if (!(spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                        && spec.get("hidden").getAsBoolean())) lastVisible = e.getKey();
+            }
+            if (lastVisible >= 0) {
+                StringBuilder sb = new StringBuilder(":").append(canonical).append(".");
+                boolean first = true;
+                for (var e : args.entrySet()) {
+                    if (e.getKey() > lastVisible) break;
+                    if (!first) sb.append(",");
+                    first = false;
+                    JsonObject spec = e.getValue();
+                    boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                            && spec.get("hidden").getAsBoolean();
+                    if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
+                        sb.append(spec.get("label").getAsString());
+                    else sb.append("<arg").append(e.getKey() + 1).append(">");
+                }
+                sb.append(":");
+                return sb.toString();
+            }
+        }
+        return ":" + canonical + ":";
+    }
+
+    public static net.minecraft.network.chat.Component getPreview(String code) {
+        String canonical = ALIASES.getOrDefault(code, code);
+        JsonObject json = JSON_REGISTRY.get(canonical);
+        if (json != null && json.has("preview")) {
+            try {
+                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
+                if (node != null) return node.toComponent();
+            } catch (Exception e) {
+                LOGGER.warn("[EmojiDeco] Failed to parse preview for shortcode '{}': {}", code, e.getMessage());
+            }
+        }
+        return resolve(canonical).toComponent();
+    }
+
+    public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
+        String canonical = ALIASES.getOrDefault(code, code);
+        JsonObject json = JSON_REGISTRY.get(canonical);
+        if (json == null) return null;
+        JsonObject spec = topLevelArgSpec(json, argIndex);
+        if (spec != null && spec.has("suggestions")) return spec.get("suggestions");
+        JsonElement display = json.get("display");
+        if (display == null) return null;
+        JsonObject argSpec = EmojiDecoComponentParser.findArgSpec(display, argIndex);
+        if (argSpec == null || !argSpec.has("suggestions")) return null;
+        return argSpec.get("suggestions");
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+
+    private static java.util.Map<Integer, JsonObject> effectiveArgSpecs(JsonObject json) {
+        JsonElement display = json.get("display");
+        java.util.Map<Integer, JsonObject> specs = display != null
+                ? new java.util.TreeMap<>(EmojiDecoComponentParser.findAllArgSpecs(display))
+                : new java.util.TreeMap<>();
+        if (json.has("args") && json.get("args").isJsonArray()) {
+            JsonArray topArgs = json.getAsJsonArray("args");
+            for (int i = 0; i < topArgs.size(); i++) {
+                if (topArgs.get(i).isJsonObject()) specs.put(i, topArgs.get(i).getAsJsonObject());
+            }
+        }
+        return specs;
+    }
+
+    @Nullable
+    private static JsonObject topLevelArgSpec(JsonObject json, int argIndex) {
+        if (!json.has("args") || !json.get("args").isJsonArray()) return null;
+        JsonArray topArgs = json.getAsJsonArray("args");
+        if (argIndex < 0 || argIndex >= topArgs.size()) return null;
+        JsonElement el = topArgs.get(argIndex);
+        return el.isJsonObject() ? el.getAsJsonObject() : null;
     }
 }

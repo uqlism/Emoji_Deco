@@ -11,6 +11,7 @@ import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.NodeHydrator;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -116,8 +117,10 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        // アニメーションの tick は ImageGlyphPool が一元管理する
+        NodeHydrator.tick();
         ImageGlyphPool.tick();
+        long tick = NodeHydrator.currentTick();
+        if (tick % 200 == 0) NodeHydrator.gcCaches(tick);
     }
 
     private static final int HIGHLIGHT_RANGE = 10;

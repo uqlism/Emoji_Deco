@@ -3,12 +3,13 @@ package com.uqlism.emoji_deco;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.uqlism.emoji_deco.text.DecoratorManager;
+import com.uqlism.emoji_deco.text.ParsedNode;
+import com.uqlism.emoji_deco.text.ParsedNodeParser;
 import com.uqlism.emoji_deco.text.RichNode;
 import com.uqlism.emoji_deco.text.RichTextParser;
 import com.uqlism.emoji_deco.text.ShortcodeManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.contents.LiteralContents;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -47,10 +48,11 @@ class ParsingIntegrationTest extends MinecraftTestBase {
                 """);
 
         // Shortcodes
-        putShortcode("heart",
-                new RichNode.Text("❤", Style.EMPTY.withColor(0xFF5555), java.util.List.of()));
-        putShortcode("star",
-                new RichNode.Text("★", Style.EMPTY, java.util.List.of()));
+        putShortcode("heart", new ParsedNode.Text("❤",
+                new ParsedNode.ParsedStyle(new ParsedNode.StringVal.Literal("#FF5555"),
+                        null, null, null, null, null, null),
+                java.util.List.of()));
+        putShortcode("star", new ParsedNode.Text("★", ParsedNode.ParsedStyle.EMPTY, java.util.List.of()));
     }
 
     // ── helper ────────────────────────────────────────────────────────────────
@@ -175,20 +177,24 @@ class ParsingIntegrationTest extends MinecraftTestBase {
         try {
             JsonObject json = JsonParser.parseString(
                     "{\"display\":" + displayJson.strip() + "}").getAsJsonObject();
-            Field f = DecoratorManager.class.getDeclaredField("REGISTRY");
-            f.setAccessible(true);
-            ((Map<String, JsonObject>) f.get(null)).put(name, json);
+            ParsedNode parsed = ParsedNodeParser.parse(json.get("display"), null);
+            Field pf = DecoratorManager.class.getDeclaredField("PARSED_REGISTRY");
+            pf.setAccessible(true);
+            ((Map<String, ParsedNode>) pf.get(null)).put(name, parsed);
+            Field jf = DecoratorManager.class.getDeclaredField("JSON_REGISTRY");
+            jf.setAccessible(true);
+            ((Map<String, JsonObject>) jf.get(null)).put(name, json);
         } catch (Exception e) {
             throw new RuntimeException("Failed to register test decorator: " + name, e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static void putShortcode(String name, RichNode node) {
+    private static void putShortcode(String name, ParsedNode node) {
         try {
-            Field f = ShortcodeManager.class.getDeclaredField("REGISTRY");
+            Field f = ShortcodeManager.class.getDeclaredField("PARSED_REGISTRY");
             f.setAccessible(true);
-            ((Map<String, RichNode>) f.get(null)).put(name, node);
+            ((Map<String, ParsedNode>) f.get(null)).put(name, node);
         } catch (Exception e) {
             throw new RuntimeException("Failed to register test shortcode: " + name, e);
         }

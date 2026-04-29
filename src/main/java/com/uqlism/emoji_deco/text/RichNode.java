@@ -16,7 +16,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Typed intermediate representation of parsed rich text.
@@ -42,7 +44,17 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
      */
     record Image(ImageSpec imageSpec, @Nullable int[] crop,
                  int displayW, int displayH,
-                 float advanceOverride) implements RichNode {}
+                 float advanceOverride) implements RichNode {
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof Image i)) return false;
+            return Objects.equals(imageSpec, i.imageSpec) && Arrays.equals(crop, i.crop)
+                    && displayW == i.displayW && displayH == i.displayH
+                    && Float.compare(advanceOverride, i.advanceOverride) == 0;
+        }
+        @Override public int hashCode() {
+            return Objects.hash(imageSpec, Arrays.hashCode(crop), displayW, displayH, advanceOverride);
+        }
+    }
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
     record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
     record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
