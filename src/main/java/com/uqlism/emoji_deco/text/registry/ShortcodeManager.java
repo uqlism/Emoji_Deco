@@ -143,8 +143,9 @@ public class ShortcodeManager implements PreparableReloadListener {
 
     // ── Queries ───────────────────────────────────────────────────────────────
 
+    /** Returns true if code is a canonical shortcode name (aliases are excluded intentionally). */
     public static boolean has(String code) {
-        return PARSED_REGISTRY.containsKey(code) || ALIASES.containsKey(code);
+        return PARSED_REGISTRY.containsKey(code);
     }
 
     /** Used by NodeHydrator to check before resolving apply_shortcode. */
