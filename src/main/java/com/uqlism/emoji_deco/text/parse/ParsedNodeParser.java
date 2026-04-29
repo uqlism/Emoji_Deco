@@ -92,7 +92,7 @@ public final class ParsedNodeParser {
                 obj.has("strikethrough") ? parseBool(obj.get("strikethrough"), false, topArgSpecs) : null,
                 obj.has("underlined")    ? parseBool(obj.get("underlined"),    false, topArgSpecs) : null,
                 obj.has("obfuscated")    ? parseBool(obj.get("obfuscated"),    false, topArgSpecs) : null,
-                obj.has("font") && obj.get("font").isJsonPrimitive() ? obj.get("font").getAsString() : null
+                obj.has("font") ? parseString(obj.get("font"), topArgSpecs) : null
         );
 
         List<ParsedNode> children = new ArrayList<>();
@@ -140,9 +140,9 @@ public final class ParsedNodeParser {
     private static ParsedNode.ParsedBinarySource parseBinarySource(JsonObject obj, @Nullable JsonArray topArgSpecs) {
         return switch (str(obj.get("type"), "")) {
             case "emoji_deco:fetch_url" -> {
-                ParsedNode.StringVal url = parseString(obj.get("url"), topArgSpecs);
-                boolean diskCache = obj.has("disk_cache") && obj.get("disk_cache").getAsBoolean();
-                int ttl = obj.has("ttl") && obj.get("ttl").isJsonPrimitive() ? obj.get("ttl").getAsInt() : 0;
+                ParsedNode.StringVal url      = parseString(obj.get("url"),        topArgSpecs);
+                ParsedNode.BoolVal  diskCache = parseBool(obj.get("disk_cache"),   false, topArgSpecs);
+                ParsedNode.FloatVal ttl       = parseFloat(obj.get("ttl"),         0f,    topArgSpecs);
                 yield new ParsedNode.ParsedBinarySource.Url(url, diskCache, ttl);
             }
             case "emoji_deco:fetch_resource" -> new ParsedNode.ParsedBinarySource.Resource(
@@ -195,10 +195,11 @@ public final class ParsedNodeParser {
                 yield new ParsedNode.FloatVal.Arg(index, def);
             }
             case "emoji_deco:time" -> {
-                String timeType = obj.has("time") && obj.get("time").isJsonPrimitive()
-                        ? obj.get("time").getAsString() : "gametime";
-                float scale  = safef(obj.get("scale"),  1f);
-                float offset = safef(obj.get("offset"), 0f);
+                ParsedNode.StringVal timeType = obj.has("time")
+                        ? parseString(obj.get("time"), topArgSpecs)
+                        : new ParsedNode.StringVal.Literal("gametime");
+                ParsedNode.FloatVal scale  = parseFloat(obj.get("scale"),  1f, topArgSpecs);
+                ParsedNode.FloatVal offset = parseFloat(obj.get("offset"), 0f, topArgSpecs);
                 yield new ParsedNode.FloatVal.Time(timeType, scale, offset);
             }
             default -> new ParsedNode.FloatVal.Literal(defaultLit);
@@ -269,15 +270,6 @@ public final class ParsedNodeParser {
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────
-
-    private static int intOf(JsonObject obj, String key, int fallback) {
-        return obj.has(key) && obj.get(key).isJsonPrimitive() ? obj.get(key).getAsInt() : fallback;
-    }
-
-    private static float safef(@Nullable JsonElement el, float fallback) {
-        try { return (el != null && el.isJsonPrimitive()) ? el.getAsFloat() : fallback; }
-        catch (Exception e) { return fallback; }
-    }
 
     @Nullable
     private static String str(@Nullable JsonElement el, @Nullable String fallback) {

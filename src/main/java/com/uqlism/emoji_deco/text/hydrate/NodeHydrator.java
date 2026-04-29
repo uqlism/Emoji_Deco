@@ -84,7 +84,7 @@ public final class NodeHydrator {
             if (ps.underlined()    != null) style = style.withUnderlined(evalBool(ps.underlined(), ctx));
             if (ps.obfuscated()    != null) style = style.withObfuscated(evalBool(ps.obfuscated(), ctx));
             if (ps.font()          != null) {
-                ResourceLocation rl = ResourceLocation.tryParse(ps.font());
+                ResourceLocation rl = ResourceLocation.tryParse(evalString(ps.font(), ctx));
                 if (rl != null) style = style.withFont(rl);
             }
         }
@@ -196,12 +196,15 @@ public final class NodeHydrator {
             long dayTime  = (mc != null && mc.level != null) ? mc.level.getDayTime()  : 0L;
             float partial = (mc != null) ? mc.getPartialTick() : 0f;
             float raw;
-            switch (t.timeType()) {
+            String timeType = evalString(t.timeType(), ctx);
+            switch (timeType) {
                 case "daytime": raw = (float)(dayTime % 24000L) + partial; break;
                 case "day":     raw = (float)(dayTime / 24000L); break;
                 default:        raw = (float)gameTime + partial; break;
             }
-            return raw * t.scale() + t.offset();
+            float scale  = evalFloat(t.scale(),  ctx);
+            float offset = evalFloat(t.offset(), ctx);
+            return raw * scale + offset;
         }
         return 0f;
     }
@@ -242,7 +245,10 @@ public final class NodeHydrator {
     private static BinarySource evalBinarySource(ParsedNode.ParsedBinarySource src, HydrateContext.Tracked ctx) {
         if (src instanceof ParsedNode.ParsedBinarySource.Url u) {
             String url = evalString(u.url(), ctx);
-            return url.isEmpty() ? null : new BinarySource.Url(url, u.diskCache(), u.ttlSeconds());
+            if (url.isEmpty()) return null;
+            boolean diskCache  = evalBool(u.diskCache(), ctx);
+            int     ttlSeconds = Math.round(evalFloat(u.ttlSeconds(), ctx));
+            return new BinarySource.Url(url, diskCache, ttlSeconds);
         }
         if (src instanceof ParsedNode.ParsedBinarySource.Resource r) {
             String path = evalString(r.path(), ctx);

@@ -71,7 +71,7 @@ public sealed interface ParsedNode permits
     sealed interface FloatVal permits FloatVal.Literal, FloatVal.Arg, FloatVal.Time {
         record Literal(float value)                                    implements FloatVal {}
         record Arg(int index, float defaultVal)                        implements FloatVal {}
-        record Time(String timeType, float scale, float offset)        implements FloatVal {}
+        record Time(StringVal timeType, FloatVal scale, FloatVal offset) implements FloatVal {}
     }
 
     sealed interface BoolVal permits BoolVal.Literal, BoolVal.Arg {
@@ -88,7 +88,7 @@ public sealed interface ParsedNode permits
             @Nullable BoolVal   strikethrough,
             @Nullable BoolVal   underlined,
             @Nullable BoolVal   obfuscated,
-            @Nullable String    font) {
+            @Nullable StringVal font) {
         public static final ParsedStyle EMPTY = new ParsedStyle(null, null, null, null, null, null, null);
         public boolean isEmpty() {
             return color == null && bold == null && italic == null && strikethrough == null
@@ -105,7 +105,7 @@ public sealed interface ParsedNode permits
     }
 
     sealed interface ParsedBinarySource permits ParsedBinarySource.Url, ParsedBinarySource.Resource {
-        record Url(StringVal url, boolean diskCache, int ttlSeconds) implements ParsedBinarySource {}
+        record Url(StringVal url, BoolVal diskCache, FloatVal ttlSeconds) implements ParsedBinarySource {}
         record Resource(StringVal path)                              implements ParsedBinarySource {}
     }
 }
