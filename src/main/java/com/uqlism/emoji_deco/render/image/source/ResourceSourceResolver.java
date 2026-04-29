@@ -10,6 +10,7 @@ import com.uqlism.emoji_deco.render.image.ResolvedSource;
 import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import org.jetbrains.annotations.Nullable;
@@ -17,29 +18,24 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * emoji_deco:resource ソースリゾルバ。
  *
- * フォーマット判定:
- *   1. JSON "format" フィールド（明示指定）
- *   2. ファイル拡張子
+ * フォーマット: JSON "format" フィールド > ファイル拡張子 で判別。
+ *   GIF  → GifDecoder（アニメーション対応）
+ *   その他 → StbDecoder（PNG / JPEG 静止画）
  *
- * PNG(.mcmeta アニメ含む): AnimatedGlyphTexture.load() で解決。
- * GIF: GifDecoder で全フレームをデコードし AnimatedGlyphTexture.fromFrames() に渡す。
- * JPEG / UNKNOWN: StbDecoder（静止画）。
- *
- * アニメーションの tick 管理は ImageGlyphPool が担う（tickAnimated 廃止）。
+ * アニメーションの tick 管理は ImageGlyphPool が担う。
  */
 public class ResourceSourceResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** 正常ロード済み RL → キャッシュ済み ResolvedSource */
-    private static final java.util.Map<ResourceLocation, ResolvedSource> LOADED = new ConcurrentHashMap<>();
-    /** ロード失敗 RL → リソースリロードまで再試行しない */
+    private static final Map<ResourceLocation, ResolvedSource> LOADED = new ConcurrentHashMap<>();
     private static final Set<ResourceLocation> FAILED = ConcurrentHashMap.newKeySet();
 
     @Nullable
@@ -61,12 +57,9 @@ public class ResourceSourceResolver {
                 ? ImageFormatDetector.fromHint(formatHint)
                 : ImageFormatDetector.fromHint(extension(rl.getPath()));
 
-        ResolvedSource result = switch (fmt) {
-            case GIF  -> resolveGif(mc, rl);
-            case JPEG -> resolveStb(mc, rl);
-            default   -> resolveMcmeta(mc, rl);  // PNG / UNKNOWN → .mcmeta 対応
-        };
+        ImageDecoder decoder = (fmt == Format.GIF) ? new GifDecoder() : new StbDecoder();
 
+        ResolvedSource result = resolve(mc, rl, decoder);
         if (result != null) LOADED.put(rl, result);
         else                FAILED.add(rl);
         return result;
@@ -77,39 +70,20 @@ public class ResourceSourceResolver {
         FAILED.clear();
     }
 
-    // ── 各フォーマット別ロード ────────────────────────────────────────────────
+    // ── 内部ヘルパー ──────────────────────────────────────────────────────────
 
-    /** PNG + .mcmeta アニメーション */
     @Nullable
-    private static ResolvedSource resolveMcmeta(Minecraft mc, ResourceLocation rl) {
-        AnimatedGlyphTexture animTex = new AnimatedGlyphTexture(rl);
-        try {
-            animTex.load(mc.getResourceManager());
-        } catch (IOException e) {
-            LOGGER.warn("[EmojiDeco] Failed to load texture {}: {}", rl, e.getMessage());
-            return null;
-        }
-        mc.getTextureManager().register(rl, animTex);
-        if (animTex.isAnimated()) {
-            return new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, 1, 1, animTex);
-        }
-        return new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, 1, 1);
-    }
-
-    /** GIF（アニメーション対応） */
-    @Nullable
-    private static ResolvedSource resolveGif(Minecraft mc, ResourceLocation rl) {
+    private static ResolvedSource resolve(Minecraft mc, ResourceLocation rl, ImageDecoder decoder) {
         try {
             byte[] data = readBytes(mc, rl);
-            List<ImageDecoder.Frame> frames = new GifDecoder().decode(data);
+            List<ImageDecoder.Frame> frames = decoder.decode(data);
             if (frames.isEmpty()) return null;
 
             int w = frames.get(0).pixels().getWidth();
             int h = frames.get(0).pixels().getHeight();
 
             if (frames.size() == 1) {
-                mc.getTextureManager().register(rl,
-                        new net.minecraft.client.renderer.texture.DynamicTexture(frames.get(0).pixels()));
+                mc.getTextureManager().register(rl, new DynamicTexture(frames.get(0).pixels()));
                 return new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h);
             }
             AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
@@ -117,39 +91,15 @@ public class ResourceSourceResolver {
             return new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator);
 
         } catch (IOException e) {
-            LOGGER.warn("[EmojiDeco] Failed to load GIF {}: {}", rl, e.getMessage());
-            return null;
-        }
-    }
-
-    /** JPEG など STB で読める静止画 */
-    @Nullable
-    private static ResolvedSource resolveStb(Minecraft mc, ResourceLocation rl) {
-        try {
-            byte[] data = readBytes(mc, rl);
-            List<ImageDecoder.Frame> frames = new StbDecoder().decode(data);
-            if (frames.isEmpty()) return null;
-
-            int w = frames.get(0).pixels().getWidth();
-            int h = frames.get(0).pixels().getHeight();
-            mc.getTextureManager().register(rl,
-                    new net.minecraft.client.renderer.texture.DynamicTexture(frames.get(0).pixels()));
-            return new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h);
-
-        } catch (IOException e) {
             LOGGER.warn("[EmojiDeco] Failed to load texture {}: {}", rl, e.getMessage());
             return null;
         }
     }
 
-    // ── ユーティリティ ────────────────────────────────────────────────────────
-
     private static byte[] readBytes(Minecraft mc, ResourceLocation rl) throws IOException {
         Resource res = mc.getResourceManager().getResource(rl)
                 .orElseThrow(() -> new IOException("Missing resource: " + rl));
-        try (var is = res.open()) {
-            return is.readAllBytes();
-        }
+        try (var is = res.open()) { return is.readAllBytes(); }
     }
 
     private static String extension(String path) {
