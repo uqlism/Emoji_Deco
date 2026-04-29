@@ -62,11 +62,25 @@ public class MixinFont {
     // Fast-path: components whose getString() contains no '#' or ':' are skipped at
     // negligible cost. Already-transformed components (from specific hooks) pass the
     // fast-path because markup characters are gone after parsing — no double transform.
-    @ModifyVariable(method = "m_272077_", at = @At("HEAD"), argsOnly = true, remap = false)
-    private Component runicink$transformDrawBatchComponent(Component component) {
-        String raw = component.getString();
-        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return component;
-        return ComponentTransformer.transform(component);
+    // @Inject + cancel: allows us to also correct x for callers that centre text
+    // using font.width(rawComponent) before calling drawInBatch. Without the x
+    // correction, the transformed (shorter) content lands far to the left.
+    // The inner recursive call has no '#'/':', so the fast-path exits immediately.
+    @Inject(method = "m_272077_", at = @At("HEAD"), cancellable = true, remap = false)
+    private void runicink$transformDrawBatchComponent(
+            Component text, float x, float y,
+            int color, boolean dropShadow,
+            Matrix4f matrix, MultiBufferSource buffers,
+            Font.DisplayMode mode, int bgColor, int packedLight,
+            CallbackInfoReturnable<Integer> cir) {
+        String raw = text.getString();
+        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        Component transformed = ComponentTransformer.transform(text);
+        Font self = (Font)(Object)this;
+        float adj = (self.width(text) - self.width(transformed)) / 2.0f;
+        cir.setReturnValue(self.drawInBatch(
+                transformed, x + adj, y, color, dropShadow,
+                matrix, buffers, mode, bgColor, packedLight));
     }
 
     // ── drawInBatch(FormattedCharSequence) ────────────────────────────────────
