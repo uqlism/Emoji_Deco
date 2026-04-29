@@ -4,9 +4,12 @@ import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /**
  * 事前デコード済みフレームリストから生成されるアニメーションテクスチャ。
@@ -23,6 +26,7 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     private final int   frameW, frameH;
     private final boolean animated;
     private int currentFrame = 0;
+    private boolean closed = false;
 
     private AnimatedGlyphTexture(List<ImageDecoder.Frame> frames) {
         this.frames   = frames;
@@ -57,7 +61,7 @@ public class AnimatedGlyphTexture extends AbstractTexture {
      * 絶対 tick からフレームを決定してアップロードする。レンダースレッドから呼ぶこと。
      */
     public void tick(long gameTick) {
-        if (!animated) return;
+        if (!animated || closed) return;
         int t = (int)(gameTick % totalLoopTicks);
         int newFrame = 0;
         for (int i = frames.size() - 1; i > 0; i--) {
@@ -76,8 +80,21 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     @Override
     public void load(ResourceManager rm) {}
 
+    /**
+     * TextureManager がリソースリロード時に reset() → close() → load() を呼ぶが、
+     * このテクスチャは ImageGlyphPool が管理するため何もしない。
+     * reset() をオーバーライドしないと close() が呼ばれて NativeImage が解放されクラッシュする。
+     */
+    @Override
+    public void reset(TextureManager manager, ResourceManager resourceManager,
+                      ResourceLocation location, Executor executor) {
+        // リソースリロードに影響されない — ImageGlyphPool.onResourceReload() で管理する
+    }
+
     @Override
     public void close() {
+        if (closed) return;
+        closed = true;
         frames.forEach(f -> f.pixels().close());
         releaseId();
     }
