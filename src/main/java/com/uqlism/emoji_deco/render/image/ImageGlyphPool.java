@@ -98,8 +98,7 @@ public class ImageGlyphPool {
         s.lastUsed = tick;
         s.resolved = null;
         s.glyph    = null;
-        s.future   = (imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u)
-                ? UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds()) : null;
+        s.future   = null; // URL フェッチは getGlyph() 呼び出し時（実描画時）まで遅延する
         return BASE_CP + idx;
     }
 
@@ -150,10 +149,15 @@ public class ImageGlyphPool {
         if (s == null) return null;
         s.lastUsed = tick;
 
-        if (s.future == null) {
-            ResolvedSource fresh = resolveSync(s);
-            if (!Objects.equals(fresh, s.resolved)) { s.resolved = fresh; s.glyph = null; }
-        } else if (s.resolved == null && s.future.isDone()) {
+        if (s.future == null && s.resolved == null) {
+            if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u) {
+                // 実描画が必要になった初回にフェッチ起動（getOrAllocate 時には起動しない）
+                s.future = UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
+            } else {
+                ResolvedSource fresh = resolveSync(s);
+                if (!Objects.equals(fresh, s.resolved)) { s.resolved = fresh; s.glyph = null; }
+            }
+        } else if (s.future != null && s.resolved == null && s.future.isDone()) {
             try { s.resolved = s.future.get(); } catch (Exception ignored) {}
         }
 
