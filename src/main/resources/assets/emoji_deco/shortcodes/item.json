@@ -1,11 +1,15 @@
-﻿{
+{
     "enable": true,
     "preview": {
-        "emoji_deco:sprite": {
-            "atlas": "minecraft:textures/atlas/blocks.png",
-            "sprite": "item/ink_sac",
+        "emoji_deco:image": {
             "width": 8,
-            "height": 8
+            "height": 8,
+            "image": {
+                "emoji_deco:atlas": {
+                    "atlas": "minecraft:textures/atlas/blocks.png",
+                    "sprite": "item/ink_sac"
+                }
+            }
         }
     },
     "display": {
@@ -13,33 +17,37 @@
         "color": "#ffffff",
         "extra": [
             {
-                "emoji_deco:sprite": {
-                    "atlas": "minecraft:textures/atlas/blocks.png",
-                    "sprite": {
-                        "emoji_deco:join": {
-                            "parts": [
-                                {
-                                    "emoji_deco:arg": {
-                                        "label": "<namespace=minecraft>",
-                                        "index": 1,
-                                        "type": "string",
-                                        "default": "minecraft"
-                                    }
-                                },
-                                ":item/",
-                                {
-                                    "emoji_deco:arg": {
-                                        "label": "<item>",
-                                        "index": 0,
-                                        "type": "string",
-                                        "default": ""
-                                    }
-                                }
-                            ]
-                        }
-                    },
+                "emoji_deco:image": {
                     "width": 8,
-                    "height": 8
+                    "height": 8,
+                    "image": {
+                        "emoji_deco:atlas": {
+                            "atlas": "minecraft:textures/atlas/blocks.png",
+                            "sprite": {
+                                "emoji_deco:join": {
+                                    "parts": [
+                                        {
+                                            "emoji_deco:arg": {
+                                                "label": "<namespace=minecraft>",
+                                                "index": 1,
+                                                "type": "string",
+                                                "default": "minecraft"
+                                            }
+                                        },
+                                        ":item/",
+                                        {
+                                            "emoji_deco:arg": {
+                                                "label": "<item>",
+                                                "index": 0,
+                                                "type": "string",
+                                                "default": ""
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
                 }
             }
         ]

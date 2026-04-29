@@ -1,10 +1,8 @@
 package com.uqlism.emoji_deco.text;
 
+import com.google.gson.JsonObject;
 import net.minecraft.client.gui.Font;
-import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
-import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
-import com.uqlism.emoji_deco.render.registry.TextureRegistry;
-import net.minecraft.resources.ResourceLocation;
+import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
@@ -14,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -25,35 +24,34 @@ import java.util.List;
  * Nodes:
  *   Text(literal, style, children) — text fragment with optional style delta and sub-nodes
  *   Glowing(children)              — glow effect wrapper
- *   Sprite(atlas, sprite)          — sprite glyph via custom font
- *   Head(username)                 — player-head glyph pair via HEAD_FONT
- *   Offset / Scaled / Rotated      — spatial transform wrappers (sign/graffiti only)
- *
- * Conversion:
- *   toComponent()            — for chat / tooltip / entity names / books
- *   toSequence(font, node)   — for signs / graffiti (honours all wrappers)
+ *   Image(sourceSpec, crop, w, h, advanceOverride) — inline image via ImageGlyphPool
+ *   Offset(x, y, z, children)     — spatial offset; z shifts depth for overlay ordering
+ *   Scaled / Rotated               — other spatial transform wrappers (sign/graffiti only)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
-                                         RichNode.Sprite, RichNode.Head, RichNode.Texture,
+                                         RichNode.Image,
                                          RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
-    record Text(String literal, Style style, List<RichNode> children)  implements RichNode {}
-    record Glowing(LightMode lightMode, List<RichNode> children)        implements RichNode {}
-    record Sprite(String atlas, String sprite, int width, int height)   implements RichNode {}
-    record Head(String username)                                        implements RichNode {}
-    record Texture(ResourceLocation texture, int width, int height)     implements RichNode {}
-    record Offset(float x, float y, List<RichNode> children)           implements RichNode {}
-    record Scaled(float scaleX, float scaleY, List<RichNode> children)  implements RichNode {}
-    record Rotated(float angle, List<RichNode> children)                implements RichNode {}
+    record Text(String literal, Style style, List<RichNode> children)     implements RichNode {}
+    record Glowing(LightMode lightMode, List<RichNode> children)           implements RichNode {}
+    /**
+     * インライン画像グリフ。
+     * sourceSpec:      {"type": "atlas"|"resource"|"url"|"skin", ...}
+     * crop:            null=フル / [x0,y0,x1,y1] ソース画像内のピクセル座標
+     * advanceOverride: Float.NaN = displayW+1 のデフォルト（face は 0 を指定）
+     */
+    record Image(JsonObject sourceSpec, @Nullable int[] crop,
+                 int displayW, int displayH,
+                 float advanceOverride) implements RichNode {}
+    /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
+    record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
+    record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
+    record Rotated(float angle, List<RichNode> children)                   implements RichNode {}
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
     // ── toComponent ──────────────────────────────────────────────────────────
 
-    /**
-     * Converts to a Minecraft Component for standard rendering contexts.
-     * Spatial transforms are not preserved (standard renderer has no support).
-     */
     default MutableComponent toComponent() {
         if (this instanceof Text t) {
             MutableComponent c = Component.literal(t.literal());
@@ -66,10 +64,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             for (RichNode child : g.children()) c.append(child.toComponent());
             return c;
         }
-        if (this instanceof Sprite s)   return SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()).copy();
-        if (this instanceof Head h)     return PlayerHeadRegistry.createComponent(h.username()).copy();
-        if (this instanceof Texture t)  return TextureRegistry.createComponent(t.texture(), t.width(), t.height()).copy();
-        // Offset / Scaled / Rotated: render contents without transform
+        if (this instanceof Image img) return imageComponent(img).copy();
+        // transform wrappers: render contents without transform
         if (this instanceof Offset o) {
             MutableComponent c = Component.empty();
             for (RichNode child : o.children()) c.append(child.toComponent());
@@ -88,12 +84,15 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         return Component.empty();
     }
 
+    private static MutableComponent imageComponent(Image img) {
+        int cp = ImageGlyphPool.getOrAllocate(
+                img.sourceSpec(), img.crop(), img.displayW(), img.displayH(), img.advanceOverride());
+        return Component.literal(new String(Character.toChars(cp)))
+                .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT));
+    }
+
     // ── toSequence ─────────────────────────────────────────────────────────
 
-    /**
-     * Converts to a FormattedCharSequence for scaled rendering (signs, graffiti).
-     * All transform wrappers are converted to AffineSequence at collect time.
-     */
     static FormattedCharSequence toSequence(Font font, RichNode root) {
         List<FormattedCharSequence> parts = new ArrayList<>();
         collectSegments(font, root, LightMode.BYPASS, Style.EMPTY, parts);
@@ -114,15 +113,11 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Glowing g) {
             for (RichNode child : g.children())
                 collectSegments(font, child, g.lightMode(), inherited, out);
-        } else if (node instanceof Sprite s) {
-            addLeaf(font, withInherited(SpriteRegistry.createComponent(s.atlas(), s.sprite(), s.width(), s.height()), inherited), lightMode, out);
-        } else if (node instanceof Head h) {
-            addLeaf(font, withInherited(PlayerHeadRegistry.createComponent(h.username()), inherited), lightMode, out);
-        } else if (node instanceof Texture t) {
-            addLeaf(font, withInherited(TextureRegistry.createComponent(t.texture(), t.width(), t.height()), inherited), lightMode, out);
+        } else if (node instanceof Image img) {
+            addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
         } else if (node instanceof Offset o) {
             wrapAffine(font, o.children(), lightMode, inherited, out,
-                    new Matrix4f().translate(o.x(), o.y(), 0f));
+                    new Matrix4f().translate(o.x(), o.y(), o.z()));
         } else if (node instanceof Scaled s) {
             wrapAffine(font, s.children(), lightMode, inherited, out, seq -> {
                 float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
@@ -141,7 +136,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
     }
 
-    /** Collects children, then wraps the result in an AffineSequence with a static matrix. */
     private static void wrapAffine(Font font, List<RichNode> children,
                                     LightMode lightMode, Style inherited,
                                     List<FormattedCharSequence> out, Matrix4f matrix) {
@@ -154,7 +148,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
     }
 
-    /** Collects children, then wraps with a matrix that depends on the inner sequence's width. */
     private static void wrapAffine(Font font, List<RichNode> children,
                                     LightMode lightMode, Style inherited,
                                     List<FormattedCharSequence> out,
@@ -168,7 +161,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
     }
 
-    /** Merges inherited style into a leaf component, preserving the leaf's own explicit fields. */
     private static Component withInherited(Component c, Style inherited) {
         if (inherited.isEmpty()) return c;
         return c.copy().withStyle(c.getStyle().applyTo(inherited));

@@ -1,0 +1,22 @@
+{
+  "enable": true,
+  "display": [
+    {
+      "emoji_deco:image": {
+        "width": 16,
+        "height": 16,
+        "image": {
+          "emoji_deco:url": {
+            "url": {
+              "emoji_deco:arg": {
+                "index": 0,
+                "type": "string",
+                "default": ""
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

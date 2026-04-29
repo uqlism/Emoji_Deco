@@ -3,7 +3,7 @@ package com.uqlism.emoji_deco.client;
 import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.Registration;
 import com.uqlism.emoji_deco.client.renderer.GraffitiRenderer;
-import com.uqlism.emoji_deco.render.registry.TextureRegistry;
+import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.text.DecoratorManager;
 import com.uqlism.emoji_deco.text.ShortcodeManager;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -31,7 +31,7 @@ public class ClientModEvents {
                                                    Executor prepExec, Executor applyExec) {
                 return CompletableFuture.runAsync(() -> {}, prepExec)
                         .thenCompose(barrier::wait)
-                        .thenRunAsync(TextureRegistry::onResourceReload, applyExec);
+                        .thenRunAsync(ImageGlyphPool::onResourceReload, applyExec);
             }
         });
     }

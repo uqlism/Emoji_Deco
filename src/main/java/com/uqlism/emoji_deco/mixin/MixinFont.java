@@ -4,8 +4,7 @@ import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
-import com.uqlism.emoji_deco.render.registry.PlayerHeadRegistry;
-import com.uqlism.emoji_deco.render.registry.SpriteRegistry;
+import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
@@ -237,10 +236,7 @@ public class MixinFont {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static boolean isNoGlowFont(Style style) {
-        var font = style.getFont();
-        return PlayerHeadRegistry.HEAD_FONT.equals(font)
-            || PlayerHeadRegistry.HEAD_OVERLAY_FONT.equals(font)
-            || SpriteRegistry.SPRITE_FONT.equals(font);
+        return ImageGlyphPool.IMAGE_FONT.equals(style.getFont());
     }
 
     private static boolean hasNoGlowFont(FormattedCharSequence seq) {

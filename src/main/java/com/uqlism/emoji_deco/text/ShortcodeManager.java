@@ -11,8 +11,10 @@ import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
@@ -132,35 +134,33 @@ public class ShortcodeManager implements PreparableReloadListener {
         if (json.has("label") && json.get("label").isJsonPrimitive())
             return json.get("label").getAsString();
 
-        JsonElement display = json.get("display");
-        if (display != null) {
-            var args = EmojiDecoComponentParser.findAllArgSpecs(display);
-            if (!args.isEmpty()) {
-                int lastVisible = -1;
+        // トップレベル args → display 内スキャン の順で effective なスペックを構築
+        var args = effectiveArgSpecs(json);
+        if (!args.isEmpty()) {
+            int lastVisible = -1;
+            for (var entry : args.entrySet()) {
+                JsonObject spec = entry.getValue();
+                boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
+                        && spec.get("hidden").getAsBoolean();
+                if (!hidden) lastVisible = entry.getKey();
+            }
+            if (lastVisible >= 0) {
+                StringBuilder sb = new StringBuilder(":").append(code).append(".");
+                boolean first = true;
                 for (var entry : args.entrySet()) {
+                    if (entry.getKey() > lastVisible) break;
+                    if (!first) sb.append(",");
+                    first = false;
                     JsonObject spec = entry.getValue();
                     boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
                             && spec.get("hidden").getAsBoolean();
-                    if (!hidden) lastVisible = entry.getKey();
+                    if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
+                        sb.append(spec.get("label").getAsString());
+                    else
+                        sb.append("<arg").append(entry.getKey() + 1).append(">");
                 }
-                if (lastVisible >= 0) {
-                    StringBuilder sb = new StringBuilder(":").append(code).append(".");
-                    boolean first = true;
-                    for (var entry : args.entrySet()) {
-                        if (entry.getKey() > lastVisible) break;
-                        if (!first) sb.append(",");
-                        first = false;
-                        JsonObject spec = entry.getValue();
-                        boolean hidden = spec.has("hidden") && spec.get("hidden").isJsonPrimitive()
-                                && spec.get("hidden").getAsBoolean();
-                        if (!hidden && spec.has("label") && spec.get("label").isJsonPrimitive())
-                            sb.append(spec.get("label").getAsString());
-                        else
-                            sb.append("<arg").append(entry.getKey() + 1).append(">");
-                    }
-                    sb.append(":");
-                    return sb.toString();
-                }
+                sb.append(":");
+                return sb.toString();
             }
         }
 
@@ -182,11 +182,49 @@ public class ShortcodeManager implements PreparableReloadListener {
     }
 
     public static JsonElement getArgSuggestionsSpec(String code, int argIndex) {
+        // トップレベル args を優先
+        JsonObject json = JSON_REGISTRY.get(code);
+        if (json != null) {
+            JsonObject spec = topLevelArgSpec(json, argIndex);
+            if (spec != null && spec.has("suggestions")) return spec.get("suggestions");
+        }
+        // display 内のインライン emoji_deco:arg にフォールバック
         JsonElement display = PARAM_REGISTRY.get(code);
         if (display == null) return null;
         JsonObject argSpec = EmojiDecoComponentParser.findArgSpec(display, argIndex);
         if (argSpec == null || !argSpec.has("suggestions")) return null;
         return argSpec.get("suggestions");
+    }
+
+    /**
+     * トップレベル "args" 配列と display 内スキャン結果をマージした有効スペックマップを返す。
+     * トップレベルが優先される。
+     */
+    private static java.util.Map<Integer, JsonObject> effectiveArgSpecs(JsonObject json) {
+        // display 内スキャンをベースにする
+        JsonElement display = json.get("display");
+        java.util.Map<Integer, JsonObject> specs = display != null
+                ? EmojiDecoComponentParser.findAllArgSpecs(display)
+                : new java.util.TreeMap<>();
+
+        // トップレベル args で上書き
+        if (json.has("args") && json.get("args").isJsonArray()) {
+            JsonArray topArgs = json.getAsJsonArray("args");
+            for (int i = 0; i < topArgs.size(); i++) {
+                if (topArgs.get(i).isJsonObject())
+                    specs.put(i, topArgs.get(i).getAsJsonObject());
+            }
+        }
+        return specs;
+    }
+
+    /** トップレベル "args" 配列の指定インデックスのスペックを返す。なければ null。 */
+    private static @Nullable JsonObject topLevelArgSpec(JsonObject json, int argIndex) {
+        if (!json.has("args") || !json.get("args").isJsonArray()) return null;
+        JsonArray topArgs = json.getAsJsonArray("args");
+        if (argIndex < 0 || argIndex >= topArgs.size()) return null;
+        JsonElement el = topArgs.get(argIndex);
+        return el.isJsonObject() ? el.getAsJsonObject() : null;
     }
 
     public static boolean has(String code) {
