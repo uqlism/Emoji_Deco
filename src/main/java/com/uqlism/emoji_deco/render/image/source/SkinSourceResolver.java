@@ -20,8 +20,7 @@ public class SkinSourceResolver {
 
     /** スキンテクスチャ全体を返す（64×64）。未取得の場合は null。 */
     @Nullable
-    public static ResolvedSource resolveSync(JsonObject spec) {
-        String player = spec.has("player") ? spec.get("player").getAsString() : "";
+    public static ResolvedSource resolveSync(String player) {
         ResourceLocation skin = getSkinTexture(player);
         if (skin == null) return null;
         return new ResolvedSource.Static(skin, 0f, 0f, 1f, 1f, 64, 64);

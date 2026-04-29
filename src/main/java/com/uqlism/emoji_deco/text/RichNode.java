@@ -1,8 +1,8 @@
 package com.uqlism.emoji_deco.text;
 
-import com.google.gson.JsonObject;
 import net.minecraft.client.gui.Font;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
+import com.uqlism.emoji_deco.render.image.ImageSpec;
 
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
@@ -36,11 +36,11 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
     record Glowing(LightMode lightMode, List<RichNode> children)           implements RichNode {}
     /**
      * インライン画像グリフ。
-     * sourceSpec:      {"type": "atlas"|"resource"|"url"|"skin", ...}
+     * imageSpec:       fetch/decode 層を表す型付き仕様
      * crop:            null=フル / [x0,y0,x1,y1] ソース画像内のピクセル座標
      * advanceOverride: Float.NaN = displayW+1 のデフォルト（face は 0 を指定）
      */
-    record Image(JsonObject sourceSpec, @Nullable int[] crop,
+    record Image(ImageSpec imageSpec, @Nullable int[] crop,
                  int displayW, int displayH,
                  float advanceOverride) implements RichNode {}
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
@@ -86,7 +86,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     private static MutableComponent imageComponent(Image img) {
         int cp = ImageGlyphPool.getOrAllocate(
-                img.sourceSpec(), img.crop(), img.displayW(), img.displayH(), img.advanceOverride());
+                img.imageSpec(), img.crop(), img.displayW(), img.displayH(), img.advanceOverride());
         return Component.literal(new String(Character.toChars(cp)))
                 .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT));
     }

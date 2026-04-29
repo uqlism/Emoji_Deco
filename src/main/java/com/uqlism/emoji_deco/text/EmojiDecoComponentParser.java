@@ -1,6 +1,8 @@
 package com.uqlism.emoji_deco.text;
 
 import com.google.gson.JsonArray;
+import com.uqlism.emoji_deco.render.image.BinarySource;
+import com.uqlism.emoji_deco.render.image.ImageSpec;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -195,9 +197,48 @@ public final class EmojiDecoComponentParser {
         JsonElement imageEl = obj.get("image");
         if (imageEl == null || !imageEl.isJsonObject()) return RichNode.empty();
         JsonObject imageObj = imageEl.getAsJsonObject();
-        if (!imageObj.has("type")) return RichNode.empty();
         int[] crop = imageObj.has("uv") ? parseCrop(imageObj.get("uv")) : null;
-        return new RichNode.Image(imageObj, crop, w, h, advance);
+        ImageSpec imageSpec = parseImageSpec(imageObj);
+        if (imageSpec == null) return RichNode.empty();
+        return new RichNode.Image(imageSpec, crop, w, h, advance);
+    }
+
+    @Nullable
+    private static ImageSpec parseImageSpec(JsonObject obj) {
+        return switch (stringOf(obj.get("type"), "")) {
+            case "emoji_deco:decode_image" -> {
+                String format = obj.has("format") && obj.get("format").isJsonPrimitive()
+                        ? obj.get("format").getAsString() : null;
+                if (!obj.has("source") || !obj.get("source").isJsonObject()) yield null;
+                BinarySource source = parseBinarySource(obj.getAsJsonObject("source"));
+                yield source != null ? new ImageSpec.Decoded(format, source) : null;
+            }
+            case "emoji_deco:fetch_atlas" -> {
+                String atlas  = stringOf(obj.get("atlas"),  "");
+                String sprite = stringOf(obj.get("sprite"), "");
+                yield atlas.isEmpty() || sprite.isEmpty() ? null : new ImageSpec.Atlas(atlas, sprite);
+            }
+            case "emoji_deco:fetch_skin" -> {
+                String player = stringOf(obj.get("player"), "");
+                yield player.isEmpty() ? null : new ImageSpec.Skin(player);
+            }
+            default -> null;
+        };
+    }
+
+    @Nullable
+    private static BinarySource parseBinarySource(JsonObject obj) {
+        return switch (stringOf(obj.get("type"), "")) {
+            case "emoji_deco:fetch_url" -> {
+                String url = stringOf(obj.get("url"), "");
+                yield url.isEmpty() ? null : new BinarySource.Url(url);
+            }
+            case "emoji_deco:fetch_resource" -> {
+                String path = stringOf(obj.get("path"), "");
+                yield path.isEmpty() ? null : new BinarySource.Resource(path);
+            }
+            default -> null;
+        };
     }
 
     private static RichNode parseApplyShortcode(JsonObject obj) {

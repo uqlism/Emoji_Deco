@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.render.image.source;
 
-import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
 import net.minecraft.client.Minecraft;
@@ -16,27 +15,24 @@ public class AtlasSourceResolver {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     @Nullable
-    public static ResolvedSource resolveSync(JsonObject spec) {
-        if (!spec.has("atlas") || !spec.has("sprite")) return null;
+    public static ResolvedSource resolveSync(String atlas, String sprite) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return null;
 
-        String atlasStr  = spec.get("atlas").getAsString();
-        String spriteStr = spec.get("sprite").getAsString();
-        ResourceLocation atlasRL  = ResourceLocation.tryParse(atlasStr);
-        ResourceLocation spriteRL = ResourceLocation.tryParse(spriteStr);
+        ResourceLocation atlasRL  = ResourceLocation.tryParse(atlas);
+        ResourceLocation spriteRL = ResourceLocation.tryParse(sprite);
         if (atlasRL == null || spriteRL == null) return null;
 
-        TextureAtlas atlas = mc.getModelManager().getAtlas(atlasRL);
-        if (atlas == null) return null;
-        TextureAtlasSprite sprite = atlas.getSprite(spriteRL);
-        if (sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation())) {
+        TextureAtlas textureAtlas = mc.getModelManager().getAtlas(atlasRL);
+        if (textureAtlas == null) return null;
+        TextureAtlasSprite textureSprite = textureAtlas.getSprite(spriteRL);
+        if (textureSprite.contents().name().equals(MissingTextureAtlasSprite.getLocation())) {
             LOGGER.warn("[EmojiDeco] Sprite not found in atlas {}: {}", atlasRL, spriteRL);
         }
         return new ResolvedSource.Static(
                 atlasRL,
-                sprite.getU0(), sprite.getV0(),
-                sprite.getU1(), sprite.getV1(),
-                sprite.contents().width(), sprite.contents().height());
+                textureSprite.getU0(), textureSprite.getV0(),
+                textureSprite.getU1(), textureSprite.getV1(),
+                textureSprite.contents().width(), textureSprite.contents().height());
     }
 }

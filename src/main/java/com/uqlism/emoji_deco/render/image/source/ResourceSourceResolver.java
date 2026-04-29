@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.render.image.source;
 
-import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
@@ -40,9 +39,8 @@ public class ResourceSourceResolver {
     private static final Set<ResourceLocation> FAILED = ConcurrentHashMap.newKeySet();
 
     @Nullable
-    public static ResolvedSource resolveSync(JsonObject spec) {
-        if (!spec.has("texture")) return null;
-        ResourceLocation rl = ResourceLocation.tryParse(spec.get("texture").getAsString());
+    public static ResolvedSource resolveSync(String path, @Nullable String format) {
+        ResourceLocation rl = ResourceLocation.tryParse(path);
         if (rl == null) return null;
 
         ResolvedSource cached = LOADED.get(rl);
@@ -52,10 +50,8 @@ public class ResourceSourceResolver {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return null;
 
-        // フォーマット判定
-        String formatHint = spec.has("format") ? spec.get("format").getAsString() : null;
-        Format fmt = (formatHint != null)
-                ? ImageFormatDetector.fromHint(formatHint)
+        Format fmt = (format != null)
+                ? ImageFormatDetector.fromHint(format)
                 : ImageFormatDetector.fromHint(extension(rl.getPath()));
 
         ImageDecoder decoder = switch (fmt) {

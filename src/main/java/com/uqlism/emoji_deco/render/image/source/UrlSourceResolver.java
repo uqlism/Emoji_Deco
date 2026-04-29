@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.render.image.source;
 
-import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
@@ -35,16 +34,11 @@ public class UrlSourceResolver {
     private static final AtomicInteger counter = new AtomicInteger(0);
     private static final Map<String, CompletableFuture<ResolvedSource>> CACHE = new ConcurrentHashMap<>();
 
-    public static CompletableFuture<ResolvedSource> resolve(JsonObject spec) {
-        if (!spec.has("url"))
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Missing url"));
-        String url = spec.get("url").getAsString();
+    public static CompletableFuture<ResolvedSource> resolve(String url, @Nullable String format) {
         if (!url.startsWith("https://") && !url.startsWith("http://"))
             return CompletableFuture.failedFuture(new IllegalArgumentException("Only http/https URLs are allowed"));
-        String formatHint = spec.has("format") ? spec.get("format").getAsString() : null;
-        // キャッシュキーは URL + format ヒントの組み合わせ
-        String cacheKey = url + "\0" + (formatHint != null ? formatHint : "");
-        return CACHE.computeIfAbsent(cacheKey, k -> fetch(url, formatHint));
+        String cacheKey = url + "\0" + (format != null ? format : "");
+        return CACHE.computeIfAbsent(cacheKey, k -> fetch(url, format));
     }
 
     private static CompletableFuture<ResolvedSource> fetch(String url, @Nullable String formatHint) {

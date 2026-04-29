@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.render.image;
 
-import com.google.gson.JsonObject;
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.blaze3d.font.SheetGlyphInfo;
 import com.uqlism.emoji_deco.render.image.source.AtlasSourceResolver;
@@ -38,7 +37,7 @@ public class ImageGlyphPool {
     private static final class Slot {
         // 割り当て時に確定する不変情報
         String     key;
-        JsonObject spec;
+        ImageSpec  imageSpec;
         int[]      crop;
         int        w, h;
         float      advance;
@@ -54,10 +53,11 @@ public class ImageGlyphPool {
         void evict(Map<String, Integer> index) {
             if (resolved instanceof ResolvedSource.Animated a) a.animator().close();
             index.remove(key);
-            key      = null;
-            resolved = null;
-            glyph    = null;
-            future   = null;
+            key       = null;
+            imageSpec = null;
+            resolved  = null;
+            glyph     = null;
+            future    = null;
         }
     }
 
@@ -72,26 +72,25 @@ public class ImageGlyphPool {
     // ── Public API ────────────────────────────────────────────────────────────
 
     public static synchronized int getOrAllocate(
-            JsonObject sourceSpec, @Nullable int[] crop,
+            ImageSpec imageSpec, @Nullable int[] crop,
             int displayW, int displayH, float advanceOverride) {
-        String key = buildKey(sourceSpec, crop, displayW, displayH, advanceOverride);
+        String key = buildKey(imageSpec, crop, displayW, displayH, advanceOverride);
         Integer existing = keyToSlot.get(key);
         if (existing != null) { slots[existing].lastUsed = tick; return BASE_CP + existing; }
 
         int idx = claimSlot(key);
-        Slot s    = slots[idx];
-        s.key     = key;
-        s.spec    = sourceSpec;
-        s.crop    = crop;
-        s.w       = displayW;
-        s.h       = displayH;
-        s.advance = advanceOverride;
+        Slot s     = slots[idx];
+        s.key      = key;
+        s.imageSpec = imageSpec;
+        s.crop     = crop;
+        s.w        = displayW;
+        s.h        = displayH;
+        s.advance  = advanceOverride;
         s.lastUsed = tick;
         s.resolved = null;
         s.glyph    = null;
-        JsonObject fetchSpec = fetchSpecOf(sourceSpec);
-        s.future   = isAsyncType(typeOf(fetchSpec))
-                ? UrlSourceResolver.resolve(fetchSpec) : null;
+        s.future   = (imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u)
+                ? UrlSourceResolver.resolve(u.url(), d.format()) : null;
         return BASE_CP + idx;
     }
 
@@ -109,7 +108,9 @@ public class ImageGlyphPool {
         synchronized (ImageGlyphPool.class) {
             for (Slot s : slots) {
                 if (s.isEmpty()) continue;
-                if (!isAsyncType(typeOf(fetchSpecOf(s.spec)))) s.evict(keyToSlot);
+                boolean isUrl = s.imageSpec instanceof ImageSpec.Decoded d
+                    && d.source() instanceof BinarySource.Url;
+                if (!isUrl) s.evict(keyToSlot);
                 else s.glyph = null;
             }
         }
@@ -156,13 +157,13 @@ public class ImageGlyphPool {
 
     @Nullable
     private static ResolvedSource resolveSync(Slot s) {
-        JsonObject fetch = fetchSpecOf(s.spec);
-        return switch (typeOf(fetch)) {
-            case "emoji_deco:fetch_atlas"    -> AtlasSourceResolver.resolveSync(fetch);
-            case "emoji_deco:fetch_resource" -> ResourceSourceResolver.resolveSync(fetch);
-            case "emoji_deco:fetch_skin"     -> SkinSourceResolver.resolveSync(fetch);
-            default                          -> null;
-        };
+        if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Resource r)
+            return ResourceSourceResolver.resolveSync(r.path(), d.format());
+        if (s.imageSpec instanceof ImageSpec.Atlas a)
+            return AtlasSourceResolver.resolveSync(a.atlas(), a.sprite());
+        if (s.imageSpec instanceof ImageSpec.Skin sk)
+            return SkinSourceResolver.resolveSync(sk.player());
+        return null;
     }
 
     private static BakedGlyph bake(Slot s) {
@@ -196,26 +197,9 @@ public class ImageGlyphPool {
         return oldest;
     }
 
-    private static String typeOf(@Nullable JsonObject spec) {
-        return (spec != null && spec.has("type")) ? spec.get("type").getAsString() : "";
-    }
-
-    private static boolean isAsyncType(String type) {
-        return "emoji_deco:fetch_url".equals(type);
-    }
-
-    /** decode_image ラッパーを剥がして fetch spec を返す。format があれば注入する。 */
-    private static JsonObject fetchSpecOf(JsonObject spec) {
-        if (!"emoji_deco:decode_image".equals(typeOf(spec))) return spec;
-        if (!spec.has("source") || !spec.get("source").isJsonObject()) return spec;
-        JsonObject src = spec.getAsJsonObject("source").deepCopy();
-        if (spec.has("format")) src.addProperty("format", spec.get("format").getAsString());
-        return src;
-    }
-
-    private static String buildKey(JsonObject spec, @Nullable int[] crop,
+    private static String buildKey(ImageSpec imageSpec, @Nullable int[] crop,
                                    int w, int h, float advance) {
-        return spec.toString() + Arrays.toString(crop) + w + "x" + h + ":" + advance;
+        return imageSpec.toString() + Arrays.toString(crop) + w + "x" + h + ":" + advance;
     }
 
     private record FixedAdvanceInfo(float advance) implements GlyphInfo {
