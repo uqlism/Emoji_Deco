@@ -11,7 +11,9 @@ import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
@@ -147,15 +149,23 @@ public class SuggestionState {
     private static List<Entry> buildShortcodeSuggestions(String prefix) {
         if (prefix.isEmpty()) return Collections.emptyList();
         List<Entry> results = new ArrayList<>();
-        ShortcodeManager.getSuggestions(prefix).forEach(code ->
-                results.add(new Entry(
-                        ShortcodeManager.getLabel(code),
-                        () -> ShortcodeManager.getPreview(code),
-                        code, TriggerType.SHORTCODE)));
-        ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
-            String canonical = e.getValue();
+        Set<String> addedCanonicals = new HashSet<>();
+        ShortcodeManager.getSuggestions(prefix).forEach(code -> {
             results.add(new Entry(
-                    ShortcodeManager.getLabel(canonical),
+                    ShortcodeManager.getLabel(code),
+                    () -> ShortcodeManager.getPreview(code),
+                    code, TriggerType.SHORTCODE));
+            addedCanonicals.add(code);
+        });
+        // エイリアス候補: canonical が既出の場合はスキップして重複を防ぐ
+        // ラベルはエイリアス名を使う (canonical 名ではなく入力した名前を見せる)
+        ShortcodeManager.getAliasSuggestions(prefix).forEach(e -> {
+            String alias     = e.getKey();
+            String canonical = e.getValue();
+            if (addedCanonicals.contains(canonical)) return;
+            addedCanonicals.add(canonical);
+            results.add(new Entry(
+                    ":" + alias + ":",
                     () -> ShortcodeManager.getPreview(canonical),
                     canonical, TriggerType.SHORTCODE));
         });
