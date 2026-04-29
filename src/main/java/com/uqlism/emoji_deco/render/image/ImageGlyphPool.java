@@ -22,31 +22,30 @@ import java.util.function.Function;
 /**
  * 固定サイズ（POOL_SIZE スロット）のコードポイントプール。
  *
- * すべての image source（atlas / resource / url / skin）は
- * 単一フォント IMAGE_FONT 上のコードポイントとして管理される。
- *
- * advanceOverride: Float.NaN = displayW+1 のデフォルト。face は 0 を指定。
- * z オーバーレイ（帽子の前面描画）は emoji_deco:offset の z=0.01 で行う。
+ * tick 最適化: アニメーションは ANIM_PAUSE_TICKS 以内に描画されたスロットのみ進める。
+ * 退避クリーンアップ: LRU 退避時に Animated スロットの animator.close() を呼ぶ。
  */
 public class ImageGlyphPool {
 
     public static final ResourceLocation IMAGE_FONT = ResourceLocation.parse("emoji_deco:image");
     public static final int BASE_CP    = 0xD000;
     private static final int POOL_SIZE = 256;
+    /** 描画が途絶えてからアニメーションを停止するまでの tick 数（= 1 秒）。 */
+    private static final long ANIM_PAUSE_TICKS = 20L;
 
     @SuppressWarnings("unchecked")
     private static final CompletableFuture<ResolvedSource>[] futures =
             (CompletableFuture<ResolvedSource>[]) new CompletableFuture[POOL_SIZE];
 
-    private static final String[]         slotKeys    = new String[POOL_SIZE];
-    private static final JsonObject[]      slotSpecs   = new JsonObject[POOL_SIZE];
-    private static final int[][]           slotCrops   = new int[POOL_SIZE][];
-    private static final int[]             slotW       = new int[POOL_SIZE];
-    private static final int[]             slotH       = new int[POOL_SIZE];
-    private static final float[]           slotAdvance = new float[POOL_SIZE];  // NaN = default
-    private static final long[]            lastUsed    = new long[POOL_SIZE];
-    private static final ResolvedSource[]  resolved    = new ResolvedSource[POOL_SIZE];
-    private static final BakedGlyph[]      glyphs      = new BakedGlyph[POOL_SIZE];
+    private static final String[]          slotKeys    = new String[POOL_SIZE];
+    private static final JsonObject[]       slotSpecs   = new JsonObject[POOL_SIZE];
+    private static final int[][]            slotCrops   = new int[POOL_SIZE][];
+    private static final int[]              slotW       = new int[POOL_SIZE];
+    private static final int[]              slotH       = new int[POOL_SIZE];
+    private static final float[]            slotAdvance = new float[POOL_SIZE];
+    private static final long[]             lastUsed    = new long[POOL_SIZE];
+    private static final ResolvedSource[]   resolved    = new ResolvedSource[POOL_SIZE];
+    private static final BakedGlyph[]       glyphs      = new BakedGlyph[POOL_SIZE];
 
     private static final Map<String, Integer> keyToSlot = new HashMap<>();
     private static long tick = 0L;
@@ -76,20 +75,28 @@ public class ImageGlyphPool {
         return BASE_CP + slot;
     }
 
-    public static void tick() { tick++; }
+    /**
+     * 毎 client tick 呼ぶ。
+     * 最近描画されたアニメーションスロットのみ animator.tick() を実行する。
+     */
+    public static void tick() {
+        tick++;
+        long threshold = tick - ANIM_PAUSE_TICKS;
+        for (int i = 0; i < POOL_SIZE; i++) {
+            if (resolved[i] instanceof ResolvedSource.Animated a && lastUsed[i] >= threshold) {
+                a.animator().tick(tick);
+            }
+        }
+    }
 
     public static void onResourceReload() {
         synchronized (ImageGlyphPool.class) {
             for (int i = 0; i < POOL_SIZE; i++) {
                 if (slotKeys[i] == null) continue;
                 if (!"url".equals(typeOf(slotSpecs[i]))) {
-                    keyToSlot.remove(slotKeys[i]);
-                    slotKeys[i] = null;
-                    resolved[i] = null;
-                    glyphs[i]   = null;
-                    futures[i]  = null;
+                    evictSlot(i);
                 } else {
-                    glyphs[i] = null;
+                    glyphs[i] = null;   // URL: テクスチャ ID が変わりうるので再ベイク
                 }
             }
         }
@@ -163,6 +170,7 @@ public class ImageGlyphPool {
         return new BakedGlyph(rt, u0, u1, v0, v1, 0f, displayW, 3f, 3f + displayH);
     }
 
+    /** スロットを確保する。空きがなければ LRU 退避してから返す。 */
     private static int claimSlot(String key) {
         for (int i = 0; i < POOL_SIZE; i++) {
             if (slotKeys[i] == null) { slotKeys[i] = key; keyToSlot.put(key, i); return i; }
@@ -171,10 +179,20 @@ public class ImageGlyphPool {
         for (int i = 1; i < POOL_SIZE; i++) {
             if (lastUsed[i] < lastUsed[oldest]) oldest = i;
         }
-        keyToSlot.remove(slotKeys[oldest]);
+        evictSlot(oldest);
         slotKeys[oldest] = key;
         keyToSlot.put(key, oldest);
         return oldest;
+    }
+
+    /** スロットを退避する。Animated の場合は animator を close() する。 */
+    private static void evictSlot(int slot) {
+        if (resolved[slot] instanceof ResolvedSource.Animated a) a.animator().close();
+        keyToSlot.remove(slotKeys[slot]);
+        slotKeys[slot] = null;
+        resolved[slot] = null;
+        glyphs[slot]   = null;
+        futures[slot]  = null;
     }
 
     private static String typeOf(@Nullable JsonObject spec) {

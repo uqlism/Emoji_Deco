@@ -13,7 +13,7 @@
     "text": "",
     "color": "#ffffff",
     "italic": false,
-    "hover_event": {
+    "hoverEvent": {
       "action": "show_text",
       "contents": {
         "emoji_deco:arg": {

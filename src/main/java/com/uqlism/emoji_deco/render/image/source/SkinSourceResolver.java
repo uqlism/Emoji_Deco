@@ -24,7 +24,7 @@ public class SkinSourceResolver {
         String player = spec.has("player") ? spec.get("player").getAsString() : "";
         ResourceLocation skin = getSkinTexture(player);
         if (skin == null) return null;
-        return new ResolvedSource(skin, 0f, 0f, 1f, 1f, 64, 64);
+        return new ResolvedSource.Static(skin, 0f, 0f, 1f, 1f, 64, 64);
     }
 
     @Nullable

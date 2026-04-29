@@ -9,7 +9,6 @@ import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
-import com.uqlism.emoji_deco.render.image.source.ResourceSourceResolver;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 
@@ -117,7 +116,7 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        ResourceSourceResolver.tickAnimated();
+        // アニメーションの tick は ImageGlyphPool が一元管理する
         ImageGlyphPool.tick();
     }
 

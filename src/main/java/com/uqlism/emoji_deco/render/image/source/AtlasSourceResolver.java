@@ -27,12 +27,13 @@ public class AtlasSourceResolver {
         ResourceLocation spriteRL = ResourceLocation.tryParse(spriteStr);
         if (atlasRL == null || spriteRL == null) return null;
 
-        TextureAtlas atlas  = mc.getModelManager().getAtlas(atlasRL);
+        TextureAtlas atlas = mc.getModelManager().getAtlas(atlasRL);
+        if (atlas == null) return null;
         TextureAtlasSprite sprite = atlas.getSprite(spriteRL);
         if (sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation())) {
             LOGGER.warn("[EmojiDeco] Sprite not found in atlas {}: {}", atlasRL, spriteRL);
         }
-        return new ResolvedSource(
+        return new ResolvedSource.Static(
                 atlasRL,
                 sprite.getU0(), sprite.getV0(),
                 sprite.getU1(), sprite.getV1(),
