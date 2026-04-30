@@ -1,9 +1,6 @@
 package com.uqlism.emoji_deco.block;
 
 import com.uqlism.emoji_deco.Registration;
-import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
-import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
-import com.uqlism.emoji_deco.text.ir.ParsedNode;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import net.minecraft.core.BlockPos;
@@ -23,12 +20,7 @@ public class GraffitiBlockEntity extends BlockEntity {
     private GraffitiAlignment alignment = GraffitiAlignment.LEFT;
     private int displayedLines = 1;
 
-    /**
-     * ParsedNode cache — built once per line set, reused across frames.
-     * Static structure that does not depend on runtime context.
-     * Null means invalid (text changed); rebuilt lazily in getRichLines().
-     */
-    private transient ParsedNode[] parsedNodes;
+    private transient RichNode[] cachedRichLines;
 
     public GraffitiBlockEntity(BlockPos pos, BlockState state) {
         super(Registration.GRAFFITI_BLOCK_ENTITY.get(), pos, state);
@@ -43,28 +35,24 @@ public class GraffitiBlockEntity extends BlockEntity {
     public int     getDisplayedLines()         { return displayedLines; }
 
     /**
-     * Returns hydrated {@link RichNode}s for each displayed line.
-     * ParsedNodes are cached; RichNodes are hydrated each call (HydrateCache inside makes it O(1)).
+     * Returns RichNodes for each displayed line.
+     * Cached per line set; invalidated when text changes.
+     * ShortcodeManager / DecoratorManager HydrateCaches make repeated calls O(1).
      * Call only on the client (render) thread.
      */
     public RichNode[] getRichLines() {
-        if (parsedNodes == null) {
-            parsedNodes = new ParsedNode[displayedLines];
+        if (cachedRichLines == null) {
+            cachedRichLines = new RichNode[displayedLines];
             for (int i = 0; i < displayedLines; i++) {
                 String raw = lines[i];
-                parsedNodes[i] = (raw != null && !raw.isEmpty())
-                        ? RichTextParser.parseToParsedNode(raw)
-                        : ParsedNode.empty();
+                cachedRichLines[i] = (raw != null && !raw.isEmpty())
+                        ? RichTextParser.parse(raw) : RichNode.empty();
             }
         }
-        RichNode[] result = new RichNode[displayedLines];
-        for (int i = 0; i < displayedLines; i++) {
-            result[i] = NodeHydrator.hydrate(parsedNodes[i], HydrateContext.EMPTY);
-        }
-        return result;
+        return cachedRichLines;
     }
 
-    private void invalidateCache() { parsedNodes = null; }
+    private void invalidateCache() { cachedRichLines = null; }
 
     public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {
         for (int i = 0; i < MAX_LINES; i++) {

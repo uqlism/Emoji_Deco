@@ -11,7 +11,7 @@ import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
+import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -117,10 +117,10 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        NodeHydrator.tick();
+        Hydrators.tick();
         ImageGlyphPool.tick();
-        long tick = NodeHydrator.currentTick();
-        if (tick % 200 == 0) NodeHydrator.gcCaches(tick);
+        long tick = Hydrators.currentTick();
+        if (tick % 200 == 0) Hydrators.gcCaches(tick);
     }
 
     private static final int HIGHLIGHT_RANGE = 10;

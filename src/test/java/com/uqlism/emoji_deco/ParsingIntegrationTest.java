@@ -3,8 +3,6 @@ package com.uqlism.emoji_deco;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
-import com.uqlism.emoji_deco.text.ir.ParsedNode;
-import com.uqlism.emoji_deco.text.parse.ParsedNodeParser;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
@@ -48,11 +46,8 @@ class ParsingIntegrationTest extends MinecraftTestBase {
                 """);
 
         // Shortcodes
-        putShortcode("heart", new ParsedNode.Text("❤",
-                new ParsedNode.ParsedStyle(new ParsedNode.StringVal.Literal("#FF5555"),
-                        null, null, null, null, null, null),
-                java.util.List.of()));
-        putShortcode("star", new ParsedNode.Text("★", ParsedNode.ParsedStyle.EMPTY, java.util.List.of()));
+        putShortcode("heart", "{\"text\":\"❤\",\"color\":\"#FF5555\"}");
+        putShortcode("star",  "{\"text\":\"★\"}");
     }
 
     // ── helper ────────────────────────────────────────────────────────────────
@@ -177,10 +172,6 @@ class ParsingIntegrationTest extends MinecraftTestBase {
         try {
             JsonObject json = JsonParser.parseString(
                     "{\"display\":" + displayJson.strip() + "}").getAsJsonObject();
-            ParsedNode parsed = ParsedNodeParser.parse(json.get("display"), null);
-            Field pf = DecoratorManager.class.getDeclaredField("PARSED_REGISTRY");
-            pf.setAccessible(true);
-            ((Map<String, ParsedNode>) pf.get(null)).put(name, parsed);
             Field jf = DecoratorManager.class.getDeclaredField("JSON_REGISTRY");
             jf.setAccessible(true);
             ((Map<String, JsonObject>) jf.get(null)).put(name, json);
@@ -190,11 +181,13 @@ class ParsingIntegrationTest extends MinecraftTestBase {
     }
 
     @SuppressWarnings("unchecked")
-    private static void putShortcode(String name, ParsedNode node) {
+    private static void putShortcode(String name, String displayJson) {
         try {
-            Field f = ShortcodeManager.class.getDeclaredField("PARSED_REGISTRY");
+            JsonObject json = JsonParser.parseString(
+                    "{\"display\":" + displayJson.strip() + "}").getAsJsonObject();
+            Field f = ShortcodeManager.class.getDeclaredField("JSON_REGISTRY");
             f.setAccessible(true);
-            ((Map<String, ParsedNode>) f.get(null)).put(name, node);
+            ((Map<String, JsonObject>) f.get(null)).put(name, json);
         } catch (Exception e) {
             throw new RuntimeException("Failed to register test shortcode: " + name, e);
         }

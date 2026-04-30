@@ -2,11 +2,9 @@ package com.uqlism.emoji_deco.text.registry;
 
 import com.uqlism.emoji_deco.text.hydrate.HydrateCache;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
-import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
-import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
-import com.uqlism.emoji_deco.text.parse.ParsedNodeParser;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -38,17 +36,14 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static final ShortcodeManager INSTANCE = new ShortcodeManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** ParsedNode for every shortcode — parsed at load time, hydrated on demand. */
-    private static final Map<String, ParsedNode>  PARSED_REGISTRY = new ConcurrentHashMap<>();
     /** Per-shortcode hydration result cache (pattern → RichNode). */
-    private static final Map<String, HydrateCache> HYDRATE_CACHES  = new ConcurrentHashMap<>();
-    /** Full JSON for all shortcodes — used for label / preview / suggestion lookup. */
-    private static final Map<String, JsonObject>  JSON_REGISTRY   = new ConcurrentHashMap<>();
+    private static final Map<String, HydrateCache> HYDRATE_CACHES = new ConcurrentHashMap<>();
+    /** Full JSON for all shortcodes — source of truth and suggestion lookup. */
+    private static final Map<String, JsonObject>  JSON_REGISTRY  = new ConcurrentHashMap<>();
     /** alias text → canonical shortcode name */
-    private static final Map<String, String>      ALIASES         = new ConcurrentHashMap<>();
+    private static final Map<String, String>      ALIASES        = new ConcurrentHashMap<>();
 
     private record LoadResult(
-            Map<String, ParsedNode> parsedRegistry,
             Map<String, JsonObject> jsonRegistry,
             Map<String, String>     aliases) {}
 
@@ -65,20 +60,17 @@ public class ShortcodeManager implements PreparableReloadListener {
                 .supplyAsync(() -> loadAll(resourceManager), backgroundExecutor)
                 .thenCompose(stage::wait)
                 .thenAcceptAsync(result -> {
-                    PARSED_REGISTRY.clear();
-                    PARSED_REGISTRY.putAll(result.parsedRegistry());
                     JSON_REGISTRY.clear();
                     JSON_REGISTRY.putAll(result.jsonRegistry());
                     ALIASES.clear();
                     ALIASES.putAll(result.aliases());
                     HYDRATE_CACHES.clear();
                     LOGGER.info("[EmojiDeco] Loaded {} shortcode(s), {} alias(es)",
-                            PARSED_REGISTRY.size(), ALIASES.size());
+                            JSON_REGISTRY.size(), ALIASES.size());
                 }, gameExecutor);
     }
 
     private static LoadResult loadAll(ResourceManager resourceManager) {
-        Map<String, ParsedNode> parsed  = new HashMap<>();
         Map<String, JsonObject> json    = new HashMap<>();
         Map<String, String>     aliases = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
@@ -95,9 +87,6 @@ public class ShortcodeManager implements PreparableReloadListener {
 
                 String path = location.getPath();
                 String name = path.substring("shortcodes/".length(), path.length() - ".json".length());
-
-                JsonArray topArgSpecs = j.has("args") ? j.getAsJsonArray("args") : null;
-                parsed.put(name, ParsedNodeParser.parse(j.get("display"), topArgSpecs));
                 json.put(name, j);
 
                 if (j.has("aliases") && j.get("aliases").isJsonArray()) {
@@ -110,27 +99,26 @@ public class ShortcodeManager implements PreparableReloadListener {
                 LOGGER.error("[EmojiDeco] Failed to load shortcode {}: {}", location, e.getMessage());
             }
         }
-        return new LoadResult(parsed, json, aliases);
+        return new LoadResult(json, aliases);
     }
 
     // ── Hydration ─────────────────────────────────────────────────────────────
 
     public static RichNode hydrateWith(String code, String[] args, @Nullable RichNode slot) {
         // ALIASES は使わない — 正規名のみ描画対象（alias はサジェスト専用）
-        ParsedNode node  = PARSED_REGISTRY.get(code);
-        if (node == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
-
         JsonObject json = JSON_REGISTRY.get(code);
-        JsonArray  topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
-        HydrateContext ctx  = new HydrateContext(args, topArgSpecs, slot);
-        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(code, k -> new HydrateCache());
-        long tick = NodeHydrator.currentTick();
+        if (json == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
+
+        JsonArray      topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
+        HydrateContext ctx         = new HydrateContext(args, topArgSpecs, slot);
+        HydrateCache   cache       = HYDRATE_CACHES.computeIfAbsent(code, k -> new HydrateCache());
+        long           tick        = Hydrators.currentTick();
 
         RichNode cached = cache.lookup(ctx, slot, tick);
         if (cached != null) return cached;
 
         HydrateContext.Tracked tracked = ctx.track();
-        RichNode result = NodeHydrator.hydrateTracked(node, tracked);
+        RichNode result = Hydrators.NODE.hydrate(json.get("display"), tracked);
         cache.store(tracked.extractPattern(), result, tick);
         return result;
     }
@@ -146,24 +134,22 @@ public class ShortcodeManager implements PreparableReloadListener {
 
     /** Returns true if code is a canonical shortcode name (aliases are excluded intentionally). */
     public static boolean has(String code) {
-        return PARSED_REGISTRY.containsKey(code);
+        return JSON_REGISTRY.containsKey(code);
     }
 
-    /** Used by NodeHydrator to check before resolving apply_shortcode. */
     public static boolean hasParsed(String code) {
-        return PARSED_REGISTRY.containsKey(code);
+        return JSON_REGISTRY.containsKey(code);
     }
 
     // ── サジェスト検索 ────────────────────────────────────────────────────────
 
-    /** SuggestionEngine への型エイリアス（呼び出し元の import を統一するため）。 */
     public static List<SuggestionEngine.SearchResult> searchSuggestions(String query, int maxResults) {
-        return SuggestionEngine.search(PARSED_REGISTRY.keySet(), ALIASES, query, maxResults);
+        return SuggestionEngine.search(JSON_REGISTRY.keySet(), ALIASES, query, maxResults);
     }
 
     /** 後方互換用 (arg サジェストトリガー判定などで引き続き使用)。 */
     public static List<String> getSuggestions(String prefix) {
-        return PARSED_REGISTRY.keySet().stream()
+        return JSON_REGISTRY.keySet().stream()
                 .filter(k -> k.startsWith(prefix))
                 .sorted()
                 .collect(Collectors.toList());

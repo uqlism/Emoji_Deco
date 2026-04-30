@@ -2,11 +2,9 @@ package com.uqlism.emoji_deco.text.registry;
 
 import com.uqlism.emoji_deco.text.hydrate.HydrateCache;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
-import com.uqlism.emoji_deco.text.hydrate.NodeHydrator;
-import com.uqlism.emoji_deco.text.ir.ParsedNode;
+import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
-import com.uqlism.emoji_deco.text.parse.ParsedNodeParser;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -36,16 +34,12 @@ public class DecoratorManager implements PreparableReloadListener {
     public static final DecoratorManager INSTANCE = new DecoratorManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** ParsedNode per decorator — parsed at load time. */
-    private static final Map<String, ParsedNode>  PARSED_REGISTRY = new ConcurrentHashMap<>();
     /** Per-decorator hydration result cache. */
-    private static final Map<String, HydrateCache> HYDRATE_CACHES  = new ConcurrentHashMap<>();
-    /** Full JSON per decorator — for label / preview / suggestion lookup. */
-    private static final Map<String, JsonObject>  JSON_REGISTRY   = new ConcurrentHashMap<>();
+    private static final Map<String, HydrateCache> HYDRATE_CACHES = new ConcurrentHashMap<>();
+    /** Full JSON per decorator — source of truth and suggestion lookup. */
+    private static final Map<String, JsonObject>  JSON_REGISTRY  = new ConcurrentHashMap<>();
 
-    private record LoadResult(
-            Map<String, ParsedNode> parsedRegistry,
-            Map<String, JsonObject> jsonRegistry) {}
+    private record LoadResult(Map<String, JsonObject> jsonRegistry) {}
 
     @Override
     public CompletableFuture<Void> reload(
@@ -60,18 +54,15 @@ public class DecoratorManager implements PreparableReloadListener {
                 .supplyAsync(() -> loadAll(resourceManager), backgroundExecutor)
                 .thenCompose(stage::wait)
                 .thenAcceptAsync(loaded -> {
-                    PARSED_REGISTRY.clear();
-                    PARSED_REGISTRY.putAll(loaded.parsedRegistry());
                     JSON_REGISTRY.clear();
                     JSON_REGISTRY.putAll(loaded.jsonRegistry());
                     HYDRATE_CACHES.clear();
-                    LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", PARSED_REGISTRY.size());
+                    LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", JSON_REGISTRY.size());
                 }, gameExecutor);
     }
 
     private static LoadResult loadAll(ResourceManager resourceManager) {
-        Map<String, ParsedNode> parsed = new HashMap<>();
-        Map<String, JsonObject> json   = new HashMap<>();
+        Map<String, JsonObject> json = new HashMap<>();
         Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 "decorators", path -> path.getPath().endsWith(".json"));
 
@@ -86,36 +77,32 @@ public class DecoratorManager implements PreparableReloadListener {
 
                 String path = location.getPath();
                 String name = path.substring("decorators/".length(), path.length() - ".json".length());
-
-                JsonArray topArgSpecs = j.has("args") ? j.getAsJsonArray("args") : null;
-                parsed.put(name, ParsedNodeParser.parse(j.get("display"), topArgSpecs));
                 json.put(name, j);
 
             } catch (Exception e) {
                 LOGGER.error("[EmojiDeco] Failed to load decorator {}: {}", location, e.getMessage());
             }
         }
-        return new LoadResult(parsed, json);
+        return new LoadResult(json);
     }
 
     // ── Hydration ─────────────────────────────────────────────────────────────
 
     @Nullable
     public static RichNode hydrateWith(String name, RichNode slotNode, String[] args) {
-        ParsedNode node = PARSED_REGISTRY.get(name);
-        if (node == null) return null;
-
         JsonObject json = JSON_REGISTRY.get(name);
-        JsonArray  topArgSpecs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
-        HydrateContext ctx   = new HydrateContext(args, topArgSpecs, slotNode);
-        HydrateCache   cache = HYDRATE_CACHES.computeIfAbsent(name, k -> new HydrateCache());
-        long tick = NodeHydrator.currentTick();
+        if (json == null) return null;
+
+        JsonArray      topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
+        HydrateContext ctx         = new HydrateContext(args, topArgSpecs, slotNode);
+        HydrateCache   cache       = HYDRATE_CACHES.computeIfAbsent(name, k -> new HydrateCache());
+        long           tick        = Hydrators.currentTick();
 
         RichNode cached = cache.lookup(ctx, slotNode, tick);
         if (cached != null) return cached;
 
         HydrateContext.Tracked tracked = ctx.track();
-        RichNode result = NodeHydrator.hydrateTracked(node, tracked);
+        RichNode result = Hydrators.NODE.hydrate(json.get("display"), tracked);
         cache.store(tracked.extractPattern(), result, tick);
         return result;
     }
@@ -136,18 +123,18 @@ public class DecoratorManager implements PreparableReloadListener {
 
     // ── Queries ───────────────────────────────────────────────────────────────
 
-    public static boolean has(String name)       { return PARSED_REGISTRY.containsKey(name); }
-    public static boolean hasParsed(String name) { return PARSED_REGISTRY.containsKey(name); }
+    public static boolean has(String name)       { return JSON_REGISTRY.containsKey(name); }
+    public static boolean hasParsed(String name) { return JSON_REGISTRY.containsKey(name); }
 
     public static List<String> getSuggestions(String prefix) {
-        return PARSED_REGISTRY.keySet().stream()
+        return JSON_REGISTRY.keySet().stream()
                 .filter(k -> k.startsWith(prefix))
                 .sorted()
                 .collect(Collectors.toList());
     }
 
     public static List<SuggestionEngine.SearchResult> searchSuggestions(String query, int maxResults) {
-        return SuggestionEngine.search(PARSED_REGISTRY.keySet(), java.util.Map.of(), query, maxResults);
+        return SuggestionEngine.search(JSON_REGISTRY.keySet(), java.util.Map.of(), query, maxResults);
     }
 
     // ── Label / Preview (autocomplete) ────────────────────────────────────────

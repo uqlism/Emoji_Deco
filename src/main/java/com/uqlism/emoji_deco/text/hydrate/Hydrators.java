@@ -1,0 +1,330 @@
+package com.uqlism.emoji_deco.text.hydrate;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.util.function.Function;
+import com.mojang.logging.LogUtils;
+import com.uqlism.emoji_deco.render.image.BinarySource;
+import com.uqlism.emoji_deco.render.image.ImageSpec;
+import com.uqlism.emoji_deco.render.sequence.LightMode;
+import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.registry.DecoratorManager;
+import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Static Hydrator<T> constants for the emoji_deco JSON display format.
+ *
+ * Public fields are method-backed to allow self-referential dispatch tables.
+ * Private *_IMPL fields hold the actual combinator chains, built once at class load.
+ */
+public final class Hydrators {
+
+    private static final Logger        LOGGER    = LogUtils.getLogger();
+    private static final AtomicLong    TICK      = new AtomicLong(0);
+    private static final ThreadLocal<Set<String>> RESOLVING = ThreadLocal.withInitial(HashSet::new);
+
+    private Hydrators() {}
+
+    // ── Tick / GC ──────────────────────────────────────────────────────────────
+
+    public static void tick()              { TICK.incrementAndGet(); }
+    public static long currentTick()       { return TICK.get(); }
+    public static void gcCaches(long tick) { ShortcodeManager.gcCaches(tick); DecoratorManager.gcCaches(tick); }
+
+    // ── Scalar combinator chains ───────────────────────────────────────────────
+    // Defined before the public fields so STRING/FLOAT/BOOL can be direct aliases.
+    // Recursive calls (e.g. joinStr → STRING) work because method bodies are
+    // evaluated at runtime, not at class-init time.
+
+    public static final Hydrator<String> STRING = Hydrator.firstOf(
+            (el, ctx) -> el != null && el.isJsonPrimitive() ? el.getAsString() : null,
+            Hydrator.dispatch(Map.of(
+                    "emoji_deco:arg",         argOf(Function.identity(),      Hydrator.lazy(() -> Hydrators.STRING)),
+                    "emoji_deco:join",        Hydrator.lazy(() -> Hydrators.JOIN_STR),
+                    "emoji_deco:player_names",(el, ctx) -> { ctx.markPlayerNamesAccessed(); return ""; }
+            ), null));
+
+    public static final Hydrator<Float> FLOAT = Hydrator.firstOf(
+            (el, ctx) -> {
+                if (el == null || !el.isJsonPrimitive()) return null;
+                try { return el.getAsFloat(); } catch (Exception e) { return null; }
+            },
+            Hydrator.dispatch(Map.of(
+                    "emoji_deco:arg",  argOf(Hydrators::tryParseFloat, Hydrator.lazy(() -> Hydrators.FLOAT)),
+                    "emoji_deco:time", Hydrator.lazy(() -> Hydrators.TIME_VAL)
+            ), null));
+
+    public static final Hydrator<Boolean> BOOL = Hydrator.firstOf(
+            (el, ctx) -> {
+                if (el == null || !el.isJsonPrimitive()) return null;
+                try { return el.getAsBoolean(); } catch (Exception e) { return null; }
+            },
+            Hydrator.dispatch(Map.of(
+                    "emoji_deco:arg", argOf(Hydrators::parseBool, Hydrator.lazy(() -> Hydrators.BOOL))
+            ), null));
+
+    public static final Hydrator<float[]> FLOAT_ARRAY =
+            Hydrator.list(FLOAT).map(list -> {
+                float[] a = new float[list.size()];
+                for (int i = 0; i < list.size(); i++) a[i] = list.get(i);
+                return a;
+            });
+
+    // Defined before NODE_DISPATCH so it can be referenced directly (no delay needed).
+    private static final Hydrator<Float> TIME_VAL = Hydrator.withEffect(
+            HydrateContext.Tracked::markTimeAccessed,
+            Hydrator.zip(
+                    Hydrator.field("time",   STRING.withDefault("gametime")),
+                    Hydrator.field("scale",  FLOAT.withDefault(1f)),
+                    Hydrator.field("offset", FLOAT.withDefault(0f)),
+                    (timeType, scale, offset) -> {
+                        Minecraft mc      = Minecraft.getInstance();
+                        long gameTime     = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
+                        long dayTime      = (mc != null && mc.level != null) ? mc.level.getDayTime()  : 0L;
+                        float partial     = (mc != null) ? mc.getPartialTick() : 0f;
+                        float raw = switch (timeType) {
+                            case "daytime" -> (float)(dayTime % 24000L) + partial;
+                            case "day"     -> (float)(dayTime / 24000L);
+                            default        -> (float) gameTime + partial;
+                        };
+                        return raw * scale + offset;
+                    }));
+
+    // Structural node hydrators — defined before NODE; use lazy(NODE) for the contents field.
+    private static final Hydrator<List<RichNode>> CONTENTS =
+            Hydrator.field("contents", Hydrator.lazy(() -> Hydrators.NODE)).map(List::of);
+
+    private static final Hydrator<RichNode> GLOW_NODE = Hydrator.zip(
+            Hydrator.field("glow", BOOL.withDefault(true))
+                    .map(g -> g ? LightMode.GLOW : LightMode.AMBIENT),
+            CONTENTS,
+            RichNode.Glowing::new);
+
+    private static final Hydrator<RichNode> SCALE_NODE = Hydrator.zip(
+            Hydrator.field("x", FLOAT.withDefault(1f)),
+            Hydrator.field("y", FLOAT.withDefault(1f)),
+            CONTENTS,
+            RichNode.Scaled::new);
+
+    private static final Hydrator<RichNode> OFFSET_NODE = Hydrator.zip(
+            Hydrator.field("x", FLOAT.withDefault(0f)),
+            Hydrator.field("y", FLOAT.withDefault(0f)),
+            Hydrator.field("z", FLOAT.withDefault(0f)),
+            CONTENTS,
+            RichNode.Offset::new);
+
+    private static final Hydrator<RichNode> ROTATE_NODE = Hydrator.zip(
+            Hydrator.field("angle", FLOAT.withDefault(0f)),
+            CONTENTS,
+            RichNode.Rotated::new);
+
+    // ── Image hydrators — before NODE so NODE_DISPATCH can reference IMAGE_GLYPH_NODE directly ──
+
+    private static final Hydrator<BinarySource> BINARY_SOURCE = Hydrator.dispatch(Map.of(
+            "emoji_deco:fetch_url", Hydrator.zip(
+                    Hydrator.field("url",        STRING.map(u -> u.isEmpty() ? null : u)),
+                    Hydrator.field("disk_cache", BOOL.withDefault(false)),
+                    Hydrator.field("ttl",        FLOAT.withDefault(0f)).map(f -> Math.round(f)),
+                    BinarySource.Url::new),
+            "emoji_deco:fetch_resource", Hydrator.field("path", STRING)
+                    .map(p -> p.isEmpty() ? null : new BinarySource.Resource(p))
+    ), null);
+
+    private static final Hydrator<ImageSpec> IMAGE_SPEC = Hydrator.dispatch(Map.of(
+            "emoji_deco:decode_image", Hydrators::decodedSpec,
+            "emoji_deco:fetch_atlas",  Hydrator.zip(
+                    Hydrator.field("atlas",  STRING.map(s -> s.isEmpty() ? null : s)),
+                    Hydrator.field("sprite", STRING.map(s -> s.isEmpty() ? null : s)),
+                    (a, s) -> new ImageSpec.Atlas(a, s)),
+            "emoji_deco:fetch_skin",   Hydrator.field("player", STRING)
+                    .map(p -> p.isEmpty() ? null : new ImageSpec.Skin(p))
+    ), null);
+
+    private static final Hydrator<int[]> CROP_H = Hydrator.list(FLOAT)
+            .map(fs -> fs.size() == 4
+                    ? new int[]{Math.round(fs.get(0)), Math.round(fs.get(1)),
+                                Math.round(fs.get(2)), Math.round(fs.get(3))}
+                    : null);
+
+    private record ImageBundle(ImageSpec spec, @Nullable int[] crop) {}
+
+    private static final Hydrator<ImageBundle> IMAGE_BUNDLE_H = (el, ctx) -> {
+        ImageSpec spec = IMAGE_SPEC.hydrate(el, ctx);
+        if (spec == null) return null;
+        return new ImageBundle(spec, Hydrator.field("uv", CROP_H).hydrate(el, ctx));
+    };
+
+    private static final Hydrator<RichNode> IMAGE_GLYPH_NODE = Hydrator.zip(
+            Hydrator.field("width",   FLOAT.withDefault(8f)).map(f -> Math.round(f)),
+            Hydrator.field("height",  FLOAT.withDefault(8f)).map(f -> Math.round(f)),
+            Hydrator.field("advance", FLOAT.withDefault(Float.NaN)),
+            Hydrator.field("image",   IMAGE_BUNDLE_H),
+            (w, h, advance, bundle) -> new RichNode.Image(bundle.spec(), bundle.crop(), w, h, advance));
+
+    // STRING.map covers: primitives, emoji_deco:arg, emoji_deco:join, emoji_deco:player_names.
+    // list(lazy(NODE)) covers arrays; lazy breaks the self-reference initialisation cycle.
+    public static final Hydrator<RichNode> NODE = Hydrator.firstOf(
+            STRING.map(str -> new RichNode.Text(str, Style.EMPTY, List.of())),
+            Hydrator.list(Hydrator.lazy(() -> Hydrators.NODE))
+                    .map(children -> new RichNode.Text("", Style.EMPTY, children)),
+            Hydrator.dispatch(
+                Map.of(
+                        "emoji_deco:slot",           (el, ctx) -> {
+                            RichNode s = ctx.getSlot(); return s != null ? s : RichNode.empty();
+                        },
+                        "emoji_deco:glow",           GLOW_NODE,
+                        "emoji_deco:scale",          SCALE_NODE,
+                        "emoji_deco:offset",         OFFSET_NODE,
+                        "emoji_deco:rotate",         ROTATE_NODE,
+                        "emoji_deco:image_to_glyph", IMAGE_GLYPH_NODE,
+                        "emoji_deco:apply_shortcode",Hydrators::applyShortcodeNode,
+                        "emoji_deco:apply_decorator",Hydrators::applyDecoratorNode,
+                        "emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of()))
+                ),
+                Hydrators::standardTextNode)
+    ).withDefault(RichNode.empty());
+
+    // ── String handlers ────────────────────────────────────────────────────────
+
+    private static final Hydrator<String> JOIN_STR = Hydrator.zip(
+            Hydrator.field("separator", STRING.withDefault("")),
+            Hydrator.field("parts",     Hydrator.list(STRING)),
+            (sep, parts) -> String.join(sep, parts));
+
+    // ── Float handlers ─────────────────────────────────────────────────────────
+
+    private static @Nullable Float tryParseFloat(String s) {
+        try { return Float.parseFloat(s); } catch (NumberFormatException e) { return null; }
+    }
+
+    // ── Bool handler ───────────────────────────────────────────────────────────
+
+    private static Boolean parseBool(String s) {
+        return s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes");
+    }
+
+    // ── Structural node handlers ───────────────────────────────────────────────
+
+    private static RichNode standardTextNode(JsonElement el, HydrateContext.Tracked ctx) {
+        JsonObject obj  = el.getAsJsonObject();
+        String     text = fld(obj, "text", ctx);
+        Style      style = Style.EMPTY;
+
+        if (obj.has("color")) {
+            TextColor color = TextColor.parseColor(fld(obj, "color", ctx));
+            if (color != null) style = style.withColor(color);
+        }
+        if (obj.has("bold"))          style = style.withBold(fld(obj, "bold", false, ctx));
+        if (obj.has("italic"))        style = style.withItalic(fld(obj, "italic", false, ctx));
+        if (obj.has("strikethrough")) style = style.withStrikethrough(fld(obj, "strikethrough", false, ctx));
+        if (obj.has("underlined"))    style = style.withUnderlined(fld(obj, "underlined", false, ctx));
+        if (obj.has("obfuscated"))    style = style.withObfuscated(fld(obj, "obfuscated", false, ctx));
+        if (obj.has("font")) {
+            ResourceLocation rl = ResourceLocation.tryParse(fld(obj, "font", ctx));
+            if (rl != null) style = style.withFont(rl);
+        }
+        List<RichNode> children = new ArrayList<>();
+        if (obj.has("extra") && obj.get("extra").isJsonArray())
+            for (JsonElement child : obj.getAsJsonArray("extra"))
+                children.add(NODE.hydrate(child, ctx));
+        return new RichNode.Text(text, style, children);
+    }
+
+    // ── Image ──────────────────────────────────────────────────────────────────
+
+    // format is optional (null = no format) — prevents using zip directly
+    private static @Nullable ImageSpec decodedSpec(JsonElement el, HydrateContext.Tracked ctx) {
+        String       format = Hydrator.field("format", STRING).map(s -> s.isEmpty() ? null : s).hydrate(el, ctx);
+        BinarySource src    = Hydrator.field("source", BINARY_SOURCE).hydrate(el, ctx);
+        return src != null ? new ImageSpec.Decoded(format, src) : null;
+    }
+
+    // ── apply_shortcode / apply_decorator ──────────────────────────────────────
+
+    private static RichNode applyShortcodeNode(JsonElement el, HydrateContext.Tracked ctx) {
+        JsonObject obj  = el.getAsJsonObject();
+        String     name = fld(obj, "shortcode", ctx);
+        if (name.isEmpty() || !ShortcodeManager.has(name)) return RichNode.empty();
+        String[] args = extractCallArgs(obj, ctx);
+        String   key  = "s:" + name;
+        if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode: '{}'", name); return RichNode.empty(); }
+        try { return ShortcodeManager.hydrateWith(name, args, null); }
+        finally { RESOLVING.get().remove(key); }
+    }
+
+    private static RichNode applyDecoratorNode(JsonElement el, HydrateContext.Tracked ctx) {
+        JsonObject obj  = el.getAsJsonObject();
+        String     name = fld(obj, "decorator", ctx);
+        if (name.isEmpty() || !DecoratorManager.has(name)) return RichNode.empty();
+        RichNode slot = obj.has("slot") ? NODE.hydrate(obj.get("slot"), ctx) : RichNode.empty();
+        String[] args = extractCallArgs(obj, ctx);
+        String   key  = "d:" + name;
+        if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_decorator: '{}'", name); return slot; }
+        try {
+            RichNode result = DecoratorManager.hydrateWith(name, slot, args);
+            return result != null ? result : slot;
+        } finally { RESOLVING.get().remove(key); }
+    }
+
+    private static String[] extractCallArgs(JsonObject obj, HydrateContext.Tracked ctx) {
+        return Hydrator.field("args", Hydrator.list(STRING.withDefault("")))
+                .withDefault(List.of())
+                .hydrate(obj, ctx)
+                .toArray(String[]::new);
+    }
+
+    // ── Field accessors with defaults ──────────────────────────────────────────
+
+    private static float   fld(JsonObject o, String k, float   def, HydrateContext.Tracked c) { Float   r = FLOAT .hydrate(o.get(k), c); return r != null ? r : def; }
+    private static String  fld(JsonObject o, String k,              HydrateContext.Tracked c) { String  r = STRING.hydrate(o.get(k), c); return r != null ? r : "";  }
+    private static String  fld(JsonObject o, String k, String  def, HydrateContext.Tracked c) { String  r = STRING.hydrate(o.get(k), c); return r != null ? r : def; }
+    private static boolean fld(JsonObject o, String k, boolean def, HydrateContext.Tracked c) { Boolean r = BOOL  .hydrate(o.get(k), c); return r != null ? r : def; }
+
+    // ── Arg helpers ────────────────────────────────────────────────────────────
+
+    /** Shared logic for {type:"emoji_deco:arg"} handlers.
+     *  Extracts the arg string, applies parse; on empty/failure falls back
+     *  to the "default" field (evaluated via defaultH, so defaults can be expressions). */
+    private static <T> Hydrator<T> argOf(
+            Function<String, @Nullable T> parse, Hydrator<T> defaultH) {
+        return (el, ctx) -> {
+            JsonObject  obj = el.getAsJsonObject();
+            int         idx = obj.has("index") ? obj.get("index").getAsInt() : 0;
+            String      v   = ctx.getArg(idx);
+            if (!v.isEmpty()) {
+                T r = parse.apply(v);
+                if (r != null) return r;
+            }
+            JsonElement def = argDefaultJson(obj, ctx, idx);
+            return def != null ? defaultH.hydrate(def, ctx) : null;
+        };
+    }
+
+    @Nullable
+    private static JsonElement argDefaultJson(JsonObject ref, HydrateContext.Tracked ctx, int idx) {
+        if (ref.has("default")) return ref.get("default");
+        JsonObject top = topSpec(ctx.getTopArgSpecs(), idx);
+        return (top != null && top.has("default")) ? top.get("default") : null;
+    }
+
+    @Nullable
+    private static JsonObject topSpec(@Nullable JsonArray specs, int index) {
+        if (specs == null || index < 0 || index >= specs.size()) return null;
+        JsonElement el = specs.get(index);
+        return el.isJsonObject() ? el.getAsJsonObject() : null;
+    }
+}
