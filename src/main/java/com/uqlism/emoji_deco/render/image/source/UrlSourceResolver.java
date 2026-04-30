@@ -40,6 +40,15 @@ public class UrlSourceResolver {
     private static final int TIMEOUT_MS = 5_000;
     private static final AtomicInteger counter = new AtomicInteger(0);
 
+    private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
+    private static final java.util.concurrent.Executor FETCH_EXECUTOR = task ->
+            java.util.concurrent.ForkJoinPool.commonPool().execute(() -> {
+                Thread t = Thread.currentThread();
+                ClassLoader prev = t.getContextClassLoader();
+                t.setContextClassLoader(MOD_CLASSLOADER);
+                try { task.run(); } finally { t.setContextClassLoader(prev); }
+            });
+
     private record CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
         boolean isExpired() {
             return expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt;
@@ -65,7 +74,6 @@ public class UrlSourceResolver {
         }).future();
     }
 
-    // ── fetch ─────────────────────────────────────────────────────────────────
 
     private static CompletableFuture<ResolvedSource> fetch(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
@@ -128,7 +136,7 @@ public class UrlSourceResolver {
                 LOGGER.error("[EmojiDeco] URL fetch failed for {}: {}", url, e.getMessage());
                 throw new RuntimeException(e);
             }
-        });
+        }, FETCH_EXECUTOR);
     }
 
     // ── disk cache ────────────────────────────────────────────────────────────
