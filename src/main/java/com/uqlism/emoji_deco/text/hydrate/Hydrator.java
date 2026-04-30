@@ -3,11 +3,14 @@ package com.uqlism.emoji_deco.text.hydrate;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.uqlism.emoji_deco.text.ir.RichNode;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -36,6 +39,85 @@ public interface Hydrator<T> {
     /** Replaces null with def, guaranteeing a non-null return. */
     default Hydrator<T> withDefault(T def) {
         return (el, ctx) -> { T r = hydrate(el, ctx); return r != null ? r : def; };
+    }
+
+    /**
+     * Wraps this hydrator with a per-JsonElement single-entry cache.
+     * Cache key: JsonElement object identity (auto-cleared on resource pack reload via WeakHashMap).
+     * Cache hit: iff all accessed args have the same values; time/playerNames/slot results never cached.
+     * On hit, replays deps into the parent tracker for correct dependency propagation.
+     */
+    /**
+     * Wraps with a per-JsonElement LRU cache (maxEntries per element).
+     * Key: JsonElement identity — auto-cleared on resource pack reload via WeakHashMap.
+     * Multiple entries prevent thrashing when the same JSON is hydrated with different args/slot.
+     */
+    default Hydrator<T> cached(int maxEntries) {
+        Map<JsonElement, List<CacheEntry<T>>> cache = Collections.synchronizedMap(new WeakHashMap<>());
+        return (el, ctx) -> {
+            if (el == null) return hydrate(el, ctx);
+            List<CacheEntry<T>> entries = cache.get(el);
+            if (entries != null) {
+                for (var entry : entries) {
+                    if (entry.isValid(ctx)) { entry.replayDeps(ctx); return entry.value; }
+                }
+            }
+            HydrateContext.Tracked sub = ctx.sub();
+            T result = hydrate(el, sub);
+            sub.replayInto(ctx);
+            CacheEntry<T> newEntry = CacheEntry.from(result, sub);
+            synchronized (cache) {
+                List<CacheEntry<T>> list = cache.computeIfAbsent(el, k -> new java.util.ArrayList<>(maxEntries));
+                list.add(newEntry);
+                if (list.size() > maxEntries) list.remove(0);
+            }
+            return result;
+        };
+    }
+
+    /** Cached with default per-node limit (4 — structural sub-nodes have few arg combinations). */
+    default Hydrator<T> cached() { return cached(4); }
+
+    /** Per-node cache entry. Stores the result and the dependency pattern. */
+    final class CacheEntry<V> {
+        final V value;
+        private final int[]           argIndices;
+        private final String[]        argValues;
+        private final boolean         usesTime, usesPlayerNames, usesSlot;
+        private final @Nullable RichNode slotSnapshot;
+
+        private CacheEntry(V value, int[] argIndices, String[] argValues,
+                           boolean usesTime, boolean usesPlayerNames,
+                           boolean usesSlot, @Nullable RichNode slotSnapshot) {
+            this.value = value; this.argIndices = argIndices; this.argValues = argValues;
+            this.usesTime = usesTime; this.usesPlayerNames = usesPlayerNames;
+            this.usesSlot = usesSlot; this.slotSnapshot = slotSnapshot;
+        }
+
+        static <V> CacheEntry<V> from(V value, HydrateContext.Tracked sub) {
+            var p = sub.extractPattern();
+            var argMap = p.argValues();
+            int[]    indices = argMap.keySet().stream().mapToInt(Integer::intValue).toArray();
+            String[] values  = new String[indices.length];
+            for (int i = 0; i < indices.length; i++) values[i] = argMap.get(indices[i]);
+            return new CacheEntry<>(value, indices, values,
+                    p.usesTime(), p.usesPlayerNames(), p.usesSlot(), p.slotSnapshot());
+        }
+
+        boolean isValid(HydrateContext.Tracked ctx) {
+            if (usesTime || usesPlayerNames) return false;
+            if (usesSlot && !java.util.Objects.equals(slotSnapshot, ctx.base().getSlot())) return false;
+            for (int i = 0; i < argIndices.length; i++)
+                if (!argValues[i].equals(ctx.base().getArg(argIndices[i]))) return false;
+            return true;
+        }
+
+        void replayDeps(HydrateContext.Tracked ctx) {
+            for (int idx : argIndices) ctx.getArg(idx);
+            if (usesSlot)        ctx.getSlot();
+            if (usesTime)        ctx.markTimeAccessed();
+            if (usesPlayerNames) ctx.markPlayerNamesAccessed();
+        }
     }
 
     // ── Static combinators ─────────────────────────────────────────────────────

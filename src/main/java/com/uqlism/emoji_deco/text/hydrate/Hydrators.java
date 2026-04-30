@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Static Hydrator<T> constants for the emoji_deco JSON display format.
@@ -34,16 +33,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class Hydrators {
 
     private static final Logger        LOGGER    = LogUtils.getLogger();
-    private static final AtomicLong    TICK      = new AtomicLong(0);
     private static final ThreadLocal<Set<String>> RESOLVING = ThreadLocal.withInitial(HashSet::new);
 
     private Hydrators() {}
-
-    // ── Tick / GC ──────────────────────────────────────────────────────────────
-
-    public static void tick()              { TICK.incrementAndGet(); }
-    public static long currentTick()       { return TICK.get(); }
-    public static void gcCaches(long tick) { ShortcodeManager.gcCaches(tick); DecoratorManager.gcCaches(tick); }
 
     // ── Scalar combinator chains ───────────────────────────────────────────────
     // Defined before the public fields so STRING/FLOAT/BOOL can be direct aliases.
@@ -108,29 +100,29 @@ public final class Hydrators {
     private static final Hydrator<List<RichNode>> CONTENTS =
             Hydrator.field("contents", Hydrator.lazy(() -> Hydrators.NODE)).map(List::of);
 
-    private static final Hydrator<RichNode> GLOW_NODE = Hydrator.zip(
+    private static final Hydrator<RichNode> GLOW_NODE = cached(Hydrator.zip(
             Hydrator.field("glow", BOOL.withDefault(true))
                     .map(g -> g ? LightMode.GLOW : LightMode.AMBIENT),
             CONTENTS,
-            RichNode.Glowing::new);
+            RichNode.Glowing::new));
 
-    private static final Hydrator<RichNode> SCALE_NODE = Hydrator.zip(
+    private static final Hydrator<RichNode> SCALE_NODE = cached(Hydrator.zip(
             Hydrator.field("x", FLOAT.withDefault(1f)),
             Hydrator.field("y", FLOAT.withDefault(1f)),
             CONTENTS,
-            RichNode.Scaled::new);
+            RichNode.Scaled::new));
 
-    private static final Hydrator<RichNode> OFFSET_NODE = Hydrator.zip(
+    private static final Hydrator<RichNode> OFFSET_NODE = cached(Hydrator.zip(
             Hydrator.field("x", FLOAT.withDefault(0f)),
             Hydrator.field("y", FLOAT.withDefault(0f)),
             Hydrator.field("z", FLOAT.withDefault(0f)),
             CONTENTS,
-            RichNode.Offset::new);
+            RichNode.Offset::new));
 
-    private static final Hydrator<RichNode> ROTATE_NODE = Hydrator.zip(
+    private static final Hydrator<RichNode> ROTATE_NODE = cached(Hydrator.zip(
             Hydrator.field("angle", FLOAT.withDefault(0f)),
             CONTENTS,
-            RichNode.Rotated::new);
+            RichNode.Rotated::new));
 
     // ── Image hydrators — before NODE so NODE_DISPATCH can reference IMAGE_GLYPH_NODE directly ──
 
@@ -168,12 +160,12 @@ public final class Hydrators {
         return new ImageBundle(spec, Hydrator.field("uv", CROP_H).hydrate(el, ctx));
     };
 
-    private static final Hydrator<RichNode> IMAGE_GLYPH_NODE = Hydrator.zip(
+    private static final Hydrator<RichNode> IMAGE_GLYPH_NODE = cached(Hydrator.zip(
             Hydrator.field("width",   FLOAT.withDefault(8f)).map(f -> Math.round(f)),
             Hydrator.field("height",  FLOAT.withDefault(8f)).map(f -> Math.round(f)),
             Hydrator.field("advance", FLOAT.withDefault(Float.NaN)),
             Hydrator.field("image",   IMAGE_BUNDLE_H),
-            (w, h, advance, bundle) -> new RichNode.Image(bundle.spec(), bundle.crop(), w, h, advance));
+            (w, h, advance, bundle) -> new RichNode.Image(bundle.spec(), bundle.crop(), w, h, advance)));
 
     // STRING.map covers: primitives, emoji_deco:arg, emoji_deco:join, emoji_deco:player_names.
     // list(lazy(NODE)) covers arrays; lazy breaks the self-reference initialisation cycle.
@@ -198,6 +190,13 @@ public final class Hydrators {
                 Hydrators::standardTextNode)
     ).withDefault(RichNode.empty());
 
+    /**
+     * Root-level cached hydrator — used by managers instead of HydrateCache.
+     * 64 entries per display JsonElement matches the old HydrateCache capacity.
+     * WeakHashMap keys are auto-cleared on resource pack reload.
+     */
+    public static final Hydrator<RichNode> CACHED_NODE = NODE.cached(64);
+
     // ── String handlers ────────────────────────────────────────────────────────
 
     private static final Hydrator<String> JOIN_STR = Hydrator.zip(
@@ -206,6 +205,10 @@ public final class Hydrators {
             (sep, parts) -> String.join(sep, parts));
 
     // ── Float handlers ─────────────────────────────────────────────────────────
+
+    /** Applies cached() while widening the type from Hydrator<? extends T> to Hydrator<T>. */
+    @SuppressWarnings("unchecked")
+    private static <T> Hydrator<T> cached(Hydrator<? extends T> h) { return (Hydrator<T>) h.cached(); }
 
     private static @Nullable Float tryParseFloat(String s) {
         try { return Float.parseFloat(s); } catch (NumberFormatException e) { return null; }

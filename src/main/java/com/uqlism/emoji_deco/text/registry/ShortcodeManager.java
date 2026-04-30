@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.text.registry;
 
-import com.uqlism.emoji_deco.text.hydrate.HydrateCache;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
@@ -36,10 +35,8 @@ public class ShortcodeManager implements PreparableReloadListener {
     public static final ShortcodeManager INSTANCE = new ShortcodeManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Per-shortcode hydration result cache (pattern → RichNode). */
-    private static final Map<String, HydrateCache> HYDRATE_CACHES = new ConcurrentHashMap<>();
     /** Full JSON for all shortcodes — source of truth and suggestion lookup. */
-    private static final Map<String, JsonObject>  JSON_REGISTRY  = new ConcurrentHashMap<>();
+    private static final Map<String, JsonObject> JSON_REGISTRY = new ConcurrentHashMap<>();
     /** alias text → canonical shortcode name */
     private static final Map<String, String>      ALIASES        = new ConcurrentHashMap<>();
 
@@ -64,7 +61,6 @@ public class ShortcodeManager implements PreparableReloadListener {
                     JSON_REGISTRY.putAll(result.jsonRegistry());
                     ALIASES.clear();
                     ALIASES.putAll(result.aliases());
-                    HYDRATE_CACHES.clear();
                     LOGGER.info("[EmojiDeco] Loaded {} shortcode(s), {} alias(es)",
                             JSON_REGISTRY.size(), ALIASES.size());
                 }, gameExecutor);
@@ -108,27 +104,14 @@ public class ShortcodeManager implements PreparableReloadListener {
         // ALIASES は使わない — 正規名のみ描画対象（alias はサジェスト専用）
         JsonObject json = JSON_REGISTRY.get(code);
         if (json == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
-
-        JsonArray      topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
-        HydrateContext ctx         = new HydrateContext(args, topArgSpecs, slot);
-        HydrateCache   cache       = HYDRATE_CACHES.computeIfAbsent(code, k -> new HydrateCache());
-        long           tick        = Hydrators.currentTick();
-
-        RichNode cached = cache.lookup(ctx, slot, tick);
-        if (cached != null) return cached;
-
-        HydrateContext.Tracked tracked = ctx.track();
-        RichNode result = Hydrators.NODE.hydrate(json.get("display"), tracked);
-        cache.store(tracked.extractPattern(), result, tick);
-        return result;
+        JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
+        RichNode result = Hydrators.CACHED_NODE.hydrate(json.get("display"),
+                new HydrateContext(args, topArgSpecs, slot).track());
+        return result != null ? result : new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
     }
 
     public static RichNode resolve(String code, String[] args) { return hydrateWith(code, args, null); }
     public static RichNode resolve(String code)               { return hydrateWith(code, new String[0], null); }
-
-    public static void gcCaches(long currentTick) {
-        HYDRATE_CACHES.values().forEach(c -> c.gc(currentTick));
-    }
 
     // ── Queries ───────────────────────────────────────────────────────────────
 

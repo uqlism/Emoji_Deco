@@ -54,6 +54,17 @@ public final class HydrateContext {
         public void markTimeAccessed()        { timeAccessed        = true; }
         public void markPlayerNamesAccessed() { playerNamesAccessed = true; }
 
+        /** Creates a fresh sub-tracker sharing the same base context. */
+        public Tracked sub() { return new Tracked(this.base); }
+
+        /** Propagates all recorded deps into another tracker. */
+        public void replayInto(Tracked other) {
+            other.accessedArgs.putAll(this.accessedArgs);
+            if (timeAccessed)        other.timeAccessed        = true;
+            if (playerNamesAccessed) other.playerNamesAccessed = true;
+            if (slotAccessed)        other.slotAccessed        = true;
+        }
+
         public AccessPattern extractPattern() {
             RichNode snap = slotAccessed ? base.getSlot() : null;
             return new AccessPattern(timeAccessed, playerNamesAccessed, slotAccessed, snap,

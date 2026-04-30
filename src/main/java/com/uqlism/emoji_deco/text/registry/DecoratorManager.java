@@ -1,6 +1,5 @@
 package com.uqlism.emoji_deco.text.registry;
 
-import com.uqlism.emoji_deco.text.hydrate.HydrateCache;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
@@ -34,10 +33,8 @@ public class DecoratorManager implements PreparableReloadListener {
     public static final DecoratorManager INSTANCE = new DecoratorManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** Per-decorator hydration result cache. */
-    private static final Map<String, HydrateCache> HYDRATE_CACHES = new ConcurrentHashMap<>();
     /** Full JSON per decorator — source of truth and suggestion lookup. */
-    private static final Map<String, JsonObject>  JSON_REGISTRY  = new ConcurrentHashMap<>();
+    private static final Map<String, JsonObject> JSON_REGISTRY = new ConcurrentHashMap<>();
 
     private record LoadResult(Map<String, JsonObject> jsonRegistry) {}
 
@@ -56,7 +53,6 @@ public class DecoratorManager implements PreparableReloadListener {
                 .thenAcceptAsync(loaded -> {
                     JSON_REGISTRY.clear();
                     JSON_REGISTRY.putAll(loaded.jsonRegistry());
-                    HYDRATE_CACHES.clear();
                     LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", JSON_REGISTRY.size());
                 }, gameExecutor);
     }
@@ -92,19 +88,9 @@ public class DecoratorManager implements PreparableReloadListener {
     public static RichNode hydrateWith(String name, RichNode slotNode, String[] args) {
         JsonObject json = JSON_REGISTRY.get(name);
         if (json == null) return null;
-
-        JsonArray      topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
-        HydrateContext ctx         = new HydrateContext(args, topArgSpecs, slotNode);
-        HydrateCache   cache       = HYDRATE_CACHES.computeIfAbsent(name, k -> new HydrateCache());
-        long           tick        = Hydrators.currentTick();
-
-        RichNode cached = cache.lookup(ctx, slotNode, tick);
-        if (cached != null) return cached;
-
-        HydrateContext.Tracked tracked = ctx.track();
-        RichNode result = Hydrators.NODE.hydrate(json.get("display"), tracked);
-        cache.store(tracked.extractPattern(), result, tick);
-        return result;
+        JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
+        return Hydrators.CACHED_NODE.hydrate(json.get("display"),
+                new HydrateContext(args, topArgSpecs, slotNode).track());
     }
 
     @Nullable
@@ -115,10 +101,6 @@ public class DecoratorManager implements PreparableReloadListener {
     @Nullable
     public static RichNode resolve(String name, RichNode slotNode) {
         return hydrateWith(name, slotNode, new String[0]);
-    }
-
-    public static void gcCaches(long currentTick) {
-        HYDRATE_CACHES.values().forEach(c -> c.gc(currentTick));
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
