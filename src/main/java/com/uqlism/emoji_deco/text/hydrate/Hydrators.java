@@ -44,10 +44,16 @@ public final class Hydrators {
 
     public static final Hydrator<String> STRING = Hydrator.firstOf(
             (el, ctx) -> el != null && el.isJsonPrimitive() ? el.getAsString() : null,
-            Hydrator.dispatch(Map.of(
-                    "emoji_deco:arg",         argOf(Function.identity(),      Hydrator.lazy(() -> Hydrators.STRING)),
-                    "emoji_deco:join",        Hydrator.lazy(() -> Hydrators.JOIN_STR),
-                    "emoji_deco:player_names",(el, ctx) -> { ctx.markPlayerNamesAccessed(); return ""; }
+            Hydrator.dispatch(Map.ofEntries(
+                    Map.entry("emoji_deco:arg",          argOf(Function.identity(), Hydrator.lazy(() -> Hydrators.STRING))),
+                    Map.entry("emoji_deco:join",         Hydrator.lazy(() -> Hydrators.JOIN_STR)),
+                    Map.entry("emoji_deco:player_names", (el, ctx) -> { ctx.markPlayerNamesAccessed(); return ""; }),
+                    // HSV → "#RRGGBB" 文字列。h/s/v はすべて 0.0〜1.0 の FLOAT 式。
+                    Map.entry("emoji_deco:color/hsv",    Hydrator.zip(
+                            Hydrator.field("h", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            Hydrator.field("s", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            Hydrator.field("v", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            Hydrators::hsvToHex))
             ), null));
 
     public static final Hydrator<Float> FLOAT = Hydrator.firstOf(
@@ -55,9 +61,37 @@ public final class Hydrators {
                 if (el == null || !el.isJsonPrimitive()) return null;
                 try { return el.getAsFloat(); } catch (Exception e) { return null; }
             },
-            Hydrator.dispatch(Map.of(
-                    "emoji_deco:arg",  argOf(Hydrators::tryParseFloat, Hydrator.lazy(() -> Hydrators.FLOAT)),
-                    "emoji_deco:time", Hydrator.lazy(() -> Hydrators.TIME_VAL)
+            Hydrator.dispatch(Map.ofEntries(
+                    Map.entry("emoji_deco:arg",        argOf(Hydrators::tryParseFloat, Hydrator.lazy(() -> Hydrators.FLOAT))),
+                    Map.entry("emoji_deco:time",       Hydrator.lazy(() -> Hydrators.TIME_VAL)),
+                    // ── 算術演算子 ─────────────────────────────────────────────
+                    Map.entry("emoji_deco:math/mod",   Hydrator.zip(
+                            Hydrator.field("value", Hydrator.lazy(() -> Hydrators.FLOAT)),
+                            Hydrator.field("mod",   Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            (v, m) -> m != 0f ? v % m : 0f)),
+                    Map.entry("emoji_deco:math/add",   Hydrator.zip(
+                            Hydrator.field("a", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            Hydrator.field("b", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            (a, b) -> a + b)),
+                    Map.entry("emoji_deco:math/sub",   Hydrator.zip(
+                            Hydrator.field("a", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            Hydrator.field("b", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            (a, b) -> a - b)),
+                    Map.entry("emoji_deco:math/mul",   Hydrator.zip(
+                            Hydrator.field("a", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            Hydrator.field("b", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            (a, b) -> a * b)),
+                    Map.entry("emoji_deco:math/abs",   Hydrator.field("value",
+                            Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> Math.abs(f))),
+                    Map.entry("emoji_deco:math/clamp", Hydrator.zip(
+                            Hydrator.field("value", Hydrator.lazy(() -> Hydrators.FLOAT)),
+                            Hydrator.field("min",   Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
+                            Hydrator.field("max",   Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
+                            (v, mn, mx) -> Math.max(mn, Math.min(mx, v)))),
+                    Map.entry("emoji_deco:math/sin",   Hydrator.field("value",
+                            Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> (float) Math.sin(f))),
+                    Map.entry("emoji_deco:math/cos",   Hydrator.field("value",
+                            Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> (float) Math.cos(f)))
             ), null));
 
     public static final Hydrator<Boolean> BOOL = Hydrator.firstOf(
@@ -203,6 +237,36 @@ public final class Hydrators {
             Hydrator.field("separator", STRING.withDefault("")),
             Hydrator.field("parts",     Hydrator.list(STRING)),
             (sep, parts) -> String.join(sep, parts));
+
+    // ── Color helpers ──────────────────────────────────────────────────────────
+
+    /** HSV (各 0.0〜1.0) → "#RRGGBB" 16進数カラー文字列。TextColor.parseColor() が解釈できる。 */
+    private static String hsvToHex(float h, float s, float v) {
+        h = ((h % 1f) + 1f) % 1f;  // [0,1) に正規化
+        int r, g, b;
+        if (s <= 0f) {
+            int grey = Math.max(0, Math.min(255, Math.round(v * 255f)));
+            r = g = b = grey;
+        } else {
+            float h6 = h * 6f;
+            int   i  = (int) h6;
+            float f  = h6 - i;
+            float p  = v * (1f - s), q = v * (1f - s * f), t = v * (1f - s * (1f - f));
+            float fr, fg, fb;
+            switch (i % 6) {
+                case 0: fr = v; fg = t; fb = p; break;
+                case 1: fr = q; fg = v; fb = p; break;
+                case 2: fr = p; fg = v; fb = t; break;
+                case 3: fr = p; fg = q; fb = v; break;
+                case 4: fr = t; fg = p; fb = v; break;
+                default:fr = v; fg = p; fb = q; break;
+            }
+            r = Math.max(0, Math.min(255, Math.round(fr * 255f)));
+            g = Math.max(0, Math.min(255, Math.round(fg * 255f)));
+            b = Math.max(0, Math.min(255, Math.round(fb * 255f)));
+        }
+        return String.format("#%02X%02X%02X", r, g, b);
+    }
 
     // ── Float handlers ─────────────────────────────────────────────────────────
 
