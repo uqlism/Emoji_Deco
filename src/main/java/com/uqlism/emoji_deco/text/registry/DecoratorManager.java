@@ -88,11 +88,19 @@ public class DecoratorManager implements PreparableReloadListener {
 
     @Nullable
     public static RichNode hydrateWith(String name, RichNode slotNode, String[] args) {
+        return hydrateWith(name, slotNode, args, null);
+    }
+
+    @Nullable
+    public static RichNode hydrateWith(String name, RichNode slotNode, String[] args,
+                                        @Nullable HydrateContext.Tracked parentCtx) {
         JsonObject json = JSON_REGISTRY.get(name);
         if (json == null) return null;
         JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
-        return Hydrators.CACHED_NODE.hydrate(json.get("display"),
-                new HydrateContext(args, topArgSpecs, slotNode).track());
+        HydrateContext.Tracked innerCtx = new HydrateContext(args, topArgSpecs, slotNode).track();
+        RichNode result = Hydrators.CACHED_NODE.hydrate(json.get("display"), innerCtx);
+        if (parentCtx != null) innerCtx.replayInto(parentCtx);
+        return result;
     }
 
     @Nullable

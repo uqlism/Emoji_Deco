@@ -329,7 +329,7 @@ public final class Hydrators {
         String[] args = extractCallArgs(obj, ctx);
         String   key  = "s:" + name;
         if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode: '{}'", name); return RichNode.empty(); }
-        try { return ShortcodeManager.hydrateWith(name, args, null); }
+        try { return ShortcodeManager.hydrateWith(name, args, null, ctx); }
         finally { RESOLVING.get().remove(key); }
     }
 
@@ -342,7 +342,7 @@ public final class Hydrators {
         String   key  = "d:" + name;
         if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_decorator: '{}'", name); return slot; }
         try {
-            RichNode result = DecoratorManager.hydrateWith(name, slot, args);
+            RichNode result = DecoratorManager.hydrateWith(name, slot, args, ctx);
             return result != null ? result : slot;
         } finally { RESOLVING.get().remove(key); }
     }

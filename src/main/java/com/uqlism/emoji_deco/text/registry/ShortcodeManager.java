@@ -103,12 +103,18 @@ public class ShortcodeManager implements PreparableReloadListener {
     // ── Hydration ─────────────────────────────────────────────────────────────
 
     public static RichNode hydrateWith(String code, String[] args, @Nullable RichNode slot) {
+        return hydrateWith(code, args, slot, null);
+    }
+
+    public static RichNode hydrateWith(String code, String[] args, @Nullable RichNode slot,
+                                        @Nullable HydrateContext.Tracked parentCtx) {
         // ALIASES は使わない — 正規名のみ描画対象（alias はサジェスト専用）
         JsonObject json = JSON_REGISTRY.get(code);
         if (json == null) return new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
         JsonArray topArgSpecs = json.has("args") ? json.getAsJsonArray("args") : null;
-        RichNode result = Hydrators.CACHED_NODE.hydrate(json.get("display"),
-                new HydrateContext(args, topArgSpecs, slot).track());
+        HydrateContext.Tracked innerCtx = new HydrateContext(args, topArgSpecs, slot).track();
+        RichNode result = Hydrators.CACHED_NODE.hydrate(json.get("display"), innerCtx);
+        if (parentCtx != null) innerCtx.replayInto(parentCtx);
         return result != null ? result : new RichNode.Text(":" + code + ":", Style.EMPTY, List.of());
     }
 
