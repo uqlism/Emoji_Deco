@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +54,7 @@ public class DecoratorManager implements PreparableReloadListener {
                 .thenAcceptAsync(loaded -> {
                     JSON_REGISTRY.clear();
                     JSON_REGISTRY.putAll(loaded.jsonRegistry());
+                    RichTextParser.invalidateParseCache();
                     LOGGER.info("[EmojiDeco] Loaded {} style tag(s)", JSON_REGISTRY.size());
                 }, gameExecutor);
     }

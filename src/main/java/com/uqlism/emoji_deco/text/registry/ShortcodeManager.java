@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -61,6 +62,7 @@ public class ShortcodeManager implements PreparableReloadListener {
                     JSON_REGISTRY.putAll(result.jsonRegistry());
                     ALIASES.clear();
                     ALIASES.putAll(result.aliases());
+                    RichTextParser.invalidateParseCache();
                     LOGGER.info("[EmojiDeco] Loaded {} shortcode(s), {} alias(es)",
                             JSON_REGISTRY.size(), ALIASES.size());
                 }, gameExecutor);

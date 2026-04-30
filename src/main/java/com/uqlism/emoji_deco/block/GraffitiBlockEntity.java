@@ -20,8 +20,6 @@ public class GraffitiBlockEntity extends BlockEntity {
     private GraffitiAlignment alignment = GraffitiAlignment.LEFT;
     private int displayedLines = 1;
 
-    private transient RichNode[] cachedRichLines;
-
     public GraffitiBlockEntity(BlockPos pos, BlockState state) {
         super(Registration.GRAFFITI_BLOCK_ENTITY.get(), pos, state);
         for (int i = 0; i < MAX_LINES; i++) lines[i] = "";
@@ -36,23 +34,21 @@ public class GraffitiBlockEntity extends BlockEntity {
 
     /**
      * Returns RichNodes for each displayed line.
-     * Cached per line set; invalidated when text changes.
-     * ShortcodeManager / DecoratorManager HydrateCaches make repeated calls O(1).
+     * RichTextParser.parse() goes through PARSE_CACHE + CACHED_NODE, so
+     * repeated calls with the same text hit the cache; no per-block state needed.
      * Call only on the client (render) thread.
      */
     public RichNode[] getRichLines() {
-        if (cachedRichLines == null) {
-            cachedRichLines = new RichNode[displayedLines];
-            for (int i = 0; i < displayedLines; i++) {
-                String raw = lines[i];
-                cachedRichLines[i] = (raw != null && !raw.isEmpty())
-                        ? RichTextParser.parse(raw) : RichNode.empty();
-            }
+        RichNode[] result = new RichNode[displayedLines];
+        for (int i = 0; i < displayedLines; i++) {
+            String raw = lines[i];
+            result[i] = (raw != null && !raw.isEmpty())
+                    ? RichTextParser.parse(raw) : RichNode.empty();
         }
-        return cachedRichLines;
+        return result;
     }
 
-    private void invalidateCache() { cachedRichLines = null; }
+    private void invalidateCache() {}
 
     public void applyUpdate(String[] newLines, GraffitiAlignment newAlignment, int newDisplayedLines) {
         for (int i = 0; i < MAX_LINES; i++) {
