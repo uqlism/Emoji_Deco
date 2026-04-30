@@ -146,6 +146,10 @@ public class DecoratorManager implements PreparableReloadListener {
                 .collect(Collectors.toList());
     }
 
+    public static List<SuggestionEngine.SearchResult> searchSuggestions(String query, int maxResults) {
+        return SuggestionEngine.search(PARSED_REGISTRY.keySet(), java.util.Map.of(), query, maxResults);
+    }
+
     // ── Label / Preview (autocomplete) ────────────────────────────────────────
 
     public static com.google.gson.JsonElement getArgSuggestionsSpec(String tagName, int argIndex) {

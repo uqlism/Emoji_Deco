@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -155,107 +154,11 @@ public class ShortcodeManager implements PreparableReloadListener {
         return PARSED_REGISTRY.containsKey(code);
     }
 
-    // ── Misskey スタイルの多段階スコア付きサジェスト ─────────────────────────────
+    // ── サジェスト検索 ────────────────────────────────────────────────────────
 
-    /**
-     * 検索結果。canonical = 正規名、matchedAlias = マッチしたエイリアス名(正規名でヒットした場合はnull)
-     */
-    public record SearchResult(String canonical, @Nullable String matchedAlias) {}
-
-    /**
-     * Misskey と同様の多段階スコアリングで最大 maxResults 件を返す。
-     *
-     * スコア (queryLen=q):
-     *   q+3  正規名と完全一致
-     *   q+2  エイリアスと完全一致
-     *   q+1  正規名が前方一致
-     *   q+0  エイリアスが前方一致
-     *   q-1  正規名 or エイリアスに部分一致 (contains)
-     *   fuzzy (3文字以上クエリのみ、末尾に最大6件追加)
-     */
-    public static List<SearchResult> searchSuggestions(String query, int maxResults) {
-        if (query.isEmpty()) return List.of();
-        String q = query.toLowerCase(Locale.ROOT);
-        int qLen = q.length();
-        boolean doFuzzy = qLen >= 3;
-
-        // canonical → List<alias> を構築
-        Map<String, List<String>> aliasByCanonical = new HashMap<>();
-        ALIASES.forEach((alias, canonical) -> {
-            if (PARSED_REGISTRY.containsKey(canonical))
-                aliasByCanonical.computeIfAbsent(canonical, k -> new ArrayList<>()).add(alias);
-        });
-
-        // 各 canonical をスコアリング
-        record Candidate(String canonical, @Nullable String matchedAlias, int score) {}
-        List<Candidate> nonFuzzy = new ArrayList<>();
-        List<Candidate> fuzzy    = new ArrayList<>();
-
-        for (String code : PARSED_REGISTRY.keySet()) {
-            String cLow = code.toLowerCase(Locale.ROOT);
-            int    best = nonFuzzyScore(cLow, q, qLen, false);
-            String bestAlias = null;
-
-            List<String> aliases = aliasByCanonical.get(code);
-            if (aliases != null) {
-                for (String alias : aliases) {
-                    int s = nonFuzzyScore(alias.toLowerCase(Locale.ROOT), q, qLen, true);
-                    if (s > best) { best = s; bestAlias = alias; }
-                }
-            }
-
-            if (best > 0) {
-                nonFuzzy.add(new Candidate(code, bestAlias, best));
-                continue;
-            }
-            if (!doFuzzy) continue;
-
-            // fuzzy: 正規名
-            int fs = fuzzyScore(cLow, q);
-            if (fs > 0) { fuzzy.add(new Candidate(code, null, fs)); continue; }
-            // fuzzy: エイリアス
-            if (aliases != null) {
-                for (String alias : aliases) {
-                    fs = fuzzyScore(alias.toLowerCase(Locale.ROOT), q);
-                    if (fs > 0) { fuzzy.add(new Candidate(code, alias, fs)); break; }
-                }
-            }
-        }
-
-        nonFuzzy.sort((a, b) -> b.score() - a.score());
-        fuzzy.sort((a, b) -> b.score() - a.score());
-
-        List<SearchResult> results = new ArrayList<>(Math.min(maxResults, nonFuzzy.size() + 6));
-        for (Candidate c : nonFuzzy) {
-            if (results.size() >= maxResults) break;
-            results.add(new SearchResult(c.canonical(), c.matchedAlias()));
-        }
-        int fuzzyAdded = 0;
-        for (Candidate c : fuzzy) {
-            if (results.size() >= maxResults || fuzzyAdded >= 6) break;
-            results.add(new SearchResult(c.canonical(), c.matchedAlias()));
-            fuzzyAdded++;
-        }
-        return results;
-    }
-
-    /** 非 fuzzy スコア。0 = マッチなし。 */
-    private static int nonFuzzyScore(String name, String query, int qLen, boolean isAlias) {
-        if (name.equals(query))       return qLen + (isAlias ? 2 : 3);
-        if (name.startsWith(query))   return qLen + (isAlias ? 0 : 1);
-        if (name.contains(query))     return qLen - 1;
-        return 0;
-    }
-
-    /** fuzzy スコア (>50% の文字が順序通りに見つかれば matched 数、それ以外 0)。 */
-    private static int fuzzyScore(String name, String query) {
-        int matched = 0, ni = 0;
-        for (int qi = 0; qi < query.length(); qi++) {
-            char c = query.charAt(qi);
-            while (ni < name.length() && name.charAt(ni) != c) ni++;
-            if (ni < name.length()) { matched++; ni++; }
-        }
-        return (double) matched / query.length() > 0.5 ? matched : 0;
+    /** SuggestionEngine への型エイリアス（呼び出し元の import を統一するため）。 */
+    public static List<SuggestionEngine.SearchResult> searchSuggestions(String query, int maxResults) {
+        return SuggestionEngine.search(PARSED_REGISTRY.keySet(), ALIASES, query, maxResults);
     }
 
     /** 後方互換用 (arg サジェストトリガー判定などで引き続き使用)。 */

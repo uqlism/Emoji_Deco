@@ -1,10 +1,11 @@
 package com.uqlism.emoji_deco.client;
 
 import com.google.gson.JsonElement;
-import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
 import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
+import com.uqlism.emoji_deco.text.registry.SuggestionEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
@@ -136,11 +137,13 @@ public class SuggestionState {
 
     private static List<Entry> buildStyleTagSuggestions(String prefix) {
         List<Entry> results = new ArrayList<>();
-        DecoratorManager.getSuggestions(prefix).forEach(name ->
-                results.add(new Entry(
-                        DecoratorManager.getLabel(name),
-                        () -> DecoratorManager.getPreview(name),
-                        name, TriggerType.DECORATOR)));
+        DecoratorManager.searchSuggestions(prefix, 30).forEach(r -> {
+            String canonical = r.canonical();
+            results.add(new Entry(
+                    DecoratorManager.getLabel(canonical),
+                    () -> DecoratorManager.getPreview(canonical),
+                    canonical, TriggerType.DECORATOR));
+        });
         return results;
     }
 
