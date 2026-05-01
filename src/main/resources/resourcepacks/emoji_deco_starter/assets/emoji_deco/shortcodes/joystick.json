@@ -9,7 +9,7 @@
       "source": {
         "type": "emoji_deco:fetch_url",
         "disk_cache": true,
-        "url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f579-fe0f.png"
+        "url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f579.png"
       }
     }
   }

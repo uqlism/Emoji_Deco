@@ -2,31 +2,48 @@
 """
 Generate Twemoji shortcode JSON files for the emoji_deco_starter resource pack.
 Fetches emoji-data from iamcal/emoji-data for Discord/Slack-compatible shortcode names.
+Validates against the actual Twemoji 14.0.2 file list to avoid 404s caused by
+FE0F / leading-zero differences between iamcal and Twemoji naming conventions.
 
 Usage:
     python scripts/generate_twemoji_shortcodes.py
 """
 
 import json
-import os
+import re
 import urllib.request
 from pathlib import Path
 
-EMOJI_DATA_URL = "https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json"
+EMOJI_DATA_URL   = "https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json"
+TWEMOJI_TREE_URL = "https://api.github.com/repos/twitter/twemoji/git/trees/v14.0.2?recursive=1"
 TWEMOJI_CDN_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72"
-OUTPUT_DIR = Path("src/main/resources/resourcepacks/emoji_deco_starter/assets/emoji_deco/shortcodes")
+OUTPUT_DIR       = Path("src/main/resources/resourcepacks/emoji_deco_starter/assets/emoji_deco/shortcodes")
 
 # ResourceLocation パスに使用できる文字: [a-z0-9._-]
-import re
-_RL_VALID = re.compile(r'^[a-z0-9._-]+$')
+_RL_VALID = re.compile(r"^[a-z0-9._-]+$")
 
 
-def unified_to_filename(unified):
-    """Convert 'iamcal' unified string (e.g. '1F600' or '1F1E6-1F1E8') to Twemoji filename."""
-    return unified.lower() + ".png"
+def normalize(codepoint_str: str) -> str:
+    """FE0F 除去 + 各パートの先頭ゼロ除去で両者を統一表現に変換する。"""
+    parts = [p for p in codepoint_str.lower().split("-") if p != "fe0f"]
+    return "-".join(p.lstrip("0") or "0" for p in parts)
 
 
-def make_shortcode(url, aliases):
+def fetch_twemoji_map() -> dict:
+    """Twemoji 14.0.2 の 72x72 ファイル一覧を取得し {正規化名: 実ファイル名} を返す。"""
+    print("Fetching Twemoji 14.0.2 file list from GitHub ...")
+    req = urllib.request.Request(TWEMOJI_TREE_URL, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        tree = json.loads(r.read())
+    files = {
+        item["path"].replace("assets/72x72/", "")
+        for item in tree["tree"]
+        if item["path"].startswith("assets/72x72/") and item["path"].endswith(".png")
+    }
+    return {normalize(f[:-4]): f for f in files}
+
+
+def make_shortcode(url: str, aliases: list) -> dict:
     entry = {
         "enable": True,
         "display": {
@@ -38,7 +55,7 @@ def make_shortcode(url, aliases):
                 "source": {
                     "type": "emoji_deco:fetch_url",
                     "disk_cache": True,
-                    "url": url
+                    "url": url,
                 }
             }
         }
@@ -51,42 +68,47 @@ def make_shortcode(url, aliases):
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    twemoji_map = fetch_twemoji_map()
+    print(f"Twemoji 14.0.2: {len(twemoji_map)} files")
+
     print("Fetching emoji-data from iamcal/emoji-data ...")
-    with urllib.request.urlopen(EMOJI_DATA_URL, timeout=30) as response:
-        emoji_data = json.loads(response.read().decode("utf-8"))
+    with urllib.request.urlopen(EMOJI_DATA_URL, timeout=30) as r:
+        emoji_data = json.loads(r.read().decode("utf-8"))
+
+    # 既存ファイルを削除してから再生成（stale なファイルを残さない）
+    for f in OUTPUT_DIR.glob("*.json"):
+        f.unlink()
 
     print(f"Processing {len(emoji_data)} entries ...")
-    generated = 0
-    skipped = 0
+    generated = skipped = 0
 
     for emoji in emoji_data:
         if not emoji.get("has_img_twitter", False):
             skipped += 1
             continue
 
-        short_name = emoji["short_name"]
-        short_names = emoji.get("short_names", [short_name])
-        unified = emoji["unified"]
-        filename = unified_to_filename(unified)
-        url = f"{TWEMOJI_CDN_BASE}/{filename}"
+        # Twemoji 14.0.2 に実在するファイル名を正規化照合で取得
+        actual_file = twemoji_map.get(normalize(emoji["unified"]))
+        if actual_file is None:
+            skipped += 1
+            continue
 
-        # ファイル名が ResourceLocation の有効文字 [a-z0-9._-] でない場合、
-        # 有効なエイリアスに昇格させる
-        all_names = list(dict.fromkeys([short_name] + short_names))  # 順序保持・重複除去
+        url = f"{TWEMOJI_CDN_BASE}/{actual_file}"
+
+        # ResourceLocation に使用できないプライマリ名は有効なエイリアスに昇格
+        all_names = list(dict.fromkeys([emoji["short_name"]] + emoji.get("short_names", [])))
         primary = next((n for n in all_names if _RL_VALID.match(n)), None)
         if primary is None:
             skipped += 1
             continue
         aliases = [n for n in all_names if n != primary]
-        shortcode = make_shortcode(url, aliases)
 
         output_path = OUTPUT_DIR / f"{primary}.json"
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(shortcode, f, ensure_ascii=False, indent=2)
-
+            json.dump(make_shortcode(url, aliases), f, ensure_ascii=False, indent=2)
         generated += 1
 
-    print(f"Done. Generated {generated} shortcodes, skipped {skipped} (no Twemoji image).")
+    print(f"Done. Generated {generated}, skipped {skipped}.")
     print(f"Output: {OUTPUT_DIR.resolve()}")
 
 
