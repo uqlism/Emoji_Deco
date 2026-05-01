@@ -4,10 +4,8 @@
     { "value_type": "boolean", "default": true, "hidden": true }
   ],
   "display": {
-    "text": "",
+    "type": "emoji_deco:style",
     "italic": { "type": "emoji_deco:arg", "index": 0 },
-    "extra": [
-      { "type": "emoji_deco:slot" }
-    ]
+    "contents": { "type": "emoji_deco:slot" }
   }
 }

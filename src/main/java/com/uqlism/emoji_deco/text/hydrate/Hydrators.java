@@ -213,19 +213,20 @@ public final class Hydrators {
             Hydrator.list(Hydrator.lazy(() -> Hydrators.NODE))
                     .map(children -> new RichNode.Text("", Style.EMPTY, children)),
             Hydrator.dispatch(
-                Map.of(
-                        "emoji_deco:slot",           (el, ctx) -> {
+                Map.ofEntries(
+                        Map.entry("emoji_deco:slot",           (Hydrator<RichNode>) (el, ctx) -> {
                             RichNode s = ctx.getSlot(); return s != null ? s : RichNode.empty();
-                        },
-                        "emoji_deco:glow",           GLOW_NODE,
-                        "emoji_deco:scale",          SCALE_NODE,
-                        "emoji_deco:offset",         OFFSET_NODE,
-                        "emoji_deco:rotate",         ROTATE_NODE,
-                        "emoji_deco:image_to_glyph", IMAGE_GLYPH_NODE,
-                        "emoji_deco:apply_shortcode",Hydrators::applyShortcodeNode,
-                        "emoji_deco:apply_decorator",Hydrators::applyDecoratorNode,
-                        "emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of())),
-                        "emoji_deco:hover",          HOVER_NODE
+                        }),
+                        Map.entry("emoji_deco:glow",           GLOW_NODE),
+                        Map.entry("emoji_deco:scale",          SCALE_NODE),
+                        Map.entry("emoji_deco:offset",         OFFSET_NODE),
+                        Map.entry("emoji_deco:rotate",         ROTATE_NODE),
+                        Map.entry("emoji_deco:image_to_glyph", IMAGE_GLYPH_NODE),
+                        Map.entry("emoji_deco:apply_shortcode",Hydrators::applyShortcodeNode),
+                        Map.entry("emoji_deco:apply_decorator",Hydrators::applyDecoratorNode),
+                        Map.entry("emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of()))),
+                        Map.entry("emoji_deco:hover",          HOVER_NODE),
+                        Map.entry("emoji_deco:style",          (Hydrator<RichNode>) Hydrators::styleNode)
                 ),
                 Hydrators::standardTextNode)
     ).withDefault(RichNode.empty());
@@ -324,6 +325,37 @@ public final class Hydrators {
         String       format = Hydrator.field("format", STRING).map(s -> s.isEmpty() ? null : s).hydrate(el, ctx);
         BinarySource src    = Hydrator.field("source", BINARY_SOURCE).hydrate(el, ctx);
         return src != null ? new ImageSpec.Decoded(format, src) : null;
+    }
+
+    // ── emoji_deco:style ──────────────────────────────────────────────────────
+
+    /**
+     * 各スタイルフィールドを直接 hydrate() して null チェックする。
+     * null（フィールド不在・JSON null・動的式が null を返す）= inherit。
+     * zip / withDefault は使わない（null を failure 扱いするため）。
+     */
+    private static RichNode styleNode(JsonElement el, HydrateContext.Tracked ctx) {
+        JsonObject obj = el.getAsJsonObject();
+        Style style = Style.EMPTY;
+
+        String colorStr = STRING.hydrate(obj.get("color"), ctx);
+        if (colorStr != null) {
+            TextColor tc = TextColor.parseColor(colorStr);
+            if (tc != null) style = style.withColor(tc);
+        }
+        Boolean bold          = BOOL.hydrate(obj.get("bold"),          ctx); if (bold          != null) style = style.withBold(bold);
+        Boolean italic        = BOOL.hydrate(obj.get("italic"),        ctx); if (italic        != null) style = style.withItalic(italic);
+        Boolean underlined    = BOOL.hydrate(obj.get("underlined"),    ctx); if (underlined    != null) style = style.withUnderlined(underlined);
+        Boolean strikethrough = BOOL.hydrate(obj.get("strikethrough"), ctx); if (strikethrough != null) style = style.withStrikethrough(strikethrough);
+        Boolean obfuscated    = BOOL.hydrate(obj.get("obfuscated"),    ctx); if (obfuscated    != null) style = style.withObfuscated(obfuscated);
+        String fontStr = STRING.hydrate(obj.get("font"), ctx);
+        if (fontStr != null) {
+            ResourceLocation rl = ResourceLocation.tryParse(fontStr);
+            if (rl != null) style = style.withFont(rl);
+        }
+
+        RichNode contents = NODE.hydrate(obj.get("contents"), ctx);
+        return new RichNode.Text("", style, contents != null ? List.of(contents) : List.of());
     }
 
     // ── apply_shortcode / apply_decorator ──────────────────────────────────────

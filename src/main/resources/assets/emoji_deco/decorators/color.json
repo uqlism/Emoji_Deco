@@ -20,10 +20,8 @@
     { "text": "r", "color": "aqua" }
   ],
   "display": {
-    "text": "",
+    "type": "emoji_deco:style",
     "color": { "type": "emoji_deco:arg", "index": 0 },
-    "extra": [
-      { "type": "emoji_deco:slot" }
-    ]
+    "contents": { "type": "emoji_deco:slot" }
   }
 }

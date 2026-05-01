@@ -224,6 +224,11 @@ public final class EmojiDecoComponentParser {
                 }
                 case "emoji_deco:apply_shortcode" -> parseApplyShortcode(obj);
                 case "emoji_deco:apply_decorator" -> parseApplyDecorator(obj, slot);
+                case "emoji_deco:style" -> {
+                    RichNode contents = obj.has("contents")
+                            ? parseExpanded(obj.get("contents"), slot) : RichNode.empty();
+                    yield parseStandard(obj, slot, List.of(contents));
+                }
                 case "emoji_deco:hover" -> {
                     RichNode hoverText = obj.has("hover_contents")
                             ? parseExpanded(obj.get("hover_contents"), slot) : RichNode.empty();
@@ -331,6 +336,11 @@ case "emoji_deco:fetch_atlas" -> {
     }
 
     private static RichNode parseStandard(JsonObject obj, @Nullable RichNode slot) {
+        return parseStandard(obj, slot, null);
+    }
+
+    private static RichNode parseStandard(JsonObject obj, @Nullable RichNode slot,
+                                           @Nullable List<RichNode> overrideChildren) {
         String textVal = stringOf(obj.get("text"), "");
 
         Style style = Style.EMPTY;
@@ -347,10 +357,15 @@ case "emoji_deco:fetch_atlas" -> {
             ResourceLocation fontLoc = ResourceLocation.tryParse(stringOf(obj.get("font"), ""));
             if (fontLoc != null) style = style.withFont(fontLoc);
         }
-        List<RichNode> children = new ArrayList<>();
-        if (obj.has("extra") && obj.get("extra").isJsonArray()) {
-            for (JsonElement child : obj.getAsJsonArray("extra"))
-                children.add(parseExpanded(child, slot));
+        List<RichNode> children;
+        if (overrideChildren != null) {
+            children = overrideChildren;
+        } else {
+            children = new ArrayList<>();
+            if (obj.has("extra") && obj.get("extra").isJsonArray()) {
+                for (JsonElement child : obj.getAsJsonArray("extra"))
+                    children.add(parseExpanded(child, slot));
+            }
         }
         return new RichNode.Text(textVal, style, children);
     }
