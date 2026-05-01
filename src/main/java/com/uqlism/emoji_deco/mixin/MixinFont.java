@@ -5,7 +5,7 @@ import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
-import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
 import net.minecraft.network.chat.FormattedText;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
@@ -35,9 +35,6 @@ public class MixinFont {
      */
     private static final ThreadLocal<Integer> drawDepth    = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<Integer> ambientLight = new ThreadLocal<>();
-    /** Re-entry guard: prevents the recursive drawInBatch call we make from triggering this inject again. */
-    private static final ThreadLocal<Boolean> inComponentTransform = ThreadLocal.withInitial(() -> false);
-
     private static void enterDraw(int packedLight) {
         int d = drawDepth.get();
         drawDepth.set(d + 1);
@@ -60,16 +57,10 @@ public class MixinFont {
     // ── drawInBatch(Component) → catch-all transform ──────────────────────────
 
     // m_272077_ = drawInBatch(Component, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
-    // This intercepts every Component-based text draw (including third-party mod
-    // pedestals, item frames, etc.) so markup/shortcodes work without per-mod mixins.
-    // Fast-path: components whose getString() contains no '#' or ':' are skipped at
-    // negligible cost. Already-transformed components (from specific hooks) pass the
-    // fast-path because markup characters are gone after parsing — no double transform.
-    // @Inject + cancel: also corrects x for callers that centre text by calling
-    // font.width(rawComponent) before drawInBatch (e.g. Supplementaries pedestal).
-    // inComponentTransform guards against mutual recursion: text containing ':'
-    // (e.g. "journeymap:waypoint") may still have ':' in getString() after transform,
-    // which would re-trigger this inject infinitely without the guard.
+    // すべての Component ベース描画を捕捉する catch-all。個別ミックスイン（EntityRenderer 等）が
+    // 変換せずにオリジナル Component を返した場合でもここで ComponentSequenceConverter が処理する。
+    // '#' / ':' を含まない Component は即リターン（性能上の高速パス）。
+    // FormattedCharSequence を生成して drawInBatch(FCS) に委ねるため再帰ガード不要。
     @Inject(method = "m_272077_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$transformDrawBatchComponent(
             Component text, float x, float y,
@@ -77,20 +68,13 @@ public class MixinFont {
             Matrix4f matrix, MultiBufferSource buffers,
             Font.DisplayMode mode, int bgColor, int packedLight,
             CallbackInfoReturnable<Integer> cir) {
-        if (inComponentTransform.get()) return;
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
-        Component transformed = ComponentTransformer.transform(text);
         Font self = (Font)(Object)this;
-        float adj = (self.width(text) - self.width(transformed)) / 2.0f;
-        inComponentTransform.set(true);
-        try {
-            cir.setReturnValue(self.drawInBatch(
-                    transformed, x + adj, y, color, dropShadow,
-                    matrix, buffers, mode, bgColor, packedLight));
-        } finally {
-            inComponentTransform.set(false);
-        }
+        FormattedCharSequence seq = ComponentSequenceConverter.computeNow(self, text);
+        float adj = (self.width(text) - self.width(seq)) / 2.0f;
+        cir.setReturnValue(self.drawInBatch(seq, x + adj, y, color, dropShadow,
+                matrix, buffers, mode, bgColor, packedLight));
     }
 
     // ── drawInBatch(FormattedCharSequence) ────────────────────────────────────
