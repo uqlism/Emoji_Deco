@@ -53,6 +53,17 @@ public class RichTextParser {
     }
 
     /**
+     * Like parse(), but records which dependencies were accessed into the given ctx.
+     * Callers can inspect ctx.extractPattern().usesTime() after the call to decide
+     * whether the result should be re-evaluated each frame.
+     */
+    public static RichNode parseTracked(String raw, HydrateContext.Tracked ctx) {
+        if (raw == null || raw.isEmpty()) return RichNode.empty();
+        RichNode r = Hydrators.CACHED_NODE.hydrate(parseToJson(raw), ctx);
+        return r != null ? r : RichNode.empty();
+    }
+
+    /**
      * Eager evaluation with style inheritance — used by ComponentTransformer
      * where the parent component's style must be propagated to literal text.
      */

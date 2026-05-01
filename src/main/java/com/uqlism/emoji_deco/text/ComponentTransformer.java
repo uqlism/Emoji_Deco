@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.text;
 
+import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.parse.RichTextParser;
 
 import net.minecraft.network.chat.*;
@@ -25,8 +26,15 @@ public class ComponentTransformer {
         List<Component> siblings = component.getSiblings();
 
         if (contents instanceof LiteralContents lc) {
-            MutableComponent base = RichTextParser.parseInline(lc.text(), style)
-                    .toComponent().withStyle(style);
+            String text = lc.text();
+            HydrateContext.Tracked ctx = HydrateContext.EMPTY.track();
+            RichTextParser.parseTracked(text, ctx);
+            MutableComponent base;
+            if (ctx.extractPattern().usesTime() || ctx.extractPattern().usesPlayerNames()) {
+                base = MutableComponent.create(new DynamicRichContents(text, style));
+            } else {
+                base = RichTextParser.parseInline(text, style).toComponent().withStyle(style);
+            }
             for (Component sibling : siblings) base.append(walk(sibling));
             return base;
         }
