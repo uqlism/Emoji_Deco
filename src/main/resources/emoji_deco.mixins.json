@@ -10,7 +10,6 @@
   "client": [
     "MixinFont",
     "MixinChatComponent",
-    "MixinLanguage",
     "MixinGuiGraphics",
     "MixinFontSet",
     "MixinGui",
