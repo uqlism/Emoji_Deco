@@ -16,6 +16,10 @@ EMOJI_DATA_URL = "https://raw.githubusercontent.com/iamcal/emoji-data/master/emo
 TWEMOJI_CDN_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72"
 OUTPUT_DIR = Path("src/main/resources/resourcepacks/emoji_deco_starter/assets/emoji_deco/shortcodes")
 
+# ResourceLocation パスに使用できる文字: [a-z0-9._-]
+import re
+_RL_VALID = re.compile(r'^[a-z0-9._-]+$')
+
 
 def unified_to_filename(unified):
     """Convert 'iamcal' unified string (e.g. '1F600' or '1F1E6-1F1E8') to Twemoji filename."""
@@ -66,10 +70,17 @@ def main():
         filename = unified_to_filename(unified)
         url = f"{TWEMOJI_CDN_BASE}/{filename}"
 
-        aliases = [n for n in short_names if n != short_name]
+        # ファイル名が ResourceLocation の有効文字 [a-z0-9._-] でない場合、
+        # 有効なエイリアスに昇格させる
+        all_names = list(dict.fromkeys([short_name] + short_names))  # 順序保持・重複除去
+        primary = next((n for n in all_names if _RL_VALID.match(n)), None)
+        if primary is None:
+            skipped += 1
+            continue
+        aliases = [n for n in all_names if n != primary]
         shortcode = make_shortcode(url, aliases)
 
-        output_path = OUTPUT_DIR / f"{short_name}.json"
+        output_path = OUTPUT_DIR / f"{primary}.json"
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(shortcode, f, ensure_ascii=False, indent=2)
 
