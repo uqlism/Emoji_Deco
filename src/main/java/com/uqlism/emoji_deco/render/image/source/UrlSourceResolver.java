@@ -8,6 +8,7 @@ import com.uqlism.emoji_deco.render.image.ImageDecoder;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
+import com.uqlism.emoji_deco.render.image.decoder.ApngDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
@@ -104,6 +105,7 @@ public class UrlSourceResolver {
                 ImageDecoder decoder = switch (fmt) {
                     case GIF  -> new GifDecoder();
                     case WEBP -> new WebpDecoder();
+                    case PNG, APNG -> new ApngDecoder();
                     default   -> new StbDecoder();
                 };
                 List<ImageDecoder.Frame> frames = decoder.decode(bytes);

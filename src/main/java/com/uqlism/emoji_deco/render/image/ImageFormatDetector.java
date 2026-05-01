@@ -7,7 +7,7 @@ import java.util.Locale;
 /** マジックバイト・Content-Type・拡張子・明示指定からフォーマットを判別する。 */
 public class ImageFormatDetector {
 
-    public enum Format { PNG, JPEG, GIF, WEBP, UNKNOWN }
+    public enum Format { PNG, APNG, JPEG, GIF, WEBP, UNKNOWN }
 
     /**
      * フォーマットを判別する。
@@ -25,6 +25,7 @@ public class ImageFormatDetector {
     /** "png" / "image/gif" / "anim.gif" など、任意の文字列からフォーマットを推定する。 */
     public static Format fromHint(String hint) {
         String s = hint.toLowerCase(Locale.ROOT);
+        if (s.contains("apng"))                   return Format.APNG;
         if (s.contains("png"))                    return Format.PNG;
         if (s.contains("jpeg") || s.contains("jpg")) return Format.JPEG;
         if (s.contains("gif"))                    return Format.GIF;
