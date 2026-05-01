@@ -1,7 +1,8 @@
 package com.uqlism.emoji_deco.client;
 
 import com.google.gson.JsonElement;
-import com.uqlism.emoji_deco.text.parse.EmojiDecoComponentParser;
+import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
+import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
@@ -164,7 +165,8 @@ public class SuggestionState {
 
     private static List<Entry> buildArgSuggestions(JsonElement spec, String prefix, TriggerType type) {
         if (spec == null) return Collections.emptyList();
-        return EmojiDecoComponentParser.resolveStringList(spec).stream()
+        List<String> resolved = Hydrators.STRING_LIST.hydrate(spec, HydrateContext.EMPTY.track());
+        return (resolved != null ? resolved : List.<String>of()).stream()
                 .filter(v -> v.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT)))
                 .map(v -> {
                     TextColor color = TextColor.parseColor(v);

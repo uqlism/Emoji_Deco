@@ -187,7 +187,8 @@ public class DecoratorManager implements PreparableReloadListener {
         JsonObject json = JSON_REGISTRY.get(name);
         if (json != null && json.has("preview")) {
             try {
-                RichNode node = EmojiDecoComponentParser.parse(json.get("preview"), null);
+                RichNode node = Hydrators.CACHED_NODE.hydrate(
+                        json.get("preview"), HydrateContext.EMPTY.track());
                 if (node != null) return node.toComponent();
             } catch (Exception e) {
                 LOGGER.warn("[EmojiDeco] Failed to parse preview for decorator '{}': {}", name, e.getMessage());

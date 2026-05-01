@@ -103,6 +103,22 @@ public final class Hydrators {
                     "emoji_deco:arg", argOf(Hydrators::parseBool, Hydrator.lazy(() -> Hydrators.BOOL))
             ), null));
 
+    public static final Hydrator<List<String>> STRING_LIST = Hydrator.firstOf(
+            Hydrator.list(STRING),
+            Hydrator.dispatch(Map.of(
+                    "emoji_deco:player_names",
+                    Hydrator.withEffect(
+                            HydrateContext.Tracked::markPlayerNamesAccessed,
+                            (el, ctx) -> {
+                                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                                if (mc == null || mc.getConnection() == null) return List.of();
+                                return mc.getConnection().getOnlinePlayers().stream()
+                                        .map(pi -> pi.getProfile().getName())
+                                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                                        .collect(java.util.stream.Collectors.toList());
+                            })
+            ), null));
+
     public static final Hydrator<float[]> FLOAT_ARRAY =
             Hydrator.list(FLOAT).map(list -> {
                 float[] a = new float[list.size()];
