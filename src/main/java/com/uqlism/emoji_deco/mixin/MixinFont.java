@@ -2,10 +2,13 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
+import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.DynamicRichContents;
+import net.minecraft.network.chat.FormattedText;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -238,6 +241,20 @@ public class MixinFont {
             Matrix4f matrix, MultiBufferSource buffers, int packedLight,
             CallbackInfo ci) {
         exitDraw();
+    }
+
+    // ── split ─────────────────────────────────────────────────────────────────
+
+    // m_92923_ = split(FormattedText, int) → List<FormattedCharSequence>
+    // When the component contains DynamicRichContents, replace the static split result
+    // with a single DynamicFormattedCharSequence so the color re-evaluates each frame.
+    @Inject(method = "m_92923_", at = @At("RETURN"), cancellable = true, remap = false)
+    private void runicink$dynamicSplit(
+            FormattedText text, int width,
+            CallbackInfoReturnable<List<FormattedCharSequence>> cir) {
+        if (!(text instanceof Component c)) return;
+        if (!(c.getContents() instanceof DynamicRichContents drc)) return;
+        cir.setReturnValue(List.of(new DynamicFormattedCharSequence(drc.raw(), drc.baseStyle())));
     }
 
     // ── width ─────────────────────────────────────────────────────────────────
