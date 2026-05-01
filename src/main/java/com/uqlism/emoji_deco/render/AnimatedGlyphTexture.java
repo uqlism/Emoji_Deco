@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.render;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
@@ -14,36 +15,50 @@ import java.util.concurrent.Executor;
 /**
  * 事前デコード済みフレームリストから生成されるアニメーションテクスチャ。
  *
- * コードポイント ↔ ResourceLocation のマッピングは永続。
- * GL テクスチャ（VRAM）は ImageGlyphPool から unloadGpu() が呼ばれたとき解放され、
- * 次回 getGlyph() 時に ensureGpu() で NativeImage から再アップロードする。
- * NativeImage（RAM）は close() まで保持し続ける。
+ * 全フレームをロード時に縦並びアトラス（W × H×N）として1枚のGLテクスチャにまとめてアップロードする。
+ * フレーム切り替えはUV座標の切り替えのみ（GPU転送なし）。
+ *
+ * GLテクスチャはImageGlyphPoolからunloadGpu()が呼ばれたとき解放され、
+ * 次回ensureGpu()でアトラスから再アップロードする。
  */
 public class AnimatedGlyphTexture extends AbstractTexture {
 
-    private final List<ImageDecoder.Frame> frames;
-    private final int[] cumulativeTicks;
-    private final int   totalLoopTicks;
-    private final int   frameW, frameH;
+    private final NativeImage atlas;
+    private final int numFrames;
+    private final int frameH;
+    private final long[] cumulativeMs;
+    private final long   totalLoopMs;
     private final boolean animated;
     private int  currentFrame = 0;
     private boolean closed    = false;
     private boolean gpuLoaded = false;
 
     private AnimatedGlyphTexture(List<ImageDecoder.Frame> frames) {
-        this.frames   = frames;
-        this.animated = frames.size() > 1;
-        this.frameW   = frames.get(0).pixels().getWidth();
-        this.frameH   = frames.get(0).pixels().getHeight();
+        numFrames = frames.size();
+        animated  = numFrames > 1;
+        int fw = frames.get(0).pixels().getWidth();
+        frameH = frames.get(0).pixels().getHeight();
 
-        int n = frames.size();
-        cumulativeTicks = new int[n];
-        int sum = 0;
-        for (int i = 0; i < n; i++) {
-            cumulativeTicks[i] = sum;
-            sum += Math.max(1, frames.get(i).durationMs() / 50);
+        // 全フレームを縦に並べたアトラスを構築し、元フレームは即座に解放
+        atlas = new NativeImage(fw, frameH * numFrames, false);
+        for (int i = 0; i < numFrames; i++) {
+            NativeImage src = frames.get(i).pixels();
+            for (int y = 0; y < frameH; y++) {
+                for (int x = 0; x < fw; x++) {
+                    atlas.setPixelRGBA(x, i * frameH + y, src.getPixelRGBA(x, y));
+                }
+            }
+            src.close();
         }
-        totalLoopTicks = Math.max(1, sum);
+
+        int n = numFrames;
+        cumulativeMs = new long[n];
+        long sum = 0;
+        for (int i = 0; i < n; i++) {
+            cumulativeMs[i] = sum;
+            sum += Math.max(1, frames.get(i).durationMs());
+        }
+        totalLoopMs = sum;
     }
 
     /** フレームリストから生成する。レンダースレッドから呼ぶこと。 */
@@ -56,53 +71,44 @@ public class AnimatedGlyphTexture extends AbstractTexture {
 
     // ── GPU ストリーミング ────────────────────────────────────────────────────
 
-    /**
-     * GL テクスチャが未ロードなら現フレームをアップロードする。
-     * レンダースレッドから getGlyph() 経由で呼ばれる。
-     */
     public void ensureGpu() {
         if (closed || gpuLoaded) return;
-        TextureUtil.prepareImage(getId(), frameW, frameH);
+        TextureUtil.prepareImage(getId(), atlas.getWidth(), atlas.getHeight());
         RenderSystem.bindTexture(getId());
-        frames.get(currentFrame).pixels().upload(0, 0, 0, false);
+        atlas.upload(0, 0, 0, false);
         gpuLoaded = true;
     }
 
-    /**
-     * GL テクスチャ ID を解放して VRAM を返却する。NativeImage は保持。
-     * 長時間描画されなかったとき ImageGlyphPool から呼ばれる。
-     */
     public void unloadGpu() {
         if (!gpuLoaded) return;
-        releaseId();   // id を NOT_ASSIGNED に戻す（次の getId() で新規割り当て）
+        releaseId();
         gpuLoaded = false;
     }
 
     // ── アニメーション ────────────────────────────────────────────────────────
 
-    /** 絶対 tick からフレームを決定してアップロードする。レンダースレッドから呼ぶこと。 */
-    public void tick(long gameTick) {
-        if (!animated || closed || !gpuLoaded) return;
-        int t = (int)(gameTick % totalLoopTicks);
+    /** 現在のウォールクロック時刻からフレームを更新する。GPU 転送なし。 */
+    public void tickMs(long currentMs) {
+        if (!animated || closed) return;
+        long t = currentMs % totalLoopMs;
         int newFrame = 0;
-        for (int i = frames.size() - 1; i > 0; i--) {
-            if (t >= cumulativeTicks[i]) { newFrame = i; break; }
+        for (int i = numFrames - 1; i > 0; i--) {
+            if (t >= cumulativeMs[i]) { newFrame = i; break; }
         }
-        if (newFrame != currentFrame) {
-            currentFrame = newFrame;
-            RenderSystem.bindTexture(getId());
-            frames.get(currentFrame).pixels().upload(0, 0, 0, false);
-        }
+        currentFrame = newFrame;
     }
+
+    public int numFrames()           { return numFrames; }
+    public int currentFrame()        { return currentFrame; }
+    /** フレーム i のアトラス内 V 開始座標（0–1 正規化）。 */
+    public float frameV0(int frame)  { return (float) frame / numFrames; }
+    /** フレーム i のアトラス内 V 終端座標（0–1 正規化）。 */
+    public float frameV1(int frame)  { return (float) (frame + 1) / numFrames; }
 
     public boolean isAnimated() { return animated; }
 
     @Override public void load(ResourceManager rm) {}
 
-    /**
-     * TextureManager がリソースリロード時に reset() を呼ぶが、
-     * このテクスチャは ImageGlyphPool が管理するため何もしない。
-     */
     @Override
     public void reset(TextureManager manager, ResourceManager resourceManager,
                       ResourceLocation location, Executor executor) {}
@@ -112,6 +118,6 @@ public class AnimatedGlyphTexture extends AbstractTexture {
         if (closed) return;
         closed = true;
         if (gpuLoaded) { releaseId(); gpuLoaded = false; }
-        frames.forEach(f -> f.pixels().close());
+        atlas.close();
     }
 }

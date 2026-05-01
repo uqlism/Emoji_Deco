@@ -2,12 +2,14 @@
     "enable": true,
     "args": [
         { "value_type": "float", "default": 0, "label": "<x>" },
-        { "value_type": "float", "default": 0, "label": "<y>" }
+        { "value_type": "float", "default": 0, "label": "<y>" },
+        { "value_type": "float", "default": 0, "label": "<z>", "hidden": true }
     ],
     "display": {
         "type": "emoji_deco:offset",
         "x": { "type": "emoji_deco:arg", "index": 0 },
         "y": { "type": "emoji_deco:arg", "index": 1 },
+        "z": { "type": "emoji_deco:arg", "index": 2 },
         "contents": { "type": "emoji_deco:slot" }
     }
 }

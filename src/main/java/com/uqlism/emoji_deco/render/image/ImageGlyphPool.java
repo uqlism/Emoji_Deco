@@ -52,6 +52,7 @@ public class ImageGlyphPool {
         long       lastUsed;
         ResolvedSource resolved;
         BakedGlyph     glyph;
+        BakedGlyph[]   frameGlyphs;
         CompletableFuture<ResolvedSource> future;
 
         boolean isEmpty() { return key == null; }
@@ -59,11 +60,12 @@ public class ImageGlyphPool {
         void evict(Map<String, Integer> index) {
             if (resolved instanceof ResolvedSource.Animated a) a.animator().close();
             index.remove(key);
-            key       = null;
-            imageSpec = null;
-            resolved  = null;
-            glyph     = null;
-            future    = null;
+            key         = null;
+            imageSpec   = null;
+            resolved    = null;
+            glyph       = null;
+            frameGlyphs = null;
+            future      = null;
         }
     }
 
@@ -109,8 +111,6 @@ public class ImageGlyphPool {
             if (!(s.resolved instanceof ResolvedSource.Animated a)) continue;
             if (s.lastUsed < gpuThreshold) {
                 a.animator().unloadGpu();  // 長時間非表示: VRAM 解放
-            } else {
-                a.animator().tick(tick);   // gpuLoaded でなければ AnimatedGlyphTexture 側でスキップ
             }
         }
     }
@@ -125,7 +125,8 @@ public class ImageGlyphPool {
                     s.evict(keyToSlot);
                 } else {
                     // URL テクスチャはコードポイントを維持し glyph だけ再ベイク
-                    s.glyph = null;
+                    s.glyph       = null;
+                    s.frameGlyphs = null;
                 }
             }
             poolFullLogged = false; // リロード後は警告をリセット
@@ -155,16 +156,28 @@ public class ImageGlyphPool {
                 s.future = UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
             } else {
                 ResolvedSource fresh = resolveSync(s);
-                if (!Objects.equals(fresh, s.resolved)) { s.resolved = fresh; s.glyph = null; }
+                if (!Objects.equals(fresh, s.resolved)) {
+                    s.resolved    = fresh;
+                    s.glyph       = null;
+                    s.frameGlyphs = null;
+                }
             }
         } else if (s.future != null && s.resolved == null && s.future.isDone()) {
             try { s.resolved = s.future.get(); } catch (Exception ignored) {}
         }
 
         if (s.resolved == null) return null;
-        // 非表示期間中に GL テクスチャが解放されていれば再アップロード
-        if (s.resolved instanceof ResolvedSource.Animated a) a.animator().ensureGpu();
-        if (s.glyph   == null) s.glyph = bake(s);
+
+        if (s.resolved instanceof ResolvedSource.Animated a) {
+            // 非表示期間中に GL テクスチャが解放されていれば再アップロード
+            a.animator().ensureGpu();
+            // フレーム更新はウォールクロックで行う（GPU 転送なし）
+            a.animator().tickMs(System.currentTimeMillis());
+            if (s.frameGlyphs == null) s.frameGlyphs = bakeAllFrames(s, a);
+            return s.frameGlyphs[a.animator().currentFrame()];
+        }
+
+        if (s.glyph == null) s.glyph = bake(s);
         return s.glyph;
     }
 
@@ -187,6 +200,18 @@ public class ImageGlyphPool {
         if (s.imageSpec instanceof ImageSpec.Skin sk)
             return SkinSourceResolver.resolveSync(sk.player());
         return null;
+    }
+
+    private static BakedGlyph[] bakeAllFrames(Slot s, ResolvedSource.Animated a) {
+        int n = a.animator().numFrames();
+        GlyphRenderTypes rt = GlyphRenderTypes.createForColorTexture(a.texture());
+        BakedGlyph[] glyphs = new BakedGlyph[n];
+        for (int i = 0; i < n; i++) {
+            glyphs[i] = new BakedGlyph(rt, 0f, 1f,
+                    a.animator().frameV0(i), a.animator().frameV1(i),
+                    0f, s.w, 3f, 3f + s.h);
+        }
+        return glyphs;
     }
 
     private static BakedGlyph bake(Slot s) {
