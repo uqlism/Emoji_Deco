@@ -57,15 +57,10 @@ public class UsageHistory {
         try {
             String json = Files.readString(path);
             JsonElement root = GSON.fromJson(json, JsonElement.class);
-            if (root == null) return;
-            if (root.isJsonArray()) {
-                // 旧フォーマット（配列 = ショートコードのみ）
-                readInto(root.getAsJsonArray(), shortcodes);
-            } else if (root.isJsonObject()) {
-                JsonObject obj = root.getAsJsonObject();
-                if (obj.has("shortcodes")) readInto(obj.getAsJsonArray("shortcodes"), shortcodes);
-                if (obj.has("decorators")) readInto(obj.getAsJsonArray("decorators"), decorators);
-            }
+            if (root == null || !root.isJsonObject()) return;
+            JsonObject obj = root.getAsJsonObject();
+            if (obj.has("shortcodes")) readInto(obj.getAsJsonArray("shortcodes"), shortcodes);
+            if (obj.has("decorators")) readInto(obj.getAsJsonArray("decorators"), decorators);
         } catch (Exception ignored) {}
     }
 
