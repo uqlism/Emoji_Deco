@@ -9,6 +9,7 @@ import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
@@ -31,7 +32,7 @@ import java.util.Objects;
  *   Scaled / Rotated               — other spatial transform wrappers (sign/graffiti only)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
-                                         RichNode.Image,
+                                         RichNode.Image, RichNode.Hover,
                                          RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
     record Text(String literal, Style style, List<RichNode> children)     implements RichNode {}
@@ -55,6 +56,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return Objects.hash(imageSpec, Arrays.hashCode(crop), displayW, displayH, advanceOverride);
         }
     }
+    /** ホバーテキスト wrapper。toSequence では children のみ描画（hover は Component 専用）。 */
+    record Hover(RichNode hoverText, List<RichNode> children)              implements RichNode {}
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
     record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
     record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
@@ -77,6 +80,12 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return c;
         }
         if (this instanceof Image img) return imageComponent(img).copy();
+        if (this instanceof Hover h) {
+            MutableComponent c = Component.empty();
+            for (RichNode child : h.children()) c.append(child.toComponent());
+            return c.withStyle(s -> s.withHoverEvent(
+                    new HoverEvent(HoverEvent.Action.SHOW_TEXT, h.hoverText().toComponent())));
+        }
         // transform wrappers: render contents without transform
         if (this instanceof Offset o) {
             MutableComponent c = Component.empty();
@@ -127,6 +136,9 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                 collectSegments(font, child, g.lightMode(), inherited, out);
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
+        } else if (node instanceof Hover h) {
+            for (RichNode child : h.children())
+                collectSegments(font, child, lightMode, inherited, out);
         } else if (node instanceof Offset o) {
             wrapAffine(font, o.children(), lightMode, inherited, out,
                     new Matrix4f().translate(o.x(), o.y(), o.z()), true);

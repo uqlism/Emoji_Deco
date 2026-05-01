@@ -13,7 +13,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
@@ -225,6 +224,13 @@ public final class EmojiDecoComponentParser {
                 }
                 case "emoji_deco:apply_shortcode" -> parseApplyShortcode(obj);
                 case "emoji_deco:apply_decorator" -> parseApplyDecorator(obj, slot);
+                case "emoji_deco:hover" -> {
+                    RichNode hoverText = obj.has("text")
+                            ? parseExpanded(obj.get("text"), slot) : RichNode.empty();
+                    RichNode contents = obj.has("contents")
+                            ? parseExpanded(obj.get("contents"), slot) : RichNode.empty();
+                    yield new RichNode.Hover(hoverText, List.of(contents));
+                }
                 default -> RichNode.empty();
             };
         }
@@ -341,15 +347,6 @@ case "emoji_deco:fetch_atlas" -> {
             ResourceLocation fontLoc = ResourceLocation.tryParse(stringOf(obj.get("font"), ""));
             if (fontLoc != null) style = style.withFont(fontLoc);
         }
-        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
-            JsonObject hoverObj = obj.getAsJsonObject("hoverEvent");
-            if ("show_text".equals(stringOf(hoverObj.get("action"), "")) && hoverObj.has("contents")) {
-                RichNode contentsNode = parseExpanded(hoverObj.get("contents"), slot);
-                style = style.withHoverEvent(
-                        new HoverEvent(HoverEvent.Action.SHOW_TEXT, contentsNode.toComponent()));
-            }
-        }
-
         List<RichNode> children = new ArrayList<>();
         if (obj.has("extra") && obj.get("extra").isJsonArray()) {
             for (JsonElement child : obj.getAsJsonArray("extra"))

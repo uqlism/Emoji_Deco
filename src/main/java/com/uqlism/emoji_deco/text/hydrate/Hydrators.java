@@ -12,7 +12,6 @@ import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
@@ -159,6 +158,11 @@ public final class Hydrators {
             CONTENTS,
             RichNode.Rotated::new));
 
+    private static final Hydrator<RichNode> HOVER_NODE = cached(Hydrator.zip(
+            Hydrator.field("text", Hydrator.lazy(() -> Hydrators.NODE)).withDefault(RichNode.empty()),
+            CONTENTS,
+            RichNode.Hover::new));
+
     // ── Image hydrators — before NODE so NODE_DISPATCH can reference IMAGE_GLYPH_NODE directly ──
 
     private static final Hydrator<BinarySource> BINARY_SOURCE = Hydrator.dispatch(Map.of(
@@ -220,7 +224,8 @@ public final class Hydrators {
                         "emoji_deco:image_to_glyph", IMAGE_GLYPH_NODE,
                         "emoji_deco:apply_shortcode",Hydrators::applyShortcodeNode,
                         "emoji_deco:apply_decorator",Hydrators::applyDecoratorNode,
-                        "emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of()))
+                        "emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of())),
+                        "emoji_deco:hover",          HOVER_NODE
                 ),
                 Hydrators::standardTextNode)
     ).withDefault(RichNode.empty());
@@ -304,15 +309,6 @@ public final class Hydrators {
         if (obj.has("font")) {
             ResourceLocation rl = ResourceLocation.tryParse(fld(obj, "font", ctx));
             if (rl != null) style = style.withFont(rl);
-        }
-        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
-            JsonObject hoverObj = obj.getAsJsonObject("hoverEvent");
-            if ("show_text".equals(fld(hoverObj, "action", ctx)) && hoverObj.has("contents")) {
-                RichNode contentsNode = NODE.hydrate(hoverObj.get("contents"), ctx);
-                if (contentsNode != null)
-                    style = style.withHoverEvent(
-                            new HoverEvent(HoverEvent.Action.SHOW_TEXT, contentsNode.toComponent()));
-            }
         }
         List<RichNode> children = new ArrayList<>();
         if (obj.has("extra") && obj.get("extra").isJsonArray())
