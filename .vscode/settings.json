@@ -1,3 +1,13 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "json.schemas": [
+        {
+            "fileMatch": ["**/emoji_deco/shortcodes/*.json"],
+            "url": "./src/main/resources/assets/emoji_deco/schemas/shortcode.schema.json"
+        },
+        {
+            "fileMatch": ["**/emoji_deco/decorators/*.json"],
+            "url": "./src/main/resources/assets/emoji_deco/schemas/decorator.schema.json"
+        }
+    ]
 }
