@@ -23,7 +23,7 @@
         }
     },
     "display": {
-        "type": "emoji_deco:hover",
+        "type": "emoji_deco:hover/text",
         "hover_contents": {
             "type": "emoji_deco:join",
             "parts": [

@@ -241,7 +241,7 @@ public final class Hydrators {
                         Map.entry("emoji_deco:apply_shortcode",Hydrators::applyShortcodeNode),
                         Map.entry("emoji_deco:apply_decorator",Hydrators::applyDecoratorNode),
                         Map.entry("emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of()))),
-                        Map.entry("emoji_deco:hover",          HOVER_NODE),
+                        Map.entry("emoji_deco:hover/text",     HOVER_NODE),
                         Map.entry("emoji_deco:style",          (Hydrator<RichNode>) Hydrators::styleNode)
                 ),
                 Hydrators::standardTextNode)

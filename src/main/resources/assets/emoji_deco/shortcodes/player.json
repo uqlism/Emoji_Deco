@@ -4,7 +4,7 @@
         { "value_type": "string", "default": "", "suggestions": { "type": "emoji_deco:player_names" } }
     ],
     "display": {
-        "type": "emoji_deco:hover",
+        "type": "emoji_deco:hover/text",
         "hover_contents": { "type": "emoji_deco:arg", "index": 0 },
         "contents": {
             "text": "",
