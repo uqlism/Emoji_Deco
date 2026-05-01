@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
+import com.uqlism.emoji_deco.text.ir.HoverRichContents;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -35,10 +36,8 @@ public abstract class MixinGuiGraphics {
         if (hoverEvent == null || hoverEvent.getAction() != HoverEvent.Action.SHOW_TEXT) return;
 
         Component hoverComp = hoverEvent.getValue(HoverEvent.Action.SHOW_TEXT);
-        if (hoverComp == null) return;
-
-        RichNode node = RichNode.lookupHoverNode(hoverComp);
-        if (node == null) return;
+        if (!(hoverComp != null && hoverComp.getContents() instanceof HoverRichContents hrc)) return;
+        RichNode node = hrc.node();
 
         FormattedCharSequence seq = RichNode.toSequence(font, node);
 

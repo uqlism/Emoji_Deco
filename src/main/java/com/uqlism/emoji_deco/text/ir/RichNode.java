@@ -65,21 +65,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     static RichNode empty() { return new Text("", Style.EMPTY, List.of()); }
 
-    // ── Hover registry ────────────────────────────────────────────────────────
-
-    /**
-     * hover/text ノードが生成したホバー Component → 元 RichNode の逆引きテーブル。
-     * MutableComponent は equals() を override しないので WeakHashMap はアイデンティティで動作する。
-     * キーはそれを保持する HoverEvent/Style/Component が生きている間だけ生存する。
-     */
-    java.util.WeakHashMap<Component, RichNode> HOVER_REGISTRY
-            = new java.util.WeakHashMap<>();
-
-    @Nullable
-    public static RichNode lookupHoverNode(Component c) {
-        return HOVER_REGISTRY.get(c);
-    }
-
     // ── toComponent ──────────────────────────────────────────────────────────
 
     default MutableComponent toComponent() {
@@ -96,8 +81,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
         if (this instanceof Image img) return imageComponent(img).copy();
         if (this instanceof Hover h) {
-            MutableComponent hoverComp = h.hoverText().toComponent();
-            HOVER_REGISTRY.put(hoverComp, h.hoverText());
+            MutableComponent hoverComp = MutableComponent.create(new HoverRichContents(h.hoverText()));
             MutableComponent c = Component.empty();
             for (RichNode child : h.children()) c.append(child.toComponent());
             return c.withStyle(s -> s.withHoverEvent(
