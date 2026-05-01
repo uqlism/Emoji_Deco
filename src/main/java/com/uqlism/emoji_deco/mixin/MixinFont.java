@@ -7,7 +7,7 @@ import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.DynamicRichContents;
+import com.uqlism.emoji_deco.text.DynamicComponentContents;
 import net.minecraft.network.chat.FormattedText;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
@@ -253,8 +253,8 @@ public class MixinFont {
             FormattedText text, int width,
             CallbackInfoReturnable<List<FormattedCharSequence>> cir) {
         if (!(text instanceof Component c)) return;
-        if (!(c.getContents() instanceof DynamicRichContents drc)) return;
-        cir.setReturnValue(List.of(new DynamicFormattedCharSequence(drc.raw(), drc.baseStyle())));
+        if (!(c.getContents() instanceof DynamicComponentContents)) return;
+        cir.setReturnValue(List.of(new DynamicFormattedCharSequence(c)));
     }
 
     // ── width ─────────────────────────────────────────────────────────────────
