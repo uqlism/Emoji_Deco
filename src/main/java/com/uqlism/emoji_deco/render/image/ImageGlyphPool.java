@@ -76,6 +76,13 @@ public class ImageGlyphPool {
     private static long tick = 0L;
     private static boolean poolFullLogged = false;
 
+    // URL フェッチ中のプレースホルダー（ローディングアニメーション）
+    private static final Slot loadingSlot = new Slot();
+    static {
+        loadingSlot.key     = "__loading__";
+        loadingSlot.advance = Float.NaN;
+    }
+
     private ImageGlyphPool() {}
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -129,7 +136,12 @@ public class ImageGlyphPool {
                     s.frameGlyphs = null;
                 }
             }
-            poolFullLogged = false; // リロード後は警告をリセット
+            poolFullLogged = false;
+            // ローディングスロットをリセット（リロード後に再取得させる）
+            if (loadingSlot.resolved instanceof ResolvedSource.Animated a) a.animator().close();
+            loadingSlot.resolved    = null;
+            loadingSlot.glyph       = null;
+            loadingSlot.frameGlyphs = null;
         }
         ResourceSourceResolver.onResourceReload();
     }
@@ -166,7 +178,10 @@ public class ImageGlyphPool {
             try { s.resolved = s.future.get(); } catch (Exception ignored) {}
         }
 
-        if (s.resolved == null) return null;
+        if (s.resolved == null) {
+            // フェッチ中のみローディングアニメーションを表示、失敗時は tofu のまま
+            return (s.future != null && !s.future.isDone()) ? currentLoadingGlyph(s.w, s.h) : null;
+        }
 
         if (s.resolved instanceof ResolvedSource.Animated a) {
             // 非表示期間中に GL テクスチャが解放されていれば再アップロード
@@ -182,6 +197,35 @@ public class ImageGlyphPool {
     }
 
     // ── 内部ヘルパー ──────────────────────────────────────────────────────────
+
+    /** URL フェッチ中に表示するローディングアニメーションの現フレームを返す。 */
+    @Nullable
+    private static BakedGlyph currentLoadingGlyph(int w, int h) {
+        if (loadingSlot.resolved == null) {
+            ResolvedSource r = ResourceSourceResolver.resolveSync(
+                    "emoji_deco:textures/loading.gif", null);
+            if (r == null) return null;
+            loadingSlot.resolved    = r;
+            loadingSlot.glyph       = null;
+            loadingSlot.frameGlyphs = null;
+        }
+        // 表示サイズが変わった場合はキャッシュを破棄して再 bake
+        if (loadingSlot.w != w || loadingSlot.h != h) {
+            loadingSlot.w           = w;
+            loadingSlot.h           = h;
+            loadingSlot.glyph       = null;
+            loadingSlot.frameGlyphs = null;
+        }
+        if (loadingSlot.resolved instanceof ResolvedSource.Animated a) {
+            a.animator().ensureGpu();
+            a.animator().tickMs(System.currentTimeMillis());
+            if (loadingSlot.frameGlyphs == null)
+                loadingSlot.frameGlyphs = bakeAllFrames(loadingSlot, a);
+            return loadingSlot.frameGlyphs[a.animator().currentFrame()];
+        }
+        if (loadingSlot.glyph == null) loadingSlot.glyph = bake(loadingSlot);
+        return loadingSlot.glyph;
+    }
 
     @Nullable
     private static Slot slotAt(int codePoint) {
