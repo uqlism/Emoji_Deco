@@ -13,6 +13,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
@@ -339,6 +340,14 @@ case "emoji_deco:fetch_atlas" -> {
         if (obj.has("font")) {
             ResourceLocation fontLoc = ResourceLocation.tryParse(stringOf(obj.get("font"), ""));
             if (fontLoc != null) style = style.withFont(fontLoc);
+        }
+        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
+            JsonObject hoverObj = obj.getAsJsonObject("hoverEvent");
+            if ("show_text".equals(stringOf(hoverObj.get("action"), "")) && hoverObj.has("contents")) {
+                RichNode contentsNode = parseExpanded(hoverObj.get("contents"), slot);
+                style = style.withHoverEvent(
+                        new HoverEvent(HoverEvent.Action.SHOW_TEXT, contentsNode.toComponent()));
+            }
         }
 
         List<RichNode> children = new ArrayList<>();

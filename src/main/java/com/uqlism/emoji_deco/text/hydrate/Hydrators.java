@@ -12,6 +12,7 @@ import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
@@ -303,6 +304,15 @@ public final class Hydrators {
         if (obj.has("font")) {
             ResourceLocation rl = ResourceLocation.tryParse(fld(obj, "font", ctx));
             if (rl != null) style = style.withFont(rl);
+        }
+        if (obj.has("hoverEvent") && obj.get("hoverEvent").isJsonObject()) {
+            JsonObject hoverObj = obj.getAsJsonObject("hoverEvent");
+            if ("show_text".equals(fld(hoverObj, "action", ctx)) && hoverObj.has("contents")) {
+                RichNode contentsNode = NODE.hydrate(hoverObj.get("contents"), ctx);
+                if (contentsNode != null)
+                    style = style.withHoverEvent(
+                            new HoverEvent(HoverEvent.Action.SHOW_TEXT, contentsNode.toComponent()));
+            }
         }
         List<RichNode> children = new ArrayList<>();
         if (obj.has("extra") && obj.get("extra").isJsonArray())
