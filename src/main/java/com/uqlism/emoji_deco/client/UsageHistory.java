@@ -78,6 +78,7 @@ public class UsageHistory {
         List<String> dc = new ArrayList<>(decorators);
         CompletableFuture.runAsync(() -> {
             try {
+                Files.createDirectories(path.getParent());
                 JsonObject obj = new JsonObject();
                 obj.add("shortcodes", GSON.toJsonTree(sc));
                 obj.add("decorators", GSON.toJsonTree(dc));
@@ -89,6 +90,6 @@ public class UsageHistory {
     private static Path savePath() {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return null;
-        return mc.gameDirectory.toPath().resolve("emoji_deco_history.json");
+        return mc.gameDirectory.toPath().resolve("emoji_deco").resolve("history.json");
     }
 }

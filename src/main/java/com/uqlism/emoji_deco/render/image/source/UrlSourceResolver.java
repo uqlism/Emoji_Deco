@@ -176,7 +176,7 @@ public class UrlSourceResolver {
     }
 
     private static Path cacheDir() {
-        return Minecraft.getInstance().gameDirectory.toPath().resolve("emoji_deco_cache");
+        return Minecraft.getInstance().gameDirectory.toPath().resolve("emoji_deco").resolve("url_cache");
     }
 
     // ── HTTP download ─────────────────────────────────────────────────────────
