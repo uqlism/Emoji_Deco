@@ -1,7 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
-import com.uqlism.emoji_deco.text.DynamicComponentContents;
+import com.uqlism.emoji_deco.Config;
+import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
@@ -36,8 +36,8 @@ public class MixinChatComponent {
         require = 0
     )
     private List<FormattedCharSequence> runicink$wrapDynamicAdd(FormattedText text, int width, Font font) {
-        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents dcc) {
-            return Collections.singletonList(new DynamicFormattedCharSequence(dcc.original()));
+        if (Config.enableChat && text instanceof Component c) {
+            return Collections.singletonList(ComponentSequenceConverter.toSequence(font, c));
         }
         return font.split(text, width);
     }
@@ -53,8 +53,8 @@ public class MixinChatComponent {
         require = 0
     )
     private List<FormattedCharSequence> runicink$wrapDynamicRescale(FormattedText text, int width, Font font) {
-        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents dcc) {
-            return Collections.singletonList(new DynamicFormattedCharSequence(dcc.original()));
+        if (Config.enableChat && text instanceof Component c) {
+            return Collections.singletonList(ComponentSequenceConverter.toSequence(font, c));
         }
         return font.split(text, width);
     }

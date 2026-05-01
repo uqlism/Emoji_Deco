@@ -1,8 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
-import com.uqlism.emoji_deco.text.ir.RichNode;
-import com.uqlism.emoji_deco.text.parse.RichTextParser;
+import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -31,12 +30,11 @@ public class MixinSignText {
         FormattedCharSequence[] result = new FormattedCharSequence[4];
         for (int i = 0; i < 4; i++) {
             Component original = self.getMessage(i, filtered);
-            String raw = original.getString();
-            if (raw.isBlank()) {
+            if (original.getString().isBlank()) {
                 result[i] = FormattedCharSequence.EMPTY;
                 continue;
             }
-            result[i] = RichNode.toSequence(font, RichTextParser.parse(raw));
+            result[i] = ComponentSequenceConverter.toSequence(font, original);
         }
         cir.setReturnValue(result);
     }

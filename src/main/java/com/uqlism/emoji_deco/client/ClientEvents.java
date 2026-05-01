@@ -11,11 +11,7 @@ import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
-import com.uqlism.emoji_deco.text.DynamicComponentContents;
-import com.uqlism.emoji_deco.text.DynamicRichContents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
@@ -44,33 +40,7 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = EmojiDeco.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class ClientEvents {
 
-    @SubscribeEvent
-    public static void onChatMessage(ClientChatReceivedEvent event) {
-        if (!Config.enableChat) return;
-        Component original    = event.getMessage();
-        Component transformed = ComponentTransformer.transform(original);
-        if (hasDynamic(transformed)) {
-            // The component tree contains time-dependent rich text. Wrap the original so
-            // ComponentTransformer is re-applied on every render frame instead of once.
-            event.setMessage(MutableComponent.create(new DynamicComponentContents(original)));
-        } else {
-            event.setMessage(transformed);
-        }
-    }
-
-    /** Recursively checks whether any node in the component tree has DynamicRichContents. */
-    private static boolean hasDynamic(Component c) {
-        if (c.getContents() instanceof DynamicRichContents) return true;
-        for (Component s : c.getSiblings()) {
-            if (hasDynamic(s)) return true;
-        }
-        if (c.getContents() instanceof TranslatableContents tc) {
-            for (Object a : tc.getArgs()) {
-                if (a instanceof Component ac && hasDynamic(ac)) return true;
-            }
-        }
-        return false;
-    }
+    // チャットの変換は MixinChatComponent + ComponentSequenceConverter が担う。
 
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {

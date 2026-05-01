@@ -116,8 +116,12 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
     // ── toSequence ─────────────────────────────────────────────────────────
 
     static FormattedCharSequence toSequence(Font font, RichNode root) {
+        return toSequence(font, root, Style.EMPTY);
+    }
+
+    public static FormattedCharSequence toSequence(Font font, RichNode root, Style inherited) {
         List<FormattedCharSequence> parts = new ArrayList<>();
-        collectSegments(font, root, LightMode.BYPASS, Style.EMPTY, parts);
+        collectSegments(font, root, LightMode.BYPASS, inherited, parts);
         if (parts.isEmpty()) return FormattedCharSequence.EMPTY;
         if (parts.size() == 1) return parts.get(0);
         return new ConcatSequence(parts);
