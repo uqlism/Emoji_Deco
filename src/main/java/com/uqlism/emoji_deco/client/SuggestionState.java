@@ -137,6 +137,19 @@ public class SuggestionState {
     // ── suggestion builders ───────────────────────────────────────────────────
 
     private static List<Entry> buildStyleTagSuggestions(String prefix) {
+        if (prefix.isEmpty()) {
+            List<String> recent = UsageHistory.getRecent(30, UsageHistory.Kind.DECORATOR);
+            if (recent.isEmpty()) return Collections.emptyList();
+            List<Entry> hist = new ArrayList<>();
+            for (String canonical : recent) {
+                if (!DecoratorManager.has(canonical)) continue;
+                hist.add(new Entry(
+                        DecoratorManager.getLabel(canonical),
+                        () -> DecoratorManager.getPreview(canonical),
+                        canonical, TriggerType.DECORATOR));
+            }
+            return hist;
+        }
         List<Entry> results = new ArrayList<>();
         DecoratorManager.searchSuggestions(prefix, 30).forEach(r -> {
             String canonical = r.canonical();
@@ -150,7 +163,7 @@ public class SuggestionState {
 
     private static List<Entry> buildShortcodeSuggestions(String prefix) {
         if (prefix.isEmpty()) {
-            List<String> recent = UsageHistory.getRecent(30);
+            List<String> recent = UsageHistory.getRecent(30, UsageHistory.Kind.SHORTCODE);
             if (recent.isEmpty()) return Collections.emptyList();
             List<Entry> hist = new ArrayList<>();
             for (String canonical : recent) {
@@ -201,7 +214,7 @@ public class SuggestionState {
             case SHORTCODE -> {
                 int pos = before.lastIndexOf(':');
                 if (pos < 0) { pendingCursor = -1; return text; }
-                UsageHistory.record(entry.insertion());
+                UsageHistory.record(entry.insertion(), UsageHistory.Kind.SHORTCODE);
                 String head = before.substring(0, pos + 1) + entry.insertion() + ":";
                 pendingCursor = head.length();
                 return head + after;
@@ -209,6 +222,7 @@ public class SuggestionState {
             case DECORATOR -> {
                 int pos = before.lastIndexOf('#');
                 if (pos < 0) { pendingCursor = -1; return text; }
+                UsageHistory.record(entry.insertion(), UsageHistory.Kind.DECORATOR);
                 String head = before.substring(0, pos) + "#" + entry.insertion() + "[";
                 pendingCursor = head.length();
                 return head + "]" + after;
