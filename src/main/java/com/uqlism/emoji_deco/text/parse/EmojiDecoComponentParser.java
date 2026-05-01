@@ -225,8 +225,8 @@ public final class EmojiDecoComponentParser {
                 case "emoji_deco:apply_shortcode" -> parseApplyShortcode(obj);
                 case "emoji_deco:apply_decorator" -> parseApplyDecorator(obj, slot);
                 case "emoji_deco:hover" -> {
-                    RichNode hoverText = obj.has("text")
-                            ? parseExpanded(obj.get("text"), slot) : RichNode.empty();
+                    RichNode hoverText = obj.has("hover_contents")
+                            ? parseExpanded(obj.get("hover_contents"), slot) : RichNode.empty();
                     RichNode contents = obj.has("contents")
                             ? parseExpanded(obj.get("contents"), slot) : RichNode.empty();
                     yield new RichNode.Hover(hoverText, List.of(contents));

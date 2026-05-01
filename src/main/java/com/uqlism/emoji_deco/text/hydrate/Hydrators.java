@@ -159,7 +159,7 @@ public final class Hydrators {
             RichNode.Rotated::new));
 
     private static final Hydrator<RichNode> HOVER_NODE = cached(Hydrator.zip(
-            Hydrator.field("text", Hydrator.lazy(() -> Hydrators.NODE)).withDefault(RichNode.empty()),
+            Hydrator.field("hover_contents", Hydrator.lazy(() -> Hydrators.NODE)).withDefault(RichNode.empty()),
             CONTENTS,
             RichNode.Hover::new));
 
