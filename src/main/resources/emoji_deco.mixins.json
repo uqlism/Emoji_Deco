@@ -9,6 +9,7 @@
   ],
   "client": [
     "MixinFont",
+    "MixinChatComponent",
     "MixinGuiGraphics",
     "MixinFontSet",
     "MixinGui",

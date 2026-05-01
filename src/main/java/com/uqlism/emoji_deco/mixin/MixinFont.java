@@ -248,7 +248,7 @@ public class MixinFont {
     // m_92923_ = split(FormattedText, int) → List<FormattedCharSequence>
     // When the component contains DynamicRichContents, replace the static split result
     // with a single DynamicFormattedCharSequence so the color re-evaluates each frame.
-    @Inject(method = "m_92923_", at = @At("RETURN"), cancellable = true, remap = false)
+    @Inject(method = "m_92923_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$dynamicSplit(
             FormattedText text, int width,
             CallbackInfoReturnable<List<FormattedCharSequence>> cir) {
