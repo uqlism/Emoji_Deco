@@ -142,8 +142,13 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
         } else if (node instanceof Hover h) {
+            // toComponent() と同様に HoverEvent を Style に乗せて子に継承させる。
+            // これにより FormattedCharSequence 経由でもホバーツールチップが機能する。
+            MutableComponent hoverComp = MutableComponent.create(new HoverRichContents(h.hoverText()));
+            Style withHover = inherited.withHoverEvent(
+                    new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComp));
             for (RichNode child : h.children())
-                collectSegments(font, child, lightMode, inherited, out);
+                collectSegments(font, child, lightMode, withHover, out);
         } else if (node instanceof Offset o) {
             wrapAffine(font, o.children(), lightMode, inherited, out,
                     new Matrix4f().translate(o.x(), o.y(), o.z()), true);
