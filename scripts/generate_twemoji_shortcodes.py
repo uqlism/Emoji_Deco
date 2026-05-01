@@ -43,21 +43,14 @@ def fetch_twemoji_map() -> dict:
     return {normalize(f[:-4]): f for f in files}
 
 
-def make_shortcode(url: str, aliases: list) -> dict:
+def make_shortcode(twemoji_id: str, aliases: list) -> dict:
+    """twemoji テンプレートへの apply_shortcode 参照（minify 済み辞書を返す）。"""
     entry = {
         "enable": True,
         "display": {
-            "type": "emoji_deco:image_to_glyph",
-            "width": 8,
-            "height": 8,
-            "image": {
-                "type": "emoji_deco:decode_image",
-                "source": {
-                    "type": "emoji_deco:fetch_url",
-                    "disk_cache": True,
-                    "url": url,
-                }
-            }
+            "type": "emoji_deco:apply_shortcode",
+            "shortcode": "twemoji",
+            "args": [twemoji_id],
         }
     }
     if aliases:
@@ -93,7 +86,7 @@ def main():
             skipped += 1
             continue
 
-        url = f"{TWEMOJI_CDN_BASE}/{actual_file}"
+        twemoji_id = actual_file[:-4]  # .png を除いたファイル名 (例: "1f600")
 
         # ResourceLocation に使用できないプライマリ名は有効なエイリアスに昇格
         all_names = list(dict.fromkeys([emoji["short_name"]] + emoji.get("short_names", [])))
@@ -105,7 +98,9 @@ def main():
 
         output_path = OUTPUT_DIR / f"{primary}.json"
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(make_shortcode(url, aliases), f, ensure_ascii=False, indent=2)
+            # minify: separators=(',', ':') でスペースなし
+            json.dump(make_shortcode(twemoji_id, aliases), f,
+                      ensure_ascii=False, separators=(",", ":"))
         generated += 1
 
     print(f"Done. Generated {generated}, skipped {skipped}.")

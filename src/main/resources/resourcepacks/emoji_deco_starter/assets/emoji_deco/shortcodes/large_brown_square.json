@@ -1,16 +1,1 @@
-{
-  "enable": true,
-  "display": {
-    "type": "emoji_deco:image_to_glyph",
-    "width": 8,
-    "height": 8,
-    "image": {
-      "type": "emoji_deco:decode_image",
-      "source": {
-        "type": "emoji_deco:fetch_url",
-        "disk_cache": true,
-        "url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f7eb.png"
-      }
-    }
-  }
-}
+{"enable":true,"display":{"type":"emoji_deco:apply_shortcode","shortcode":"twemoji","args":["1f7eb"]}}
