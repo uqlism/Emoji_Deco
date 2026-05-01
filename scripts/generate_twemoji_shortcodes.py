@@ -46,7 +46,6 @@ def fetch_twemoji_map() -> dict:
 def make_shortcode(twemoji_id: str, aliases: list) -> dict:
     """twemoji テンプレートへの apply_shortcode 参照（minify 済み辞書を返す）。"""
     entry = {
-        "enable": True,
         "display": {
             "type": "emoji_deco:apply_shortcode",
             "shortcode": "twemoji",
