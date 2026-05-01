@@ -15,48 +15,47 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Intercepts Font.split() calls inside ChatComponent so that
- * DynamicComponentContents-backed messages produce DynamicFormattedCharSequence
- * lines (which re-evaluate on every accept() call) instead of static sequences.
+ * Intercepts ComponentRenderUtils.wrapComponents() (m_94005_) calls inside ChatComponent.
  *
- * This covers both the initial addMessage and the rescaleChat rebuild path.
+ * This is the actual method used by ChatComponent to convert a Component into
+ * FormattedCharSequence lines — NOT Font.split() or Language.getVisualOrder().
+ * For DynamicComponentContents messages, we return DynamicFormattedCharSequence
+ * so the color re-evaluates each render frame.
  */
 @Mixin(ChatComponent.class)
 public class MixinChatComponent {
 
-    // m_240465_ = addMessage(Component, MessageSignature, int, GuiMessageTag, boolean)
     @Redirect(
         method = "m_240465_",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/Font;m_92923_(Lnet/minecraft/network/chat/FormattedText;I)Ljava/util/List;",
+            target = "Lnet/minecraft/client/gui/components/ComponentRenderUtils;m_94005_(Lnet/minecraft/network/chat/FormattedText;ILnet/minecraft/client/gui/Font;)Ljava/util/List;",
             remap = false
         ),
         remap = false,
         require = 0
     )
-    private List<FormattedCharSequence> runicink$splitDynamicAdd(Font font, FormattedText text, int maxWidth) {
-        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents) {
-            return Collections.singletonList(new DynamicFormattedCharSequence(c));
+    private List<FormattedCharSequence> runicink$wrapDynamicAdd(FormattedText text, int width, Font font) {
+        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents dcc) {
+            return Collections.singletonList(new DynamicFormattedCharSequence(dcc.original()));
         }
-        return font.split(text, maxWidth);
+        return font.split(text, width);
     }
 
-    // m_93795_ = rescaleChat(boolean) — rebuilds trimmedMessages from allMessages
     @Redirect(
         method = "m_93795_",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/Font;m_92923_(Lnet/minecraft/network/chat/FormattedText;I)Ljava/util/List;",
+            target = "Lnet/minecraft/client/gui/components/ComponentRenderUtils;m_94005_(Lnet/minecraft/network/chat/FormattedText;ILnet/minecraft/client/gui/Font;)Ljava/util/List;",
             remap = false
         ),
         remap = false,
         require = 0
     )
-    private List<FormattedCharSequence> runicink$splitDynamicRescale(Font font, FormattedText text, int maxWidth) {
-        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents) {
-            return Collections.singletonList(new DynamicFormattedCharSequence(c));
+    private List<FormattedCharSequence> runicink$wrapDynamicRescale(FormattedText text, int width, Font font) {
+        if (text instanceof Component c && c.getContents() instanceof DynamicComponentContents dcc) {
+            return Collections.singletonList(new DynamicFormattedCharSequence(dcc.original()));
         }
-        return font.split(text, maxWidth);
+        return font.split(text, width);
     }
 }

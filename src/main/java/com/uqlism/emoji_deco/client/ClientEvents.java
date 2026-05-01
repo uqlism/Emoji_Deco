@@ -13,7 +13,6 @@ import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
 import com.uqlism.emoji_deco.text.ComponentTransformer;
 import com.uqlism.emoji_deco.text.DynamicComponentContents;
 import com.uqlism.emoji_deco.text.DynamicRichContents;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.contents.TranslatableContents;

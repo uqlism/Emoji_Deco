@@ -253,8 +253,8 @@ public class MixinFont {
             FormattedText text, int width,
             CallbackInfoReturnable<List<FormattedCharSequence>> cir) {
         if (!(text instanceof Component c)) return;
-        if (!(c.getContents() instanceof DynamicComponentContents)) return;
-        cir.setReturnValue(List.of(new DynamicFormattedCharSequence(c)));
+        if (!(c.getContents() instanceof DynamicComponentContents dcc)) return;
+        cir.setReturnValue(List.of(new DynamicFormattedCharSequence(dcc.original())));
     }
 
     // ── width ─────────────────────────────────────────────────────────────────

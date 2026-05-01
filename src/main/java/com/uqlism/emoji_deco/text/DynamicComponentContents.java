@@ -9,9 +9,13 @@ import java.util.Optional;
 
 /**
  * ComponentContents that re-applies ComponentTransformer on every visit() call.
- * Used for chat messages that contain time-dependent rich text (e.g. #rainbow),
- * where the chat system converts Component → FormattedCharSequence only once and
- * DynamicRichContents.visit() would never be called again after that point.
+ * Used for chat messages that contain time-dependent rich text (e.g. #rainbow).
+ *
+ * ChatComponent.m_240465_ uses ComponentRenderUtils.wrapComponents() to convert
+ * the message Component into FormattedCharSequence lines (one per line after word-
+ * wrapping). MixinChatComponent intercepts that call and returns a
+ * DynamicFormattedCharSequence instead, which re-evaluates this visit() on every
+ * render frame so that time-dependent colors animate correctly.
  */
 public record DynamicComponentContents(Component original) implements ComponentContents {
 
