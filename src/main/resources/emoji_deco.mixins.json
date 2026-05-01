@@ -9,6 +9,7 @@
   ],
   "client": [
     "MixinFont",
+    "MixinGuiGraphics",
     "MixinFontSet",
     "MixinGui",
     "MixinSignText",
