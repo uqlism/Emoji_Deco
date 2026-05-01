@@ -24,6 +24,8 @@ public final class DynamicFormattedCharSequence implements FormattedCharSequence
         this.original = original;
     }
 
+    public Component original() { return original; }
+
     @Override
     public boolean accept(FormattedCharSink sink) {
         Font font = Minecraft.getInstance().font;

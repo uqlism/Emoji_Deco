@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
+import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
@@ -91,6 +92,14 @@ public class MixinFont {
         enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
+        // DynamicFormattedCharSequence: 毎フレーム computeNow() で解決し drawInBatch に通し直す。
+        // accept(FormattedCharSink) 経由では AffineSequence の行列変換が失われるため
+        // ここで drawInBatch(FCS) 経路を維持する必要がある。
+        if (text instanceof DynamicFormattedCharSequence dfcs) {
+            FormattedCharSequence resolved = ComponentSequenceConverter.computeNow(self, dfcs.original());
+            cir.setReturnValue(self.drawInBatch(resolved, x, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
+            return;
+        }
         if (text instanceof LightSequence gs) {
             int light = resolveLight(gs.mode(), packedLight);
             cir.setReturnValue(self.drawInBatch(gs.inner(), x, y, color, dropShadow, matrix, buffers, mode, bgColor, light));
