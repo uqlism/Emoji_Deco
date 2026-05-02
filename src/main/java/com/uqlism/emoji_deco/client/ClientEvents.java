@@ -58,6 +58,7 @@ public class ClientEvents {
                 && !(screen instanceof BookEditScreen)) return;
 
         SuggestionState ss = SuggestionState.of(screen);
+        ss.computeIfReady();
         if (ss.suggestions.isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();

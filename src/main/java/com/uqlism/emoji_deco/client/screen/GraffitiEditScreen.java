@@ -259,6 +259,7 @@ public class GraffitiEditScreen extends Screen {
     }
 
     private void renderCompletions(GuiGraphics graphics) {
+        completionState.computeIfReady();
         if (!completionState.hasSuggestions()) return;
         for (int i = 0; i < activeLines; i++) {
             EditBox box = boxes[i];

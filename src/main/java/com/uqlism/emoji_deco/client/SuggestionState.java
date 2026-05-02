@@ -26,6 +26,8 @@ public class SuggestionState {
 
     public record Entry(String label, Supplier<Component> preview, String insertion, TriggerType type) {}
 
+    private static final long DEBOUNCE_MS = 200L;
+
     // ── instance state ────────────────────────────────────────────────────────
 
     public String lastInput = "";
@@ -34,6 +36,7 @@ public class SuggestionState {
     public List<Entry> suggestions = Collections.emptyList();
     public int selectedIndex = 0;
     public int triggerPos = 0;
+    private long pendingAt = -1L; // -1 = 計算済み or pending なし
 
     // ── per-screen registry ───────────────────────────────────────────────────
 
@@ -47,10 +50,25 @@ public class SuggestionState {
 
     // ── update ────────────────────────────────────────────────────────────────
 
+    /** キー入力ごとに呼ばれる。pending を記録するだけで計算はしない（debounce）。 */
     public void update(String text, int cursor) {
         lastInput = text;
         lastCursor = Math.min(cursor, text.length());
-        String active = text.substring(0, lastCursor);
+        pendingAt = System.currentTimeMillis();
+        suggestions = Collections.emptyList();
+        selectedIndex = 0;
+    }
+
+    /** レンダリング前に毎フレーム呼ぶ。DEBOUNCE_MS 経過後に初めてサジェストを計算する。 */
+    public void computeIfReady() {
+        if (pendingAt < 0) return;
+        if (System.currentTimeMillis() - pendingAt < DEBOUNCE_MS) return;
+        pendingAt = -1L;
+        computeNow();
+    }
+
+    private void computeNow() {
+        String active = lastInput.substring(0, lastCursor);
 
         int colonPos = RichTextParser.findActiveColonPos(active);
         int hashPos  = RichTextParser.findActiveHashPos(active);
@@ -227,6 +245,7 @@ public class SuggestionState {
     public void clear() {
         suggestions = Collections.emptyList();
         selectedIndex = 0;
+        pendingAt = -1L;
     }
 
     public boolean hasSuggestions() { return !suggestions.isEmpty(); }
