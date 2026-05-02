@@ -42,14 +42,21 @@ public class UrlSourceResolver {
     private static final AtomicInteger counter = new AtomicInteger(0);
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
-    /** 専用スレッドプール。ForkJoinPool.commonPool() と分離し MC の内部タスクと競合しない。 */
+    /**
+     * IO バウンドなダウンロードに特化したキャッシュスレッドプール。
+     * スレッドは必要に応じて生成され、60秒アイドルで回収される。
+     * Java 17 では仮想スレッドが使えないが cachedThreadPool で高 IO 並列を実現する。
+     */
     private static final java.util.concurrent.Executor FETCH_EXECUTOR =
-            java.util.concurrent.Executors.newFixedThreadPool(4, r -> {
+            java.util.concurrent.Executors.newCachedThreadPool(r -> {
                 Thread t = new Thread(r, "EmojiDeco-Fetch-" + counter.getAndIncrement());
                 t.setDaemon(true);
                 t.setContextClassLoader(MOD_CLASSLOADER);
                 return t;
             });
+    /** CDN のレート制限・過負荷対策: 同時 HTTP 接続数の上限 */
+    private static final java.util.concurrent.Semaphore HTTP_PERMITS =
+            new java.util.concurrent.Semaphore(16);
 
     /** 失敗後にこの時間が経過すると再取得を試みる */
     private static final long RETRY_DELAY_MS = 30_000;
@@ -109,15 +116,21 @@ public class UrlSourceResolver {
                     if (Files.exists(cacheFile) && !isDiskExpired(cacheFile, ttlSeconds)) {
                         bytes = Files.readAllBytes(cacheFile);
                     } else {
-                        DownloadResult dl = download(url);
-                        bytes = dl.bytes();
-                        contentTypeHint = dl.contentType();
+                        HTTP_PERMITS.acquire();
+                        try {
+                            DownloadResult dl = download(url);
+                            bytes = dl.bytes();
+                            contentTypeHint = dl.contentType();
+                        } finally { HTTP_PERMITS.release(); }
                         writeDiskCache(cacheFile, bytes);
                     }
                 } else {
-                    DownloadResult dl = download(url);
-                    bytes = dl.bytes();
-                    contentTypeHint = dl.contentType();
+                    HTTP_PERMITS.acquire();
+                    try {
+                        DownloadResult dl = download(url);
+                        bytes = dl.bytes();
+                        contentTypeHint = dl.contentType();
+                    } finally { HTTP_PERMITS.release(); }
                 }
 
                 String hint = format != null ? format : contentTypeHint;
