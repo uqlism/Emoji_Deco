@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
     modId="emoji_deco"
-    version="0.0.1"
+    version="${mod_version}"
     displayName="Emoji & Deco"
     #logoFile="examplemod.png" #optional
     credits="uqlism"
