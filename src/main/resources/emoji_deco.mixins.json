@@ -13,7 +13,6 @@
     "MixinGuiGraphics",
     "MixinFontSet",
     "MixinGui",
-    "MixinLanguage",
     "MixinSignText",
     "MixinAbstractSignEditScreen",
     "MixinBookEditScreen",

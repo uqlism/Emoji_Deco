@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
+import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
 import com.uqlism.emoji_deco.text.ir.HoverRichContents;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import net.minecraft.client.gui.Font;
@@ -13,6 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,35 @@ import java.util.List;
 @Mixin(GuiGraphics.class)
 public abstract class MixinGuiGraphics {
 
+    // ── Component ベース描画の変換 ─────────────────────────────────────────────
+    // GuiGraphics.drawString(Component) / drawCenteredString(Component) は
+    // Language.getVisualOrder() を経由して FCS に変換するため MixinFont catch-all は効かない。
+    // Language は抽象クラスで inject 不可のため、ここで Component → FCS を直接処理する。
+
+    // m_280614_ = drawString(Font, Component, int, int, int, boolean) -> int
+    @Inject(method = "m_280614_", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    private void runicink$drawStringComponent(
+            Font font, Component text, int x, int y, int color, boolean dropShadow,
+            CallbackInfoReturnable<Integer> cir) {
+        String raw = text.getString();
+        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        FormattedCharSequence fcs = ComponentSequenceConverter.toSequence(font, text);
+        cir.setReturnValue(((GuiGraphics)(Object)this).drawString(font, fcs, x, y, color, dropShadow));
+    }
+
+    // m_280653_ = drawCenteredString(Font, Component, int, int, int) -> void
+    @Inject(method = "m_280653_", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    private void runicink$drawCenteredStringComponent(
+            Font font, Component text, int x, int y, int color,
+            CallbackInfo ci) {
+        String raw = text.getString();
+        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        FormattedCharSequence fcs = ComponentSequenceConverter.toSequence(font, text);
+        ((GuiGraphics)(Object)this).drawString(font, fcs, x - font.width(fcs) / 2, y, color);
+        ci.cancel();
+    }
+
+    // ── ホバーツールチップ ────────────────────────────────────────────────────
     // SRG: m_280304_ → renderComponentHoverEffect(Font, Style, int, int)
     @Inject(method = "m_280304_", at = @At("HEAD"), cancellable = true, remap = false)
     private void onRenderComponentHoverEffect(Font font, @Nullable Style style,

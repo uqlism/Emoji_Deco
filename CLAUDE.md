@@ -158,18 +158,24 @@ com.uqlism.emoji_deco/
 ### GUI テキスト全般（ホットバーアイテム名・タイトル・サブタイトル・アクションバー・ツールチップ等）
 
 ```
-GuiGraphics.drawString(Font, Component, ...)
-GuiGraphics.drawCenteredString(Font, Component, ...)
-Font.width(Component)          ← センタリング計算もここを通る
-    └─ component.getVisualOrderText()
-        └─ Language.getVisualOrder(FormattedText)   [SRG: m_5536_]
-            └─ ★ MixinLanguage (@Inject HEAD, cancellable)
-                └─ ComponentSequenceConverter.toSequence(font, component)
-                    → 以降は FormattedCharSequence として描画
+GuiGraphics.drawString(Font, Component, int, int, int, boolean)   [SRG: m_280614_]
+    └─ ★ MixinGuiGraphics.runicink$drawStringComponent (@Inject HEAD, cancellable)
+        └─ ComponentSequenceConverter.toSequence(font, component)
+            → self.drawString(font, fcs, x, y, color, dropShadow)
+
+GuiGraphics.drawCenteredString(Font, Component, int, int, int)   [SRG: m_280653_]
+    └─ ★ MixinGuiGraphics.runicink$drawCenteredStringComponent (@Inject HEAD, cancellable)
+        └─ ComponentSequenceConverter.toSequence(font, component)
+            → self.drawString(font, fcs, x - font.width(fcs)/2, y, color)
 ```
 
-**補足**: `GuiGraphics.drawString(Component)` は Language を経由するため、
-`Font.drawInBatch(Component, ...)` は呼ばれない。MixinFont のキャッチオールは効かない。
+**設計上の注意**:
+- `GuiGraphics.drawString(Component)` は内部で `Language.getVisualOrder(component)` を呼ぶため
+  `Font.drawInBatch(Component, ...)` は呼ばれない。MixinFont のキャッチオールは効かない。
+- `Language` は抽象クラスで `getVisualOrder` (m_5536_) は abstract メソッドのため
+  `@Inject` 不可（Mixin が HEAD を見つけられず NPE）。GuiGraphics 側でフックする。
+- `drawString(Font, Component, int, int, int)` (m_280430_) は m_280614_ に委譲するため
+  m_280614_ のみフックすれば足りる。
 
 ---
 
