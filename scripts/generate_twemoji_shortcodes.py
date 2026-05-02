@@ -68,8 +68,37 @@ def main():
         emoji_data = json.loads(r.read().decode("utf-8"))
 
     # 既存ファイルを削除してから再生成（stale なファイルを残さない）
+    # twemoji.json は個別絵文字から参照されるテンプレートのため削除対象から除外
     for f in OUTPUT_DIR.glob("*.json"):
-        f.unlink()
+        if f.name != "twemoji.json":
+            f.unlink()
+
+    # twemoji テンプレートを常に最新の CDN URL で書き出す
+    twemoji_template = {
+        "args": [{"value_type": "string", "default": "", "label": "<id>"}],
+        "display": {
+            "type": "emoji_deco:image_to_glyph",
+            "width": 8, "height": 8,
+            "image": {
+                "type": "emoji_deco:decode_image",
+                "source": {
+                    "type": "emoji_deco:fetch_url",
+                    "disk_cache": True,
+                    "url": {
+                        "type": "emoji_deco:join",
+                        "parts": [
+                            f"{TWEMOJI_CDN_BASE}/",
+                            {"type": "emoji_deco:arg", "index": 0},
+                            ".png"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    with open(OUTPUT_DIR / "twemoji.json", "w", encoding="utf-8") as f:
+        json.dump(twemoji_template, f, ensure_ascii=False, separators=(",", ":"))
+    print("Written: twemoji.json")
 
     print(f"Processing {len(emoji_data)} entries ...")
     generated = skipped = 0
