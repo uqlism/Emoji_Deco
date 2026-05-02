@@ -37,8 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class UrlSourceResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int MAX_BYTES  = 2 * 1024 * 1024;
-    private static final int TIMEOUT_MS = 5_000;
+    private static final int MAX_BYTES         = 2 * 1024 * 1024;
+    private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int READ_TIMEOUT_MS    = 30_000;
     private static final AtomicInteger counter = new AtomicInteger(0);
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
@@ -217,8 +218,8 @@ public class UrlSourceResolver {
 
     private static DownloadResult download(String urlStr) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-        conn.setConnectTimeout(TIMEOUT_MS);
-        conn.setReadTimeout(TIMEOUT_MS);
+        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        conn.setReadTimeout(READ_TIMEOUT_MS);
         conn.setRequestProperty("User-Agent", "EmojiDeco/1.0");
         conn.connect();
         int code = conn.getResponseCode();
