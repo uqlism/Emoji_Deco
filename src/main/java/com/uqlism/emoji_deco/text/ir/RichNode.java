@@ -8,6 +8,7 @@ import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -32,7 +33,8 @@ import java.util.Objects;
  *   Scaled / Rotated               — other spatial transform wrappers (sign/graffiti only)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
-                                         RichNode.Image, RichNode.Hover,
+                                         RichNode.Image, RichNode.Hover, RichNode.HoverMC,
+                                         RichNode.Click, RichNode.Insertion,
                                          RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
     record Text(String literal, Style style, List<RichNode> children)     implements RichNode {}
@@ -56,8 +58,14 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return Objects.hash(imageSpec, Arrays.hashCode(crop), displayW, displayH, advanceOverride);
         }
     }
-    /** ホバーテキスト wrapper。toSequence では children のみ描画（hover は Component 専用）。 */
+    /** hover/text wrapper。ホバー内容を HoverRichContents 経由で RichNode として保持。 */
     record Hover(RichNode hoverText, List<RichNode> children)              implements RichNode {}
+    /** hover/item・hover/entity wrapper。MC の HoverEvent を直接保持。 */
+    record HoverMC(HoverEvent hoverEvent, List<RichNode> children)         implements RichNode {}
+    /** click/* wrapper。MC の ClickEvent を保持。 */
+    record Click(ClickEvent clickEvent, List<RichNode> children)           implements RichNode {}
+    /** insertion wrapper。Shift+クリックでチャット欄に挿入されるテキストを保持。 */
+    record Insertion(String insertion, List<RichNode> children)            implements RichNode {}
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
     record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
     record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
@@ -86,6 +94,21 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             for (RichNode child : h.children()) c.append(child.toComponent());
             return c.withStyle(s -> s.withHoverEvent(
                     new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComp)));
+        }
+        if (this instanceof HoverMC hm) {
+            MutableComponent c = Component.empty();
+            for (RichNode child : hm.children()) c.append(child.toComponent());
+            return c.withStyle(s -> s.withHoverEvent(hm.hoverEvent()));
+        }
+        if (this instanceof Click cl) {
+            MutableComponent c = Component.empty();
+            for (RichNode child : cl.children()) c.append(child.toComponent());
+            return c.withStyle(s -> s.withClickEvent(cl.clickEvent()));
+        }
+        if (this instanceof Insertion ins) {
+            MutableComponent c = Component.empty();
+            for (RichNode child : ins.children()) c.append(child.toComponent());
+            return c.withStyle(s -> s.withInsertion(ins.insertion()));
         }
         // transform wrappers: render contents without transform
         if (this instanceof Offset o) {
@@ -142,13 +165,23 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
         } else if (node instanceof Hover h) {
-            // toComponent() と同様に HoverEvent を Style に乗せて子に継承させる。
-            // これにより FormattedCharSequence 経由でもホバーツールチップが機能する。
             MutableComponent hoverComp = MutableComponent.create(new HoverRichContents(h.hoverText()));
             Style withHover = inherited.withHoverEvent(
                     new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComp));
             for (RichNode child : h.children())
                 collectSegments(font, child, lightMode, withHover, out);
+        } else if (node instanceof HoverMC hm) {
+            Style withHover = inherited.withHoverEvent(hm.hoverEvent());
+            for (RichNode child : hm.children())
+                collectSegments(font, child, lightMode, withHover, out);
+        } else if (node instanceof Click cl) {
+            Style withClick = inherited.withClickEvent(cl.clickEvent());
+            for (RichNode child : cl.children())
+                collectSegments(font, child, lightMode, withClick, out);
+        } else if (node instanceof Insertion ins) {
+            Style withIns = inherited.withInsertion(ins.insertion());
+            for (RichNode child : ins.children())
+                collectSegments(font, child, lightMode, withIns, out);
         } else if (node instanceof Offset o) {
             wrapAffine(font, o.children(), lightMode, inherited, out,
                     new Matrix4f().translate(o.x(), o.y(), o.z()), true);

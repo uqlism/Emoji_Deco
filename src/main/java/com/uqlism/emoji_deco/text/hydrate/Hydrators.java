@@ -12,9 +12,19 @@ import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+
+import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -179,6 +189,56 @@ public final class Hydrators {
             CONTENTS,
             RichNode.Hover::new));
 
+    private static final Hydrator<RichNode> HOVER_ITEM_NODE = cached(Hydrator.zip(
+            Hydrator.field("id",    STRING.withDefault("minecraft:air")),
+            Hydrator.field("count", FLOAT.withDefault(1f)).map(f -> Math.round(f)),
+            Hydrator.field("nbt",   STRING.withDefault(null)),
+            CONTENTS,
+            (id, count, nbt, children) -> {
+                var rl = ResourceLocation.tryParse(id);
+                Item item = rl != null ? BuiltInRegistries.ITEM.get(rl) : Items.AIR;
+                ItemStack stack = new ItemStack(item, count);
+                if (nbt != null && !nbt.isEmpty()) {
+                    try { stack.setTag(TagParser.parseTag(nbt)); } catch (Exception ignored) {}
+                }
+                return new RichNode.HoverMC(
+                    new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(stack)),
+                    children);
+            }));
+
+    private static final Hydrator<RichNode> HOVER_ENTITY_NODE = cached(Hydrator.zip(
+            Hydrator.field("entity_type", STRING.withDefault("minecraft:pig")),
+            Hydrator.field("name",        Hydrator.lazy(() -> Hydrators.NODE).withDefault(null)),
+            Hydrator.field("id",          STRING.withDefault(null)),
+            CONTENTS,
+            (entityType, nameNode, idStr, children) -> {
+                var rl = ResourceLocation.tryParse(entityType);
+                EntityType<?> type = rl != null
+                    ? BuiltInRegistries.ENTITY_TYPE.getOptional(rl).orElse(EntityType.PIG)
+                    : EntityType.PIG;
+                net.minecraft.network.chat.Component nameComp =
+                    nameNode != null ? nameNode.toComponent() : null;
+                UUID uuid;
+                try { uuid = idStr != null ? UUID.fromString(idStr) : new UUID(0, 0); }
+                catch (Exception e) { uuid = new UUID(0, 0); }
+                return new RichNode.HoverMC(
+                    new HoverEvent(HoverEvent.Action.SHOW_ENTITY,
+                        new HoverEvent.EntityTooltipInfo(type, uuid, nameComp)),
+                    children);
+            }));
+
+    private static Hydrator<RichNode> clickNode(ClickEvent.Action action, String valueField) {
+        return cached(Hydrator.zip(
+            Hydrator.field(valueField, STRING.withDefault("")),
+            CONTENTS,
+            (value, children) -> new RichNode.Click(new ClickEvent(action, value), children)));
+    }
+
+    private static final Hydrator<RichNode> INSERTION_NODE = cached(Hydrator.zip(
+            Hydrator.field("text", STRING.withDefault("")),
+            CONTENTS,
+            (text, children) -> new RichNode.Insertion(text, children)));
+
     // ── Image hydrators — before NODE so NODE_DISPATCH can reference IMAGE_GLYPH_NODE directly ──
 
     private static final Hydrator<BinarySource> BINARY_SOURCE = Hydrator.dispatch(Map.of(
@@ -242,6 +302,14 @@ public final class Hydrators {
                         Map.entry("emoji_deco:apply_decorator",Hydrators::applyDecoratorNode),
                         Map.entry("emoji_deco:time",           TIME_VAL.map(f -> new RichNode.Text(String.valueOf(f), Style.EMPTY, List.of()))),
                         Map.entry("emoji_deco:hover/text",     HOVER_NODE),
+                        Map.entry("emoji_deco:hover/item",     HOVER_ITEM_NODE),
+                        Map.entry("emoji_deco:hover/entity",   HOVER_ENTITY_NODE),
+                        Map.entry("emoji_deco:click/open_url",          clickNode(ClickEvent.Action.OPEN_URL,          "url")),
+                        Map.entry("emoji_deco:click/run_command",       clickNode(ClickEvent.Action.RUN_COMMAND,       "command")),
+                        Map.entry("emoji_deco:click/suggest_command",   clickNode(ClickEvent.Action.SUGGEST_COMMAND,   "command")),
+                        Map.entry("emoji_deco:click/change_page",       clickNode(ClickEvent.Action.CHANGE_PAGE,       "page")),
+                        Map.entry("emoji_deco:click/copy_to_clipboard", clickNode(ClickEvent.Action.COPY_TO_CLIPBOARD, "text")),
+                        Map.entry("emoji_deco:insertion",      INSERTION_NODE),
                         Map.entry("emoji_deco:style",          (Hydrator<RichNode>) Hydrators::styleNode)
                 ),
                 Hydrators::standardTextNode)
