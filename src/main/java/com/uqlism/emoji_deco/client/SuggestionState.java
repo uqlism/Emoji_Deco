@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import com.uqlism.emoji_deco.text.registry.SuggestionEngine;
@@ -51,8 +52,8 @@ public class SuggestionState {
         lastCursor = Math.min(cursor, text.length());
         String active = text.substring(0, lastCursor);
 
-        int colonPos = findActiveColonPos(active);
-        int hashPos  = findActiveHashPos(active);
+        int colonPos = RichTextParser.findActiveColonPos(active);
+        int hashPos  = RichTextParser.findActiveHashPos(active);
 
         if (colonPos < 0 && hashPos < 0) { clear(); return; }
 
@@ -94,44 +95,6 @@ public class SuggestionState {
             }
         }
         selectedIndex = 0;
-    }
-
-    private static int findActiveColonPos(String text) {
-        int pos = text.lastIndexOf(':');
-        if (pos < 0) return -1;
-        if (pos > 0 && text.charAt(pos - 1) == '\\') return -1; // escaped
-        // If there is a previous ':' and the text between them contains no spaces,
-        // pos is a closing colon (completing a :name: pair) — do not suggest.
-        int prev = text.lastIndexOf(':', pos - 1);
-        if (prev >= 0) {
-            String between = text.substring(prev + 1, pos);
-            if (!between.isEmpty() && !between.contains(" ")) return -1;
-        }
-        return pos;
-    }
-
-    /**
-     * Returns the position of the last '#' trigger whose suffix matches:
-     *   validName ( '.' argChars )?
-     * where argChars are any characters except '[' and ']'.
-     */
-    private static int findActiveHashPos(String text) {
-        int pos = text.lastIndexOf('#');
-        if (pos < 0) return -1;
-        if (pos > 0 && text.charAt(pos - 1) == '\\') return -1; // escaped
-        String after = text.substring(pos + 1);
-        if (after.isEmpty()) return pos;
-        if (after.charAt(0) == ' ' || after.charAt(0) == '#') return -1;
-        boolean inArgPart = false;
-        for (char c : after.toCharArray()) {
-            if (!inArgPart) {
-                if (c == '.') { inArgPart = true; }
-                else if (!Character.isLetterOrDigit(c) && c != '_' && c != '-') return -1;
-            } else {
-                if (c == '[' || c == ']') return -1;
-            }
-        }
-        return pos;
     }
 
     // ── suggestion builders ───────────────────────────────────────────────────

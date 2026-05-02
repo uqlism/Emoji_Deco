@@ -208,6 +208,83 @@ public class RichTextParser {
         return o;
     }
 
+    // ── Suggestion trigger detection ─────────────────────────────────────────
+
+    /**
+     * Returns the position of the last unmatched ':' trigger in {@code active},
+     * using the same shortcode-validity rules as the parser (isValidShortcodeName +
+     * ShortcodeManager.has). Returns -1 when no active shortcode trigger is found.
+     */
+    public static int findActiveColonPos(String active) {
+        int lastTriggerPos = -1;
+        int pos = 0;
+        while (pos < active.length()) {
+            char c = active.charAt(pos);
+            if (c == '\\' && pos + 1 < active.length() && isEscapable(active.charAt(pos + 1))) {
+                pos += 2; continue;
+            }
+            if (c == ':') {
+                int close = active.indexOf(':', pos + 1);
+                if (close > pos + 1) {
+                    String inner = active.substring(pos + 1, close);
+                    int dot = inner.indexOf('.');
+                    String code = dot > 0 ? inner.substring(0, dot) : inner;
+                    if (isValidShortcodeName(code) && ShortcodeManager.has(code)) {
+                        pos = close + 1; continue; // complete shortcode — consume
+                    }
+                }
+                lastTriggerPos = pos; // unmatched ':' — potential trigger
+            }
+            pos++;
+        }
+        return lastTriggerPos;
+    }
+
+    /**
+     * Returns the position of the last unmatched '#' decorator trigger in {@code active},
+     * using the same decorator-validity rules as the parser (DecoratorManager.has +
+     * findMatchingBracket). A '#' followed by a complete name[content] pair is skipped;
+     * a '#' that is inside an open bracket pair (user typing content) is not a trigger.
+     * Returns -1 when no active decorator trigger is found.
+     */
+    public static int findActiveHashPos(String active) {
+        int lastTriggerPos = -1;
+        int pos = 0;
+        while (pos < active.length()) {
+            char c = active.charAt(pos);
+            if (c == '\\' && pos + 1 < active.length() && isEscapable(active.charAt(pos + 1))) {
+                pos += 2; continue;
+            }
+            if (c == '#') {
+                int nameEnd = pos + 1;
+                while (nameEnd < active.length()
+                        && DecoratorManager.isValidTagName(String.valueOf(active.charAt(nameEnd))))
+                    nameEnd++;
+                if (nameEnd > pos + 1) {
+                    String tagName = active.substring(pos + 1, nameEnd);
+                    int contentStart = nameEnd;
+                    if (contentStart < active.length() && active.charAt(contentStart) == '.') {
+                        int bp = active.indexOf('[', contentStart + 1);
+                        contentStart = bp > contentStart ? bp : active.length();
+                    }
+                    if (contentStart < active.length() && active.charAt(contentStart) == '['
+                            && DecoratorManager.has(tagName)) {
+                        int bc = findMatchingBracket(active, contentStart);
+                        if (bc != -1) {
+                            pos = bc + 1; continue; // complete decorator — consume
+                        }
+                        // open bracket with no matching ']' — user is typing content, not a name
+                    } else {
+                        // name without '[' yet — valid trigger
+                        lastTriggerPos = pos;
+                    }
+                }
+            }
+            pos++;
+        }
+        return lastTriggerPos;
+    }
+
     // ── Utilities ─────────────────────────────────────────────────────────────
 
     private static void flush(List<RichNode> out, String text, int start, int end, Style style) {
