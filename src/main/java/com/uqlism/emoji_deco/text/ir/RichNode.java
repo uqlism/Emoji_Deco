@@ -33,7 +33,7 @@ import java.util.Objects;
  *   Scaled / Rotated               — other spatial transform wrappers (sign/graffiti only)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
-                                         RichNode.Image, RichNode.Hover, RichNode.HoverMC,
+                                         RichNode.Image, RichNode.HoverMC,
                                          RichNode.Click, RichNode.Insertion,
                                          RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
@@ -58,9 +58,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return Objects.hash(imageSpec, Arrays.hashCode(crop), displayW, displayH, advanceOverride);
         }
     }
-    /** hover/text wrapper。ホバー内容を HoverRichContents 経由で RichNode として保持。 */
-    record Hover(RichNode hoverText, List<RichNode> children)              implements RichNode {}
-    /** hover/item・hover/entity wrapper。MC の HoverEvent を直接保持。 */
+    /** hover/* wrapper。MC の HoverEvent を保持（hover/text は HoverRichContents 経由で SHOW_TEXT）。 */
     record HoverMC(HoverEvent hoverEvent, List<RichNode> children)         implements RichNode {}
     /** click/* wrapper。MC の ClickEvent を保持。 */
     record Click(ClickEvent clickEvent, List<RichNode> children)           implements RichNode {}
@@ -88,13 +86,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return c;
         }
         if (this instanceof Image img) return imageComponent(img).copy();
-        if (this instanceof Hover h) {
-            MutableComponent hoverComp = MutableComponent.create(new HoverRichContents(h.hoverText()));
-            MutableComponent c = Component.empty();
-            for (RichNode child : h.children()) c.append(child.toComponent());
-            return c.withStyle(s -> s.withHoverEvent(
-                    new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComp)));
-        }
         if (this instanceof HoverMC hm) {
             MutableComponent c = Component.empty();
             for (RichNode child : hm.children()) c.append(child.toComponent());
@@ -164,12 +155,6 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                 collectSegments(font, child, g.lightMode(), inherited, out);
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
-        } else if (node instanceof Hover h) {
-            MutableComponent hoverComp = MutableComponent.create(new HoverRichContents(h.hoverText()));
-            Style withHover = inherited.withHoverEvent(
-                    new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComp));
-            for (RichNode child : h.children())
-                collectSegments(font, child, lightMode, withHover, out);
         } else if (node instanceof HoverMC hm) {
             Style withHover = inherited.withHoverEvent(hm.hoverEvent());
             for (RichNode child : hm.children())

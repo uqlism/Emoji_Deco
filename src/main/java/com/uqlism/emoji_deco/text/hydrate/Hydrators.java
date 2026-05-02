@@ -187,7 +187,11 @@ public final class Hydrators {
     private static final Hydrator<RichNode> HOVER_NODE = cached(Hydrator.zip(
             Hydrator.field("hover_contents", Hydrator.lazy(() -> Hydrators.NODE)).withDefault(RichNode.empty()),
             CONTENTS,
-            RichNode.Hover::new));
+            (hoverText, children) -> new RichNode.HoverMC(
+                new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                    net.minecraft.network.chat.MutableComponent.create(
+                        new com.uqlism.emoji_deco.text.ir.HoverRichContents(hoverText))),
+                children)));
 
     private static final Hydrator<RichNode> HOVER_ITEM_NODE = cached(Hydrator.zip(
             Hydrator.field("id",    STRING.withDefault("minecraft:air")),
