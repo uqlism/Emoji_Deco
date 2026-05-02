@@ -42,12 +42,13 @@ public class UrlSourceResolver {
     private static final AtomicInteger counter = new AtomicInteger(0);
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
-    private static final java.util.concurrent.Executor FETCH_EXECUTOR = task ->
-            java.util.concurrent.ForkJoinPool.commonPool().execute(() -> {
-                Thread t = Thread.currentThread();
-                ClassLoader prev = t.getContextClassLoader();
+    /** 専用スレッドプール。ForkJoinPool.commonPool() と分離し MC の内部タスクと競合しない。 */
+    private static final java.util.concurrent.Executor FETCH_EXECUTOR =
+            java.util.concurrent.Executors.newFixedThreadPool(4, r -> {
+                Thread t = new Thread(r, "EmojiDeco-Fetch-" + counter.getAndIncrement());
+                t.setDaemon(true);
                 t.setContextClassLoader(MOD_CLASSLOADER);
-                try { task.run(); } finally { t.setContextClassLoader(prev); }
+                return t;
             });
 
     /** 失敗後にこの時間が経過すると再取得を試みる */
@@ -97,6 +98,7 @@ public class UrlSourceResolver {
 
     private static CompletableFuture<ResolvedSource> fetch(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
+        // Stage 1: ダウンロード + デコード（FETCH_EXECUTOR スレッド）
         return CompletableFuture.supplyAsync(() -> {
             try {
                 byte[] bytes;
@@ -120,7 +122,6 @@ public class UrlSourceResolver {
 
                 String hint = format != null ? format : contentTypeHint;
                 Format fmt = ImageFormatDetector.detect(bytes, hint);
-
                 ImageDecoder decoder = switch (fmt) {
                     case GIF  -> new GifDecoder();
                     case WEBP -> new WebpDecoder();
@@ -129,35 +130,36 @@ public class UrlSourceResolver {
                 };
                 List<ImageDecoder.Frame> frames = decoder.decode(bytes);
                 if (frames.isEmpty()) throw new IOException("No frames decoded from " + url);
-
-                int w = frames.get(0).pixels().getWidth();
-                int h = frames.get(0).pixels().getHeight();
-
-                CompletableFuture<ResolvedSource> upload = new CompletableFuture<>();
-                Minecraft.getInstance().execute(() -> {
-                    ResourceLocation rl = ResourceLocation.parse(
-                            "emoji_deco:fetch_url_" + counter.getAndIncrement());
-                    if (frames.size() == 1) {
-                        NativeImage pixels = frames.get(0).pixels();
-                        DynamicTexture tex = new DynamicTexture(pixels);
-                        TextureUtil.prepareImage(
-                                tex.getId(), pixels.getWidth(), pixels.getHeight());
-                        tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
-                        Minecraft.getInstance().getTextureManager().register(rl, tex);
-                        upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
-                    } else {
-                        AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
-                        Minecraft.getInstance().getTextureManager().register(rl, animator);
-                        upload.complete(new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator));
-                    }
-                });
-                return upload.join();
+                return frames;
 
             } catch (Exception e) {
                 LOGGER.error("[EmojiDeco] URL fetch failed for {}: {}", url, e.getMessage());
                 throw new RuntimeException(e);
             }
-        }, FETCH_EXECUTOR);
+        }, FETCH_EXECUTOR)
+        // Stage 2: GPU アップロード（render thread に委譲して即リターン、join() しない）
+        .thenCompose(frames -> {
+            CompletableFuture<ResolvedSource> upload = new CompletableFuture<>();
+            int w = frames.get(0).pixels().getWidth();
+            int h = frames.get(0).pixels().getHeight();
+            Minecraft.getInstance().execute(() -> {
+                ResourceLocation rl = ResourceLocation.parse(
+                        "emoji_deco:fetch_url_" + counter.getAndIncrement());
+                if (frames.size() == 1) {
+                    NativeImage pixels = frames.get(0).pixels();
+                    DynamicTexture tex = new DynamicTexture(pixels);
+                    TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
+                    tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
+                    Minecraft.getInstance().getTextureManager().register(rl, tex);
+                    upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
+                } else {
+                    AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
+                    Minecraft.getInstance().getTextureManager().register(rl, animator);
+                    upload.complete(new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator));
+                }
+            });
+            return upload;
+        });
     }
 
     // ── disk cache ────────────────────────────────────────────────────────────
