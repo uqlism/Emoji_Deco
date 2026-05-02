@@ -43,20 +43,21 @@ public class UrlSourceResolver {
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
     /**
-     * IO バウンドなダウンロードに特化したキャッシュスレッドプール。
-     * スレッドは必要に応じて生成され、60秒アイドルで回収される。
-     * Java 17 では仮想スレッドが使えないが cachedThreadPool で高 IO 並列を実現する。
+     * IO バウンドなダウンロード専用プール（最大 16 スレッド、60 秒アイドルで回収）。
+     * SynchronousQueue により空きスレッドがあれば即実行、なければ新スレッドを生成し
+     * 上限（16）に達したらキューで待機する。cachedThreadPool のような際限ない生成を防ぐ。
+     * Java 17 では仮想スレッドが使えないが IO 待ちスレッドは CPU をほぼ消費しない。
      */
     private static final java.util.concurrent.Executor FETCH_EXECUTOR =
-            java.util.concurrent.Executors.newCachedThreadPool(r -> {
-                Thread t = new Thread(r, "EmojiDeco-Fetch-" + counter.getAndIncrement());
-                t.setDaemon(true);
-                t.setContextClassLoader(MOD_CLASSLOADER);
-                return t;
-            });
-    /** CDN のレート制限・過負荷対策: 同時 HTTP 接続数の上限 */
-    private static final java.util.concurrent.Semaphore HTTP_PERMITS =
-            new java.util.concurrent.Semaphore(16);
+            new java.util.concurrent.ThreadPoolExecutor(
+                    0, 16, 60L, java.util.concurrent.TimeUnit.SECONDS,
+                    new java.util.concurrent.LinkedBlockingQueue<>(),
+                    r -> {
+                        Thread t = new Thread(r, "EmojiDeco-Fetch-" + counter.getAndIncrement());
+                        t.setDaemon(true);
+                        t.setContextClassLoader(MOD_CLASSLOADER);
+                        return t;
+                    });
 
     /** 失敗後にこの時間が経過すると再取得を試みる */
     private static final long RETRY_DELAY_MS = 30_000;
@@ -116,21 +117,15 @@ public class UrlSourceResolver {
                     if (Files.exists(cacheFile) && !isDiskExpired(cacheFile, ttlSeconds)) {
                         bytes = Files.readAllBytes(cacheFile);
                     } else {
-                        HTTP_PERMITS.acquire();
-                        try {
-                            DownloadResult dl = download(url);
-                            bytes = dl.bytes();
-                            contentTypeHint = dl.contentType();
-                        } finally { HTTP_PERMITS.release(); }
-                        writeDiskCache(cacheFile, bytes);
-                    }
-                } else {
-                    HTTP_PERMITS.acquire();
-                    try {
                         DownloadResult dl = download(url);
                         bytes = dl.bytes();
                         contentTypeHint = dl.contentType();
-                    } finally { HTTP_PERMITS.release(); }
+                        writeDiskCache(cacheFile, bytes);
+                    }
+                } else {
+                    DownloadResult dl = download(url);
+                    bytes = dl.bytes();
+                    contentTypeHint = dl.contentType();
                 }
 
                 String hint = format != null ? format : contentTypeHint;
