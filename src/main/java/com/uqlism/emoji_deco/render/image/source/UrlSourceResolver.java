@@ -38,8 +38,8 @@ public class UrlSourceResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_BYTES         = 2 * 1024 * 1024;
-    private static final int CONNECT_TIMEOUT_MS = 10_000;
-    private static final int READ_TIMEOUT_MS    = 30_000;
+    private static final int CONNECT_TIMEOUT_MS =  5_000;  // 接続確立は早く諦める
+    private static final int READ_TIMEOUT_MS    = 30_000;  // データ受信は遅いサーバーに合わせて長め
     private static final AtomicInteger counter = new AtomicInteger(0);
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
