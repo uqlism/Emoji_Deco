@@ -75,7 +75,7 @@ public abstract class MixinGuiGraphics {
     private static List<RichNode> childrenOf(RichNode node) {
         if (node instanceof RichNode.Text t)    return t.children();
         if (node instanceof RichNode.Glowing g) return g.children();
-        if (node instanceof RichNode.HoverMC hm) return hm.children();
+        if (node instanceof RichNode.Hover hm) return hm.children();
         if (node instanceof RichNode.Rotated r) return r.children();
         return List.of();
     }

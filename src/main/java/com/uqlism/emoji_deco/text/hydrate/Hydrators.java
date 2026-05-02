@@ -187,7 +187,7 @@ public final class Hydrators {
     private static final Hydrator<RichNode> HOVER_NODE = cached(Hydrator.zip(
             Hydrator.field("hover_contents", Hydrator.lazy(() -> Hydrators.NODE)).withDefault(RichNode.empty()),
             CONTENTS,
-            (hoverText, children) -> new RichNode.HoverMC(
+            (hoverText, children) -> new RichNode.Hover(
                 new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                     net.minecraft.network.chat.MutableComponent.create(
                         new com.uqlism.emoji_deco.text.ir.HoverRichContents(hoverText))),
@@ -205,7 +205,7 @@ public final class Hydrators {
                 if (nbt != null && !nbt.isEmpty()) {
                     try { stack.setTag(TagParser.parseTag(nbt)); } catch (Exception ignored) {}
                 }
-                return new RichNode.HoverMC(
+                return new RichNode.Hover(
                     new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(stack)),
                     children);
             }));
@@ -225,7 +225,7 @@ public final class Hydrators {
                 UUID uuid;
                 try { uuid = idStr != null ? UUID.fromString(idStr) : new UUID(0, 0); }
                 catch (Exception e) { uuid = new UUID(0, 0); }
-                return new RichNode.HoverMC(
+                return new RichNode.Hover(
                     new HoverEvent(HoverEvent.Action.SHOW_ENTITY,
                         new HoverEvent.EntityTooltipInfo(type, uuid, nameComp)),
                     children);

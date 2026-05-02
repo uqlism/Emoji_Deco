@@ -33,7 +33,7 @@ import java.util.Objects;
  *   Scaled / Rotated               — other spatial transform wrappers (sign/graffiti only)
  */
 public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
-                                         RichNode.Image, RichNode.HoverMC,
+                                         RichNode.Image, RichNode.Hover,
                                          RichNode.Click, RichNode.Insertion,
                                          RichNode.Offset, RichNode.Scaled, RichNode.Rotated {
 
@@ -59,7 +59,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
     }
     /** hover/* wrapper。MC の HoverEvent を保持（hover/text は HoverRichContents 経由で SHOW_TEXT）。 */
-    record HoverMC(HoverEvent hoverEvent, List<RichNode> children)         implements RichNode {}
+    record Hover(HoverEvent hoverEvent, List<RichNode> children)         implements RichNode {}
     /** click/* wrapper。MC の ClickEvent を保持。 */
     record Click(ClickEvent clickEvent, List<RichNode> children)           implements RichNode {}
     /** insertion wrapper。Shift+クリックでチャット欄に挿入されるテキストを保持。 */
@@ -86,7 +86,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
             return c;
         }
         if (this instanceof Image img) return imageComponent(img).copy();
-        if (this instanceof HoverMC hm) {
+        if (this instanceof Hover hm) {
             MutableComponent c = Component.empty();
             for (RichNode child : hm.children()) c.append(child.toComponent());
             return c.withStyle(s -> s.withHoverEvent(hm.hoverEvent()));
@@ -155,7 +155,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                 collectSegments(font, child, g.lightMode(), inherited, out);
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
-        } else if (node instanceof HoverMC hm) {
+        } else if (node instanceof Hover hm) {
             Style withHover = inherited.withHoverEvent(hm.hoverEvent());
             for (RichNode child : hm.children())
                 collectSegments(font, child, lightMode, withHover, out);
