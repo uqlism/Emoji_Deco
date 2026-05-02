@@ -150,6 +150,141 @@ com.uqlism.emoji_deco/
 | `emoji_deco.mixins.json` | Mixin class list (update when adding mixins) |
 | `gradle.properties` | Mod/MC/Forge versions |
 
+## Mixin Call Paths
+
+各描画コンテキストがどの MC メソッドを経由し、どの Mixin で変換されるかの一覧。
+新しい描画場所に対応する際や、バグの原因を追う際の起点として使う。
+
+### GUI テキスト全般（ホットバーアイテム名・タイトル・サブタイトル・アクションバー・ツールチップ等）
+
+```
+GuiGraphics.drawString(Font, Component, ...)
+GuiGraphics.drawCenteredString(Font, Component, ...)
+Font.width(Component)          ← センタリング計算もここを通る
+    └─ component.getVisualOrderText()
+        └─ Language.getVisualOrder(FormattedText)   [SRG: m_5536_]
+            └─ ★ MixinLanguage (@Inject HEAD, cancellable)
+                └─ ComponentSequenceConverter.toSequence(font, component)
+                    → 以降は FormattedCharSequence として描画
+```
+
+**補足**: `GuiGraphics.drawString(Component)` は Language を経由するため、
+`Font.drawInBatch(Component, ...)` は呼ばれない。MixinFont のキャッチオールは効かない。
+
+---
+
+### チャットメッセージ
+
+```
+ChatComponent.addMessage() / rescaleChat()
+    └─ ComponentRenderUtils.wrapComponents(FormattedText, width, Font)   [SRG: m_94005_]
+        └─ ★ MixinChatComponent (@Redirect, method=m_240465_ / m_93795_)
+            └─ ComponentSequenceConverter.toSequence(font, component)
+                → DynamicFormattedCharSequence (動的コンテンツの場合、毎フレーム再評価)
+```
+
+**補足**: チャットは Language.getVisualOrder ではなく ComponentRenderUtils を使う独自経路。
+
+---
+
+### エンティティ名前タグ（3D 空間）
+
+```
+EntityRenderer.renderNameTag()   [SRG: m_7392_]
+    └─ Font.drawInBatch(Component, x, y, ...)   [SRG: m_272077_]  ← GuiGraphics を使わず直呼び
+        └─ ★ MixinFont.runicink$transformDrawBatchComponent (@Inject HEAD, cancellable)
+            └─ ComponentSequenceConverter.computeNow(font, component)
+                → Font.drawInBatch(FormattedCharSequence, ...)
+```
+
+**補足**: 3D レンダラーは GuiGraphics を使わないため Language 経路でなく直接 `m_272077_`。
+エンティティ名前タグだけが `Font.drawInBatch(Component)` キャッチオールの実質的な対象。
+
+---
+
+### 看板（Sign）
+
+```
+SignRenderer → SignText.getRenderMessages(filtered)   [SRG: m_277130_]
+    └─ ★ MixinSignText (@Inject HEAD, cancellable)
+        └─ ComponentSequenceConverter.toSequence(font, line) × 4行
+            → FormattedCharSequence[] として返却、以降は FCS 描画経路
+```
+
+Config: `Config.enableSigns`
+
+---
+
+### 本（Written Book）
+
+```
+BookViewScreen.WrittenBookAccess.getPage(index)   [SRG: m_7303_]
+    └─ ★ MixinWrittenBookAccess (@Inject RETURN, cancellable)
+        └─ ComponentTransformer.transform(component)
+            → Component ツリーを変換して返す（font.split() 経路なので scale/glow 非対応）
+```
+
+Config: `Config.enableBooks` / 制限: `Sized`・`Glowing` は本では無効。
+
+---
+
+### ホバーツールチップ（emoji_deco:hover/text）
+
+```
+マウスホバー時
+    └─ GuiGraphics.renderComponentHoverEffect(Font, Style, x, y)   [SRG: m_280304_]
+        └─ ★ MixinGuiGraphics (@Inject HEAD, cancellable)
+            └─ Style の HoverEvent から HoverRichContents を取得
+                └─ RichNode.toSequence(font, node)
+                    → GuiGraphics.renderTooltip(font, lines, x, y)
+```
+
+---
+
+### 落書きブロック（Graffiti）
+
+```
+GraffitiRenderer.render()
+    └─ RichNode.toSequence(font, node) を直接呼び出し（Mixin 不要）
+        → ScaledSequence / LightSequence などを MixinFont で処理
+```
+
+---
+
+### FormattedCharSequence レンダリング共通（MixinFont）
+
+上記いずれの経路でも、最終的に `Font.drawInBatch(FormattedCharSequence, ...)` [SRG: `m_272191_`] が
+呼ばれる。MixinFont はここで各カスタム FCS 型をハンドリングする:
+
+| FCS 型 | 処理内容 |
+|---|---|
+| `DynamicFormattedCharSequence` | 毎フレーム `computeNow()` で再評価（アニメ対応） |
+| `LightSequence` | `packedLight` を上書き（GLOW / AMBIENT / BYPASS） |
+| `AffineSequence` | Matrix4f 変換を適用（scale・rotation・flip 等） |
+| `ConcatSequence` | 各 part を順番に描画し X を進める |
+
+`drawInBatch8xOutline` [SRG: `m_168645_`]（エンティティ名アウトライン）も同様にハンドリング。
+
+---
+
+### SRG 名 早見表（MC 1.20.1）
+
+| SRG 名 | クラス | Mojang 名 |
+|---|---|---|
+| `m_5536_` | `Language` | `getVisualOrder(FormattedText)` |
+| `m_272077_` | `Font` | `drawInBatch(Component, ...)` |
+| `m_272191_` | `Font` | `drawInBatch(FormattedCharSequence, ...)` |
+| `m_168645_` | `Font` | `drawInBatch8xOutline(...)` |
+| `m_92724_` | `Font` | `width(FormattedCharSequence)` |
+| `m_94005_` | `ComponentRenderUtils` | `wrapComponents(FormattedText, int, Font)` |
+| `m_277130_` | `SignText` | `getRenderMessages(boolean, Function)` |
+| `m_7303_` | `BookViewScreen.WrittenBookAccess` | `getPage(int)` |
+| `m_280304_` | `GuiGraphics` | `renderComponentHoverEffect(Font, Style, int, int)` |
+| `m_7392_` | `EntityRenderer` | `renderNameTag(Entity, Component, PoseStack, ...)` |
+| `m_41786_` | `ItemStack` | `getHoverName()` |
+| `m_240465_` | `ChatComponent` | `addMessage(...)` |
+| `m_93795_` | `ChatComponent` | `rescaleChat()` |
+
 ## Adding a New Shortcode
 
 Create `src/main/resources/assets/emoji_deco/shortcodes/<name>.json`. `ShortcodeManager` discovers all JSON files automatically. For parameterized shortcodes include `emoji_deco:arg` in the display; these are stored in `PARAM_REGISTRY` and re-parsed on each call.
