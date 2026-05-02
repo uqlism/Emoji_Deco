@@ -42,7 +42,10 @@ public abstract class MixinGuiGraphics {
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
         FormattedCharSequence fcs = ComponentSequenceConverter.toSequence(font, text);
-        cir.setReturnValue(((GuiGraphics)(Object)this).drawString(font, fcs, x, y, color, dropShadow));
+        // 呼び出し元がプレーンテキスト幅でセンタリングした x を渡している場合に備え、
+        // (plainWidth - fcsWidth) / 2 だけ右にずらして中心を合わせる。
+        int adj = (font.width(text) - font.width(fcs)) / 2;
+        cir.setReturnValue(((GuiGraphics)(Object)this).drawString(font, fcs, x + adj, y, color, dropShadow));
     }
 
     // m_280653_ = drawCenteredString(Font, Component, int, int, int) -> void
