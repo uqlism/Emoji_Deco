@@ -50,9 +50,23 @@ public class UrlSourceResolver {
                 try { task.run(); } finally { t.setContextClassLoader(prev); }
             });
 
-    private record CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
-        boolean isExpired() {
-            return expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt;
+    /** 失敗後にこの時間が経過すると再取得を試みる */
+    private static final long RETRY_DELAY_MS = 30_000;
+
+    private static final class CacheEntry {
+        final CompletableFuture<ResolvedSource> future;
+        final long expiresAt;
+        volatile long retryAfter = Long.MAX_VALUE;
+
+        CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
+            this.future   = future;
+            this.expiresAt = expiresAt;
+        }
+
+        boolean isStale() {
+            if (expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt) return true;
+            return future.isCompletedExceptionally()
+                    && System.currentTimeMillis() >= retryAfter;
         }
     }
 
@@ -70,9 +84,14 @@ public class UrlSourceResolver {
                 : Long.MAX_VALUE;
 
         return CACHE.compute(cacheKey, (k, existing) -> {
-            if (existing != null && !existing.isExpired()) return existing;
-            return new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
-        }).future();
+            if (existing != null && !existing.isStale()) return existing;
+            CacheEntry entry = new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
+            // 失敗時に retryAfter を設定して一定時間後の再試行を許可する
+            entry.future.whenComplete((r, t) -> {
+                if (t != null) entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
+            });
+            return entry;
+        }).future;
     }
 
 

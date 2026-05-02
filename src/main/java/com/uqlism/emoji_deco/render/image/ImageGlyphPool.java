@@ -175,7 +175,17 @@ public class ImageGlyphPool {
                 }
             }
         } else if (s.future != null && s.resolved == null && s.future.isDone()) {
-            try { s.resolved = s.future.get(); } catch (Exception ignored) {}
+            if (!s.future.isCompletedExceptionally()) {
+                try { s.resolved = s.future.get(); } catch (Exception ignored) {}
+            } else if (s.imageSpec instanceof ImageSpec.Decoded d
+                    && d.source() instanceof BinarySource.Url u) {
+                // 失敗 Future の場合は UrlSourceResolver に再問い合わせ。
+                // RETRY_DELAY_MS 経過後に新しい Future が発行されていれば切り替え
+                // （未経過なら同じ失敗 Future が返るので切り替えは起きない）。
+                CompletableFuture<ResolvedSource> retry =
+                        UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
+                if (retry != s.future) s.future = retry;
+            }
         }
 
         if (s.resolved == null) {
