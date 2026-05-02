@@ -54,6 +54,7 @@ public class ImageGlyphPool {
         BakedGlyph     glyph;
         BakedGlyph[]   frameGlyphs;
         CompletableFuture<ResolvedSource> future;
+        boolean tofuLogged;
 
         boolean isEmpty() { return key == null; }
 
@@ -66,6 +67,7 @@ public class ImageGlyphPool {
             glyph       = null;
             frameGlyphs = null;
             future      = null;
+            tofuLogged  = false;
         }
     }
 
@@ -189,8 +191,25 @@ public class ImageGlyphPool {
         }
 
         if (s.resolved == null) {
-            // フェッチ中のみローディングアニメーションを表示、失敗時は tofu のまま
-            return (s.future != null && !s.future.isDone()) ? currentLoadingGlyph(s.w, s.h) : null;
+            if (s.future != null && !s.future.isDone()) return currentLoadingGlyph(s.w, s.h);
+            // resolved が null のまま future が完了 → tofu
+            if (!s.tofuLogged) {
+                s.tofuLogged = true;
+                String urlInfo = (s.imageSpec instanceof ImageSpec.Decoded d
+                        && d.source() instanceof BinarySource.Url u) ? u.url() : String.valueOf(s.imageSpec);
+                Throwable cause = null;
+                if (s.future != null) {
+                    try { s.future.get(); } catch (java.util.concurrent.ExecutionException ee) { cause = ee.getCause(); }
+                    catch (Exception ignored) {}
+                }
+                if (cause != null) {
+                    LOGGER.warn("[EmojiDeco] tofu: {} — {}", urlInfo, cause.toString());
+                } else {
+                    LOGGER.warn("[EmojiDeco] tofu: {} — resolved が null（future={}）", urlInfo,
+                            s.future == null ? "null" : "done");
+                }
+            }
+            return null;
         }
 
         if (s.resolved instanceof ResolvedSource.Animated a) {

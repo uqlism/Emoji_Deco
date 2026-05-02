@@ -141,7 +141,7 @@ public class UrlSourceResolver {
                 return frames;
 
             } catch (Exception e) {
-                LOGGER.error("[EmojiDeco] URL fetch failed for {}: {}", url, e.getMessage());
+                LOGGER.error("[EmojiDeco] DL/decode 失敗 [{}]: {}", url, e.toString(), e);
                 throw new RuntimeException(e);
             }
         }, FETCH_EXECUTOR)
@@ -151,19 +151,24 @@ public class UrlSourceResolver {
             int w = frames.get(0).pixels().getWidth();
             int h = frames.get(0).pixels().getHeight();
             Minecraft.getInstance().execute(() -> {
-                ResourceLocation rl = ResourceLocation.parse(
-                        "emoji_deco:fetch_url_" + counter.getAndIncrement());
-                if (frames.size() == 1) {
-                    NativeImage pixels = frames.get(0).pixels();
-                    DynamicTexture tex = new DynamicTexture(pixels);
-                    TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
-                    tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
-                    Minecraft.getInstance().getTextureManager().register(rl, tex);
-                    upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
-                } else {
-                    AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
-                    Minecraft.getInstance().getTextureManager().register(rl, animator);
-                    upload.complete(new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator));
+                try {
+                    ResourceLocation rl = ResourceLocation.parse(
+                            "emoji_deco:fetch_url_" + counter.getAndIncrement());
+                    if (frames.size() == 1) {
+                        NativeImage pixels = frames.get(0).pixels();
+                        DynamicTexture tex = new DynamicTexture(pixels);
+                        TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
+                        tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
+                        Minecraft.getInstance().getTextureManager().register(rl, tex);
+                        upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
+                    } else {
+                        AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
+                        Minecraft.getInstance().getTextureManager().register(rl, animator);
+                        upload.complete(new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator));
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("[EmojiDeco] GPU アップロード失敗 [{}]: {}", url, e.toString(), e);
+                    upload.completeExceptionally(e);
                 }
             });
             return upload;
