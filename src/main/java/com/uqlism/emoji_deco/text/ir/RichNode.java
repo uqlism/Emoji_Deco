@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Typed intermediate representation of parsed rich text.
@@ -212,6 +213,96 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         if (!inner.isEmpty()) {
             FormattedCharSequence seq = inner.size() == 1 ? inner.get(0) : new ConcatSequence(inner);
             out.add(new AffineSequence(seq, matrixFn.apply(seq), useInnerWidth));
+        }
+    }
+
+    // ── toWordSegments ────────────────────────────────────────────────────────
+
+    /**
+     * RichNode ツリーをスペース区切りの「単語」FCS リストに分解する。
+     * scale/glow 等のトランスフォームは各単語に個別に適用されるため、
+     * packIntoLines でそれぞれの表示幅を正確に計測してワードラップできる。
+     */
+    public static List<FormattedCharSequence> toWordSegments(Font font, RichNode root, Style inherited) {
+        List<FormattedCharSequence> words = new ArrayList<>();
+        collectWordSegments(font, root, LightMode.BYPASS, inherited, words);
+        return words;
+    }
+
+    private static void collectWordSegments(Font font, RichNode node, LightMode lightMode,
+                                             Style inherited, List<FormattedCharSequence> out) {
+        if (node instanceof Text t) {
+            Style combined = t.style().applyTo(inherited);
+            splitAtSpaces(font, t.literal(), combined, lightMode, out);
+            for (RichNode child : t.children())
+                collectWordSegments(font, child, lightMode, combined, out);
+        } else if (node instanceof Glowing g) {
+            for (RichNode child : g.children())
+                collectWordSegments(font, child, g.lightMode(), inherited, out);
+        } else if (node instanceof Image img) {
+            addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
+        } else if (node instanceof Hover h) {
+            Style s = inherited.withHoverEvent(h.hoverEvent());
+            for (RichNode child : h.children()) collectWordSegments(font, child, lightMode, s, out);
+        } else if (node instanceof Click cl) {
+            Style s = inherited.withClickEvent(cl.clickEvent());
+            for (RichNode child : cl.children()) collectWordSegments(font, child, lightMode, s, out);
+        } else if (node instanceof Insertion ins) {
+            Style s = inherited.withInsertion(ins.insertion());
+            for (RichNode child : ins.children()) collectWordSegments(font, child, lightMode, s, out);
+        } else if (node instanceof Offset o) {
+            Matrix4f mat = new Matrix4f().translate(o.x(), o.y(), o.z());
+            wrapWordsAffine(font, o.children(), lightMode, inherited, out, seq -> mat, true);
+        } else if (node instanceof Scaled s) {
+            wrapWordsAffine(font, s.children(), lightMode, inherited, out, seq -> {
+                float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
+                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : 0f;
+                return new Matrix4f().translate(ox, oy, 0f).scale(s.scaleX(), s.scaleY(), 1f);
+            }, false);
+        } else if (node instanceof Rotated r) {
+            wrapWordsAffine(font, r.children(), lightMode, inherited, out, seq -> {
+                float cx = font.width(seq) / 2f;
+                float cy = font.lineHeight / 2f;
+                return new Matrix4f().translate(cx, cy, 0f)
+                        .rotateZ((float) Math.toRadians(r.angle()))
+                        .translate(-cx, -cy, 0f);
+            }, true);
+        }
+    }
+
+    /** 各単語を個別にトランスフォームでラップして追加する。 */
+    private static void wrapWordsAffine(Font font, List<RichNode> children, LightMode lightMode,
+                                         Style inherited, List<FormattedCharSequence> out,
+                                         Function<FormattedCharSequence, Matrix4f> matrixFn,
+                                         boolean useInnerWidth) {
+        List<FormattedCharSequence> inner = new ArrayList<>();
+        for (RichNode child : children)
+            collectWordSegments(font, child, lightMode, inherited, inner);
+        for (FormattedCharSequence word : inner)
+            out.add(new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
+    }
+
+    /**
+     * テキストリテラルをスペース区切りの単語に分割して追加する。
+     * "hello world foo" → ["hello ", "world ", "foo"]
+     * 先頭スペースはスキップ（改行後の先頭スペースと同様の扱い）。
+     */
+    private static void splitAtSpaces(Font font, String literal, Style style,
+                                       LightMode lightMode, List<FormattedCharSequence> out) {
+        if (literal.isEmpty()) return;
+        int i = 0, len = literal.length();
+        // 先頭スペースをスキップ（折り返し後の行頭スペース除去と同じ扱い）
+        while (i < len && literal.charAt(i) == ' ') i++;
+        while (i < len) {
+            int j = i;
+            // 非スペース文字を収集
+            while (j < len && literal.charAt(j) != ' ') j++;
+            // 続くスペースも同じ単語ユニットに含める（幅計算をシンプルに保つ）
+            while (j < len && literal.charAt(j) == ' ') j++;
+            if (j > i) {
+                addLeaf(font, Component.literal(literal.substring(i, j)).withStyle(style), lightMode, out);
+                i = j;
+            } else break;
         }
     }
 

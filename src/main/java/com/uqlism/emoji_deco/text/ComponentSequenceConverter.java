@@ -57,6 +57,43 @@ public final class ComponentSequenceConverter {
     }
 
     /**
+     * Component を変換しつつワードラップした FormattedCharSequence のリストを返す。
+     * RichNode.toWordSegments() 経由なので scale/glow も正しく折り返せる。
+     */
+    public static List<FormattedCharSequence> toLines(Font font, Component component, int width) {
+        List<FormattedCharSequence> words = new ArrayList<>();
+        component.visit((style, str) -> {
+            if (!str.isEmpty()) {
+                words.addAll(RichNode.toWordSegments(font, RichTextParser.parse(str), style));
+            }
+            return Optional.empty();
+        }, Style.EMPTY);
+        return packIntoLines(font, words, width);
+    }
+
+    private static List<FormattedCharSequence> packIntoLines(Font font,
+                                                              List<FormattedCharSequence> words,
+                                                              int maxWidth) {
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        List<FormattedCharSequence> currentLine = new ArrayList<>();
+        int lineWidth = 0;
+        for (FormattedCharSequence word : words) {
+            int ww = font.width(word);
+            if (ww == 0) continue;
+            if (lineWidth > 0 && lineWidth + ww > maxWidth) {
+                lines.add(currentLine.size() == 1 ? currentLine.get(0) : new ConcatSequence(new ArrayList<>(currentLine)));
+                currentLine.clear();
+                lineWidth = 0;
+            }
+            currentLine.add(word);
+            lineWidth += ww;
+        }
+        if (!currentLine.isEmpty())
+            lines.add(currentLine.size() == 1 ? currentLine.get(0) : new ConcatSequence(new ArrayList<>(currentLine)));
+        return lines.isEmpty() ? List.of(FormattedCharSequence.EMPTY) : lines;
+    }
+
+    /**
      * Component ツリーのいずれかのテキスト片に時刻・プレイヤー名などの動的パターンが含まれるか検査。
      * 見つかり次第 Optional.of(true) で短絡。
      */

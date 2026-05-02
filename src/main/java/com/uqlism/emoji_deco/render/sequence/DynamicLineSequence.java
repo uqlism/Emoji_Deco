@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.render.sequence;
 
-import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -11,11 +11,8 @@ import java.util.List;
 
 /**
  * チャット1行分の動的 FormattedCharSequence。
- * accept() が呼ばれるたびに ComponentTransformer.transform() + font.split() で
- * 再評価することで #rainbow 等の時刻依存デコレータがアニメーションする。
- *
- * lineIndex: この FCS が担当する行インデックス（0始まり）
- * width:     ワードラップ幅（ピクセル）
+ * accept() が呼ばれるたびに ComponentSequenceConverter.toLines() で再評価するため
+ * #rainbow 等の時刻依存デコレータがアニメーションし、かつ scale/glow も保持される。
  */
 public final class DynamicLineSequence implements FormattedCharSequence {
 
@@ -33,8 +30,7 @@ public final class DynamicLineSequence implements FormattedCharSequence {
     public boolean accept(FormattedCharSink sink) {
         Font font = Minecraft.getInstance().font;
         if (font == null) return true;
-        Component transformed = ComponentTransformer.transform(original);
-        List<FormattedCharSequence> lines = font.split(transformed, width);
+        List<FormattedCharSequence> lines = ComponentSequenceConverter.toLines(font, original, width);
         if (lineIndex >= lines.size()) return true;
         return lines.get(lineIndex).accept(sink);
     }
