@@ -62,11 +62,14 @@ public class UrlSourceResolver {
 
     /** 失敗後にこの時間が経過すると再取得を試みる */
     private static final long RETRY_DELAY_MS = 30_000;
+    /** 最大リトライ回数（初回失敗後に最大 MAX_RETRIES 回再試行する） */
+    private static final int MAX_RETRIES = 3;
 
     private static final class CacheEntry {
         final CompletableFuture<ResolvedSource> future;
         final long expiresAt;
         volatile long retryAfter = Long.MAX_VALUE;
+        volatile int failCount = 0; // この URL のこれまでの失敗回数
 
         CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
             this.future   = future;
@@ -75,7 +78,9 @@ public class UrlSourceResolver {
 
         boolean isStale() {
             if (expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt) return true;
+            // failCount <= MAX_RETRIES の間だけ retryAfter 到達でリトライを許可
             return future.isCompletedExceptionally()
+                    && failCount <= MAX_RETRIES
                     && System.currentTimeMillis() >= retryAfter;
         }
     }
@@ -95,10 +100,20 @@ public class UrlSourceResolver {
 
         return CACHE.compute(cacheKey, (k, existing) -> {
             if (existing != null && !existing.isStale()) return existing;
+            int prevFails = (existing != null) ? existing.failCount : 0;
             CacheEntry entry = new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
-            // 失敗時に retryAfter を設定して一定時間後の再試行を許可する
             entry.future.whenComplete((r, t) -> {
-                if (t != null) entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
+                if (t != null) {
+                    entry.failCount = prevFails + 1;
+                    if (entry.failCount <= MAX_RETRIES) {
+                        LOGGER.warn("[EmojiDeco] リトライ {}/{} を {}s 後に予定 [{}]",
+                                entry.failCount, MAX_RETRIES, RETRY_DELAY_MS / 1000, url);
+                        entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
+                    } else {
+                        LOGGER.error("[EmojiDeco] リトライ上限({})到達、永続的に tofu [{}]",
+                                MAX_RETRIES, url);
+                    }
+                }
             });
             return entry;
         }).future;
