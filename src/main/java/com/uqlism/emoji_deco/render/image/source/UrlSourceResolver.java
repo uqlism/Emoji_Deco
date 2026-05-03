@@ -83,6 +83,11 @@ public class UrlSourceResolver {
 
     private static final Map<String, CacheEntry> CACHE = new ConcurrentHashMap<>();
 
+    /** GPU エビクション後の再デコードのため、指定 URL のキャッシュエントリを削除する。 */
+    public static void invalidate(String url, @Nullable String format) {
+        CACHE.remove(url + "\0" + (format != null ? format : ""));
+    }
+
     public static CompletableFuture<ResolvedSource> resolve(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
         if (!url.startsWith("https://") && !url.startsWith("http://"))

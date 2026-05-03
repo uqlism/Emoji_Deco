@@ -138,6 +138,9 @@ public class ImageGlyphPool {
             } else {
                 continue; // Atlas / Skin: Minecraft 管理のため解放しない
             }
+            // URL キャッシュが古い ResolvedSource を返さないよう無効化する
+            if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u)
+                UrlSourceResolver.invalidate(u.url(), d.format());
             s.resolved    = null;
             s.glyph       = null;
             s.frameGlyphs = null;
@@ -190,7 +193,17 @@ public class ImageGlyphPool {
             s.future = resolveAsync(s);
         } else if (s.future != null && s.resolved == null && s.future.isDone()) {
             if (!s.future.isCompletedExceptionally()) {
-                try { s.resolved = s.future.get(); } catch (Exception ignored) {}
+                try {
+                    ResolvedSource rs = s.future.get();
+                    // URL キャッシュが GPU エビクション済みの古い ResolvedSource を返した場合はリセット
+                    if (isTextureClosed(rs)) {
+                        if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u)
+                            UrlSourceResolver.invalidate(u.url(), d.format());
+                        s.future = null; // 次フレームで resolveAsync を再起動
+                    } else {
+                        s.resolved = rs;
+                    }
+                } catch (Exception ignored) {}
             } else if (s.imageSpec instanceof ImageSpec.Decoded d
                     && d.source() instanceof BinarySource.Url u) {
                 // 失敗 Future の場合は UrlSourceResolver に再問い合わせ。
@@ -280,6 +293,12 @@ public class ImageGlyphPool {
         if (cp >= SEG1_CP && cp < SEG1_CP + SEG1_SIZE) return cp - SEG1_CP;
         if (cp >= SEG2_CP && cp < SEG2_CP + (POOL_SIZE - SEG1_SIZE)) return SEG1_SIZE + (cp - SEG2_CP);
         return -1;
+    }
+
+    private static boolean isTextureClosed(ResolvedSource rs) {
+        if (rs instanceof ResolvedSource.Animated a) return a.animator().isClosed();
+        if (rs instanceof ResolvedSource.Static st && st.glyphTexture() != null) return st.glyphTexture().isClosed();
+        return false;
     }
 
     private static CompletableFuture<ResolvedSource> resolveAsync(Slot s) {

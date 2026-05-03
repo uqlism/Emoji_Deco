@@ -34,6 +34,8 @@ public class StaticGlyphTexture extends AbstractTexture {
         return tex;
     }
 
+    public boolean isClosed() { return closed; }
+
     @Override public void load(ResourceManager rm) {}
 
     @Override

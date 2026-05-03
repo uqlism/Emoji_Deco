@@ -88,6 +88,7 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     public float frameV1(int frame)  { return (float) (frame + 1) / numFrames; }
 
     public boolean isAnimated() { return animated; }
+    public boolean isClosed()   { return closed; }
 
     @Override public void load(ResourceManager rm) {}
 
