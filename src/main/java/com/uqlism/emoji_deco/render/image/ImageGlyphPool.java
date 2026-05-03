@@ -130,18 +130,40 @@ public class ImageGlyphPool {
         tick++;
         long gpuThreshold = tick - GPU_UNLOAD_TICKS;
         for (Slot s : slots) {
-            if (s.isEmpty() || s.resolved == null || s.lastUsed >= gpuThreshold) continue;
-            if (s.resolved instanceof ResolvedSource.Animated a) {
-                a.animator().close();
-            } else if (s.resolved instanceof ResolvedSource.Static st && st.glyphTexture() != null) {
-                st.glyphTexture().close();
-            } else {
-                continue; // Atlas / Skin: Minecraft 管理のため解放しない
+            if (s.isEmpty() || s.resolved == null) continue;
+            boolean idle = s.lastUsed < gpuThreshold;
+
+            // バックグラウンドリフレッシュ完了 + 長時間非表示: 新テクスチャを破棄して GPU エビクションへ
+            if (s.future != null && s.future.isDone() && idle) {
+                if (!s.future.isCompletedExceptionally()) {
+                    try { closeOwnedTexture(s.future.get()); } catch (Exception ignored) {}
+                }
+                s.future = null;
             }
-            s.resolved    = null;
-            s.glyph       = null;
-            s.frameGlyphs = null;
-            s.future      = null; // 次回 getGlyph() で再デコードを起動する
+
+            // GPU エビクション: future がない状態で長時間非表示
+            if (s.future == null && idle) {
+                if (s.resolved instanceof ResolvedSource.Animated a) {
+                    a.animator().close();
+                } else if (s.resolved instanceof ResolvedSource.Static st && st.glyphTexture() != null) {
+                    st.glyphTexture().close();
+                } else {
+                    continue; // Atlas / Skin: Minecraft 管理のため解放しない
+                }
+                s.resolved    = null;
+                s.glyph       = null;
+                s.frameGlyphs = null;
+                // s.future は null のまま（次回 getGlyph() で再デコードを起動）
+                continue;
+            }
+
+            // TTL バックグラウンドリフレッシュ: 表示中の URL 画像が stale になった
+            if (s.future == null
+                    && s.imageSpec instanceof ImageSpec.Decoded d
+                    && d.source() instanceof BinarySource.Url u
+                    && UrlSourceResolver.isStale(u.url(), d.format())) {
+                s.future = resolveAsync(s); // 旧テクスチャを保持したまま裏で再フェッチ
+            }
         }
     }
 
@@ -201,6 +223,18 @@ public class ImageGlyphPool {
                         UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
                 if (!retry.isDone()) s.future = retry;
             }
+        } else if (s.future != null && s.resolved != null && s.future.isDone()) {
+            // バックグラウンドリフレッシュ完了: 旧テクスチャとシームレスに差し替え
+            if (!s.future.isCompletedExceptionally()) {
+                try {
+                    ResolvedSource fresh = s.future.get();
+                    closeOwnedTexture(s.resolved);
+                    s.resolved    = fresh;
+                    s.glyph       = null;
+                    s.frameGlyphs = null;
+                } catch (Exception ignored) {}
+            }
+            s.future = null;
         }
 
         if (s.resolved == null) {
@@ -281,6 +315,12 @@ public class ImageGlyphPool {
         if (cp >= SEG1_CP && cp < SEG1_CP + SEG1_SIZE) return cp - SEG1_CP;
         if (cp >= SEG2_CP && cp < SEG2_CP + (POOL_SIZE - SEG1_SIZE)) return SEG1_SIZE + (cp - SEG2_CP);
         return -1;
+    }
+
+    /** 自前管理テクスチャを閉じる。Atlas / Skin（glyphTexture == null）は no-op。 */
+    private static void closeOwnedTexture(ResolvedSource rs) {
+        if (rs instanceof ResolvedSource.Animated a) a.animator().close();
+        else if (rs instanceof ResolvedSource.Static st && st.glyphTexture() != null) st.glyphTexture().close();
     }
 
     private static CompletableFuture<ResolvedSource> resolveAsync(Slot s) {

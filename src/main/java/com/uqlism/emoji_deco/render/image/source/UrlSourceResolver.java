@@ -95,6 +95,12 @@ public class UrlSourceResolver {
      * ダウンロード結果はキャッシュされる。デコードと GPU アップロードはキャッシュせず、
      * 毎回フレッシュに実行するため常に新しい ResolvedSource が返る。
      */
+    /** 指定 URL のバイトキャッシュが stale かどうかを返す（TTL 切れまたは未取得）。 */
+    public static boolean isStale(String url, @Nullable String format) {
+        CacheEntry entry = CACHE.get(url + "\0" + (format != null ? format : ""));
+        return entry != null && entry.isStale();
+    }
+
     public static CompletableFuture<ResolvedSource> resolve(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
         if (!url.startsWith("https://") && !url.startsWith("http://"))
