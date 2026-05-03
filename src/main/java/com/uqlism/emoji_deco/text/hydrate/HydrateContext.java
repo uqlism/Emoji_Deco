@@ -37,7 +37,7 @@ public final class HydrateContext {
     /** Wraps HydrateContext and records which dimensions are read during hydration. */
     public static final class Tracked {
         private final HydrateContext base;
-        boolean slotAccessed, playerNamesAccessed, timeAccessed;
+        boolean slotAccessed, playerNamesAccessed, timeAccessed, urlDataAccessed;
         private final Map<Integer, String> accessedArgs = new LinkedHashMap<>();
 
         Tracked(HydrateContext base) { this.base = base; }
@@ -53,6 +53,7 @@ public final class HydrateContext {
 
         public void markTimeAccessed()        { timeAccessed        = true; }
         public void markPlayerNamesAccessed() { playerNamesAccessed = true; }
+        public void markUrlDataAccessed()     { urlDataAccessed     = true; }
 
         /** Creates a fresh sub-tracker sharing the same base context. */
         public Tracked sub() { return new Tracked(this.base); }
@@ -63,11 +64,12 @@ public final class HydrateContext {
             if (timeAccessed)        other.timeAccessed        = true;
             if (playerNamesAccessed) other.playerNamesAccessed = true;
             if (slotAccessed)        other.slotAccessed        = true;
+            if (urlDataAccessed)     other.urlDataAccessed     = true;
         }
 
         public AccessPattern extractPattern() {
             RichNode snap = slotAccessed ? base.getSlot() : null;
-            return new AccessPattern(timeAccessed, playerNamesAccessed, slotAccessed, snap,
+            return new AccessPattern(timeAccessed, playerNamesAccessed, urlDataAccessed, slotAccessed, snap,
                     Collections.unmodifiableMap(new LinkedHashMap<>(accessedArgs)));
         }
     }
@@ -82,13 +84,17 @@ public final class HydrateContext {
     public record AccessPattern(
             boolean usesTime,
             boolean usesPlayerNames,
+            boolean usesUrlData,
             boolean usesSlot,
             @Nullable RichNode slotSnapshot,
             Map<Integer, String> argValues) {
 
+        /** True when the result depends on data that changes independently of args/slot. */
+        public boolean isDynamic() { return usesTime || usesPlayerNames || usesUrlData; }
+
         /** True if the given context would produce the same hydration result. */
         boolean matches(HydrateContext ctx, @Nullable RichNode slot) {
-            if (usesTime || usesPlayerNames) return false;   // never cache time/playerNames results
+            if (isDynamic()) return false;
             for (var e : argValues.entrySet()) {
                 if (!e.getValue().equals(ctx.getArg(e.getKey()))) return false;
             }

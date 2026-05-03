@@ -6,9 +6,11 @@ import com.google.gson.JsonObject;
 import java.util.function.Function;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.BinarySource;
+import com.uqlism.emoji_deco.text.fetch.TextFetchManager;
 import com.uqlism.emoji_deco.render.image.ImageSpec;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.client.Minecraft;
@@ -63,7 +65,32 @@ public final class Hydrators {
                             Hydrator.field("h", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(0f)),
                             Hydrator.field("s", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
                             Hydrator.field("v", Hydrator.lazy(() -> Hydrators.FLOAT).withDefault(1f)),
-                            Hydrators::hsvToHex))
+                            Hydrators::hsvToHex)),
+                    // BinarySource のバイト列を文字セット指定で String にデコードする。
+                    Map.entry("emoji_deco:decode_str",   Hydrator.withEffect(
+                            HydrateContext.Tracked::markUrlDataAccessed,
+                            (el, ctx) -> {
+                                BinarySource src = Hydrator.field("source",
+                                        Hydrator.lazy(() -> Hydrators.BINARY_SOURCE)).hydrate(el, ctx);
+                                if (!(src instanceof BinarySource.Url url)) return null;
+                                byte[] bytes = TextFetchManager.getNow(url);
+                                if (bytes == null) return null;
+                                String enc = Hydrator.field("encoding",
+                                        Hydrator.lazy(() -> Hydrators.STRING)).withDefault("utf-8").hydrate(el, ctx);
+                                try { return new String(bytes, java.nio.charset.Charset.forName(enc)); }
+                                catch (Exception e) { return new String(bytes, java.nio.charset.StandardCharsets.UTF_8); }
+                            })),
+                    Map.entry("emoji_deco:json_get",     (el, ctx) -> {
+                        JsonElement nav = navigatePath(
+                                Hydrator.field("value", Hydrator.lazy(() -> Hydrators.JSON_VAL)).hydrate(el, ctx),
+                                el.getAsJsonObject().get("keys"), ctx);
+                        return nav != null && nav.isJsonPrimitive() ? nav.getAsString() : null;
+                    }),
+                    Map.entry("emoji_deco:string/replace", Hydrator.zip(
+                            Hydrator.field("from",  Hydrator.lazy(() -> Hydrators.STRING).withDefault("")),
+                            Hydrator.field("to",    Hydrator.lazy(() -> Hydrators.STRING).withDefault("")),
+                            Hydrator.field("text",  Hydrator.lazy(() -> Hydrators.STRING).withDefault("")),
+                            (from, to, text) -> text.replace(from, to)))
             ), null));
 
     public static final Hydrator<Float> FLOAT = Hydrator.firstOf(
@@ -101,7 +128,14 @@ public final class Hydrators {
                     Map.entry("emoji_deco:math/sin",   Hydrator.field("value",
                             Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> (float) Math.sin(f))),
                     Map.entry("emoji_deco:math/cos",   Hydrator.field("value",
-                            Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> (float) Math.cos(f)))
+                            Hydrator.lazy(() -> Hydrators.FLOAT)).map(f -> (float) Math.cos(f))),
+                    Map.entry("emoji_deco:json_get",   (el, ctx) -> {
+                        JsonElement nav = navigatePath(
+                                Hydrator.field("value", Hydrator.lazy(() -> Hydrators.JSON_VAL)).hydrate(el, ctx),
+                                el.getAsJsonObject().get("keys"), ctx);
+                        if (nav == null || !nav.isJsonPrimitive()) return null;
+                        try { return nav.getAsFloat(); } catch (Exception e) { return null; }
+                    })
             ), null));
 
     public static final Hydrator<Boolean> BOOL = Hydrator.firstOf(
@@ -246,11 +280,24 @@ public final class Hydrators {
     // ── Image hydrators — before NODE so NODE_DISPATCH can reference IMAGE_GLYPH_NODE directly ──
 
     private static final Hydrator<BinarySource> BINARY_SOURCE = Hydrator.dispatch(Map.of(
-            "emoji_deco:fetch_url", Hydrator.zip(
-                    Hydrator.field("url",        STRING.map(u -> u.isEmpty() ? null : u)),
-                    Hydrator.field("disk_cache", BOOL.withDefault(false)),
-                    Hydrator.field("ttl",        FLOAT.withDefault(0f)).map(f -> Math.round(f)),
-                    BinarySource.Url::new),
+            "emoji_deco:fetch_url", (el, ctx) -> {
+                if (el == null || !el.isJsonObject()) return null;
+                JsonObject obj = el.getAsJsonObject();
+                String url = STRING.map(u -> u.isEmpty() ? null : u).hydrate(obj.get("url"), ctx);
+                if (url == null) return null;
+                boolean diskCache = BOOL.withDefault(false).hydrate(obj.get("disk_cache"), ctx);
+                int ttl = FLOAT.withDefault(0f).hydrate(obj.get("ttl"), ctx).intValue();
+                String method = STRING.hydrate(obj.get("method"), ctx);
+                if (method == null || method.isBlank()) method = "GET";
+                java.util.Map<String, String> headers = new java.util.HashMap<>();
+                if (obj.has("headers") && obj.get("headers").isJsonObject())
+                    for (var e : obj.getAsJsonObject("headers").entrySet()) {
+                        String v = STRING.hydrate(e.getValue(), ctx);
+                        if (v != null) headers.put(e.getKey(), v);
+                    }
+                String body = STRING.hydrate(obj.get("body"), ctx);
+                return new BinarySource.Url(url, diskCache, ttl, method, java.util.Map.copyOf(headers), body);
+            },
             "emoji_deco:fetch_resource", Hydrator.field("path", STRING)
                     .map(p -> p.isEmpty() ? null : new BinarySource.Resource(p))
     ), null);
@@ -286,6 +333,22 @@ public final class Hydrators {
             Hydrator.field("image",   IMAGE_BUNDLE_H),
             (w, h, advance, bundle) -> new RichNode.Image(bundle.spec(), bundle.crop(), w, h, advance)));
 
+    /**
+     * JSON 値プロバイダ。parse_json (String → JsonElement) と
+     * json_get (JsonElement + keys → JsonElement) を提供する。
+     */
+    public static final Hydrator<JsonElement> JSON_VAL = Hydrator.dispatch(Map.of(
+            "emoji_deco:parse_json", (el, ctx) -> {
+                String text = Hydrator.field("text", Hydrator.lazy(() -> Hydrators.STRING)).hydrate(el, ctx);
+                if (text == null || text.isEmpty()) return null;
+                try { return com.google.gson.JsonParser.parseString(text); }
+                catch (Exception e) { return null; }
+            },
+            "emoji_deco:json_get", (el, ctx) -> navigatePath(
+                    Hydrator.field("value", Hydrator.lazy(() -> Hydrators.JSON_VAL)).hydrate(el, ctx),
+                    el.getAsJsonObject().get("keys"), ctx)
+    ), null);
+
     // STRING.map covers: primitives, emoji_deco:arg, emoji_deco:join, emoji_deco:player_names.
     // list(lazy(NODE)) covers arrays; lazy breaks the self-reference initialisation cycle.
     public static final Hydrator<RichNode> NODE = Hydrator.firstOf(
@@ -314,7 +377,11 @@ public final class Hydrators {
                         Map.entry("emoji_deco:click/change_page",       clickNode(ClickEvent.Action.CHANGE_PAGE,       "page")),
                         Map.entry("emoji_deco:click/copy_to_clipboard", clickNode(ClickEvent.Action.COPY_TO_CLIPBOARD, "text")),
                         Map.entry("emoji_deco:insertion",      INSERTION_NODE),
-                        Map.entry("emoji_deco:style",          (Hydrator<RichNode>) Hydrators::styleNode)
+                        Map.entry("emoji_deco:style",          (Hydrator<RichNode>) Hydrators::styleNode),
+                        Map.entry("emoji_deco:string/parse",   (el, ctx) -> {
+                            String text = Hydrator.field("text", STRING).hydrate(el, ctx);
+                            return text != null ? RichTextParser.parseTracked(text, ctx) : null;
+                        })
                 ),
                 Hydrators::standardTextNode)
     ).withDefault(RichNode.empty());
@@ -486,6 +553,50 @@ public final class Hydrators {
     private static String  fld(JsonObject o, String k,              HydrateContext.Tracked c) { String  r = STRING.hydrate(o.get(k), c); return r != null ? r : "";  }
     private static String  fld(JsonObject o, String k, String  def, HydrateContext.Tracked c) { String  r = STRING.hydrate(o.get(k), c); return r != null ? r : def; }
     private static boolean fld(JsonObject o, String k, boolean def, HydrateContext.Tracked c) { Boolean r = BOOL  .hydrate(o.get(k), c); return r != null ? r : def; }
+
+    // ── JSON navigation ────────────────────────────────────────────────────────
+
+    /**
+     * JSON 要素を keys 配列で辿り、末端要素を返す。
+     * 各キーはリテラル（整数 = 配列インデックス、文字列 = オブジェクトキー）または
+     * FLOAT / STRING に評価できる動的式（emoji_deco:arg 等）を使える。
+     */
+    private static @Nullable JsonElement navigatePath(
+            @Nullable JsonElement el, @Nullable JsonElement keysEl, HydrateContext.Tracked ctx) {
+        if (el == null || keysEl == null || !keysEl.isJsonArray()) return el;
+        for (JsonElement key : keysEl.getAsJsonArray()) {
+            if (el == null || el.isJsonNull()) return null;
+            if (key.isJsonPrimitive()) {
+                var prim = key.getAsJsonPrimitive();
+                if (prim.isNumber()) {
+                    int idx = prim.getAsInt();
+                    if (!el.isJsonArray()) return null;
+                    JsonArray arr = el.getAsJsonArray();
+                    if (idx < 0 || idx >= arr.size()) return null;
+                    el = arr.get(idx);
+                } else {
+                    String k = prim.getAsString();
+                    if (!el.isJsonObject()) return null;
+                    el = el.getAsJsonObject().get(k);
+                }
+            } else {
+                // 動的キー: FLOAT（配列インデックス）を優先し、次いで STRING（オブジェクトキー）
+                Float f = FLOAT.hydrate(key, ctx);
+                if (f != null) {
+                    int idx = Math.round(f);
+                    if (!el.isJsonArray()) return null;
+                    JsonArray arr = el.getAsJsonArray();
+                    if (idx < 0 || idx >= arr.size()) return null;
+                    el = arr.get(idx);
+                } else {
+                    String k = STRING.hydrate(key, ctx);
+                    if (k == null || !el.isJsonObject()) return null;
+                    el = el.getAsJsonObject().get(k);
+                }
+            }
+        }
+        return el;
+    }
 
     // ── Arg helpers ────────────────────────────────────────────────────────────
 

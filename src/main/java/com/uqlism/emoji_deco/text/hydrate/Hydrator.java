@@ -83,14 +83,17 @@ public interface Hydrator<T> {
         final V value;
         private final int[]           argIndices;
         private final String[]        argValues;
-        private final boolean         usesTime, usesPlayerNames, usesSlot;
+        private final boolean         neverCache, usesTime, usesPlayerNames, usesUrlData, usesSlot;
         private final @Nullable RichNode slotSnapshot;
 
         private CacheEntry(V value, int[] argIndices, String[] argValues,
-                           boolean usesTime, boolean usesPlayerNames,
+                           boolean neverCache,
+                           boolean usesTime, boolean usesPlayerNames, boolean usesUrlData,
                            boolean usesSlot, @Nullable RichNode slotSnapshot) {
             this.value = value; this.argIndices = argIndices; this.argValues = argValues;
+            this.neverCache = neverCache;
             this.usesTime = usesTime; this.usesPlayerNames = usesPlayerNames;
+            this.usesUrlData = usesUrlData;
             this.usesSlot = usesSlot; this.slotSnapshot = slotSnapshot;
         }
 
@@ -101,11 +104,12 @@ public interface Hydrator<T> {
             String[] values  = new String[indices.length];
             for (int i = 0; i < indices.length; i++) values[i] = argMap.get(indices[i]);
             return new CacheEntry<>(value, indices, values,
-                    p.usesTime(), p.usesPlayerNames(), p.usesSlot(), p.slotSnapshot());
+                    p.isDynamic(),
+                    p.usesTime(), p.usesPlayerNames(), p.usesUrlData(), p.usesSlot(), p.slotSnapshot());
         }
 
         boolean isValid(HydrateContext.Tracked ctx) {
-            if (usesTime || usesPlayerNames) return false;
+            if (neverCache) return false;
             if (usesSlot && !java.util.Objects.equals(slotSnapshot, ctx.base().getSlot())) return false;
             for (int i = 0; i < argIndices.length; i++)
                 if (!argValues[i].equals(ctx.base().getArg(argIndices[i]))) return false;
@@ -117,6 +121,7 @@ public interface Hydrator<T> {
             if (usesSlot)        ctx.getSlot();
             if (usesTime)        ctx.markTimeAccessed();
             if (usesPlayerNames) ctx.markPlayerNamesAccessed();
+            if (usesUrlData)     ctx.markUrlDataAccessed();
         }
     }
 

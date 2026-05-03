@@ -49,7 +49,7 @@ public final class ComponentConverter {
             HydrateContext.Tracked ctx = HydrateContext.EMPTY.track();
             RichTextParser.parseTracked(text, ctx);
             MutableComponent base;
-            if (ctx.extractPattern().usesTime() || ctx.extractPattern().usesPlayerNames()) {
+            if (ctx.extractPattern().isDynamic()) {
                 base = MutableComponent.create(new DynamicRichContents(text, style));
             } else {
                 base = RichTextParser.parseInline(text, style).toComponent().withStyle(style);
@@ -151,7 +151,7 @@ public final class ComponentConverter {
                 HydrateContext.Tracked ctx = HydrateContext.EMPTY.track();
                 RichTextParser.parseTracked(str, ctx);
                 var pattern = ctx.extractPattern();
-                if (pattern.usesTime() || pattern.usesPlayerNames()) {
+                if (pattern.isDynamic()) {
                     return Optional.of(true);
                 }
             }
