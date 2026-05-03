@@ -2,14 +2,10 @@ package com.uqlism.emoji_deco.render.image.source;
 
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
-import com.uqlism.emoji_deco.render.image.ImageResolver;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
+import com.uqlism.emoji_deco.render.image.ImageResolver;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
-import com.uqlism.emoji_deco.render.image.decoder.ApngDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
 import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -30,20 +26,29 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * URL 画像リゾルバ。
+ *
+ * CACHE はダウンロード結果（byte[]）のみを保持し、GPU テクスチャのライフサイクルとは
+ * 切り離す。resolve() を呼ぶたびにデコードと GPU アップロードは新規実行されるため、
+ * GPU エビクション後の再描画でも必ず新しい ResolvedSource が生成される。
+ *
+ * GPU エビクション後の再解決時はキャッシュのバイト列を再利用するため HTTP ダウンロードは
+ * スキップされ、デコード + GPU アップロードのみ実行される。
+ */
 public class UrlSourceResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int MAX_BYTES         = 2 * 1024 * 1024;
-    private static final int CONNECT_TIMEOUT_MS =  5_000;  // 接続確立は早く諦める
-    private static final int READ_TIMEOUT_MS    = 30_000;  // データ受信は遅いサーバーに合わせて長め
-    private static final AtomicInteger counter = new AtomicInteger(0);
+    private static final int MAX_BYTES          = 2 * 1024 * 1024;
+    private static final int CONNECT_TIMEOUT_MS =  5_000;
+    private static final int READ_TIMEOUT_MS    = 30_000;
+    private static final AtomicInteger counter  = new AtomicInteger(0);
 
     private static final ClassLoader MOD_CLASSLOADER = UrlSourceResolver.class.getClassLoader();
+
     /**
      * IO バウンドなダウンロード専用プール（最大 16 スレッド、60 秒アイドルで回収）。
-     * SynchronousQueue により空きスレッドがあれば即実行、なければ新スレッドを生成し
-     * 上限（16）に達したらキューで待機する。cachedThreadPool のような際限ない生成を防ぐ。
-     * Java 17 では仮想スレッドが使えないが IO 待ちスレッドは CPU をほぼ消費しない。
+     * デコードも同プールで実行する（IO 待ちスレッドは CPU をほぼ消費しない）。
      */
     private static final java.util.concurrent.Executor FETCH_EXECUTOR =
             new java.util.concurrent.ThreadPoolExecutor(
@@ -56,25 +61,26 @@ public class UrlSourceResolver {
                         return t;
                     });
 
-    /** 失敗後にこの時間が経過すると再取得を試みる */
     private static final long RETRY_DELAY_MS = 30_000;
-    /** 最大リトライ回数（初回失敗後に最大 MAX_RETRIES 回再試行する） */
-    private static final int MAX_RETRIES = 3;
+    private static final int  MAX_RETRIES    = 3;
 
+    /**
+     * キャッシュエントリ。バイト列の Future のみ保持し、GPU テクスチャは含まない。
+     * isStale() が true になると次の resolve() で新規ダウンロードが起動する。
+     */
     private static final class CacheEntry {
-        final CompletableFuture<ResolvedSource> future;
+        final CompletableFuture<DownloadResult> future;
         final long expiresAt;
         volatile long retryAfter = Long.MAX_VALUE;
-        volatile int failCount = 0; // この URL のこれまでの失敗回数
+        volatile int  failCount  = 0;
 
-        CacheEntry(CompletableFuture<ResolvedSource> future, long expiresAt) {
-            this.future   = future;
+        CacheEntry(CompletableFuture<DownloadResult> future, long expiresAt) {
+            this.future    = future;
             this.expiresAt = expiresAt;
         }
 
         boolean isStale() {
             if (expiresAt != Long.MAX_VALUE && System.currentTimeMillis() > expiresAt) return true;
-            // failCount <= MAX_RETRIES の間だけ retryAfter 到達でリトライを許可
             return future.isCompletedExceptionally()
                     && failCount <= MAX_RETRIES
                     && System.currentTimeMillis() >= retryAfter;
@@ -83,11 +89,12 @@ public class UrlSourceResolver {
 
     private static final Map<String, CacheEntry> CACHE = new ConcurrentHashMap<>();
 
-    /** GPU エビクション後の再デコードのため、指定 URL のキャッシュエントリを削除する。 */
-    public static void invalidate(String url, @Nullable String format) {
-        CACHE.remove(url + "\0" + (format != null ? format : ""));
-    }
-
+    /**
+     * URL 画像を非同期で解決する。
+     *
+     * ダウンロード結果はキャッシュされる。デコードと GPU アップロードはキャッシュせず、
+     * 毎回フレッシュに実行するため常に新しい ResolvedSource が返る。
+     */
     public static CompletableFuture<ResolvedSource> resolve(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
         if (!url.startsWith("https://") && !url.startsWith("http://"))
@@ -104,31 +111,49 @@ public class UrlSourceResolver {
                 ? System.currentTimeMillis() + (long) ttlSeconds * 1000
                 : Long.MAX_VALUE;
 
-        return CACHE.compute(cacheKey, (k, existing) -> {
-            if (existing != null && !existing.isStale()) return existing;
-            int prevFails = (existing != null) ? existing.failCount : 0;
-            CacheEntry entry = new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
-            entry.future.whenComplete((r, t) -> {
-                if (t != null) {
-                    entry.failCount = prevFails + 1;
-                    if (entry.failCount <= MAX_RETRIES) {
-                        LOGGER.warn("[EmojiDeco] リトライ {}/{} を {}s 後に予定 [{}]",
-                                entry.failCount, MAX_RETRIES, RETRY_DELAY_MS / 1000, url);
-                        entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
-                    } else {
-                        LOGGER.error("[EmojiDeco] リトライ上限({})到達、永続的に tofu [{}]",
-                                MAX_RETRIES, url);
-                    }
+        // ダウンロード結果のみキャッシュする
+        CompletableFuture<DownloadResult> bytesFuture =
+                CACHE.compute(cacheKey, (k, existing) -> {
+                    if (existing != null && !existing.isStale()) return existing;
+                    int prevFails = (existing != null) ? existing.failCount : 0;
+                    CacheEntry entry = new CacheEntry(fetch(url, format, diskCache, ttlSeconds), expiresAt);
+                    entry.future.whenComplete((r, t) -> {
+                        if (t != null) {
+                            entry.failCount = prevFails + 1;
+                            if (entry.failCount <= MAX_RETRIES) {
+                                LOGGER.warn("[EmojiDeco] リトライ {}/{} を {}s 後に予定 [{}]",
+                                        entry.failCount, MAX_RETRIES, RETRY_DELAY_MS / 1000, url);
+                                entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
+                            } else {
+                                LOGGER.error("[EmojiDeco] リトライ上限({})到達、永続的に tofu [{}]",
+                                        MAX_RETRIES, url);
+                            }
+                        }
+                    });
+                    return entry;
+                }).future;
+
+        // デコード + GPU アップロードは毎回フレッシュに実行（キャッシュしない）
+        return bytesFuture.thenCompose(dl -> {
+            Format fmt = ImageFormatDetector.detect(dl.bytes(), format != null ? format : dl.contentType());
+            return CompletableFuture.<List<ImageDecoder.Frame>>supplyAsync(() -> {
+                try {
+                    List<ImageDecoder.Frame> frames = ImageResolver.decoderFor(fmt).decode(dl.bytes());
+                    if (frames.isEmpty()) throw new IOException("No frames decoded from " + url);
+                    return frames;
+                } catch (IOException e) {
+                    LOGGER.error("[EmojiDeco] decode 失敗 [{}]: {}", url, e.toString());
+                    throw new RuntimeException(e);
                 }
-            });
-            return entry;
-        }).future;
+            }, FETCH_EXECUTOR)
+            .thenCompose(ImageResolver::uploadAsync);
+        });
     }
 
+    // ── ダウンロード（fetch はバイト列取得のみ）────────────────────────────────
 
-    private static CompletableFuture<ResolvedSource> fetch(
+    private static CompletableFuture<DownloadResult> fetch(
             String url, @Nullable String format, boolean diskCache, int ttlSeconds) {
-        // Stage 1: ダウンロード + デコード（FETCH_EXECUTOR スレッド）
         return CompletableFuture.supplyAsync(() -> {
             try {
                 byte[] bytes;
@@ -150,25 +175,12 @@ public class UrlSourceResolver {
                     contentTypeHint = dl.contentType();
                 }
 
-                String hint = format != null ? format : contentTypeHint;
-                Format fmt = ImageFormatDetector.detect(bytes, hint);
-                ImageDecoder decoder = switch (fmt) {
-                    case GIF  -> new GifDecoder();
-                    case WEBP -> new WebpDecoder();
-                    case PNG, APNG -> new ApngDecoder();
-                    default   -> new StbDecoder();
-                };
-                List<ImageDecoder.Frame> frames = decoder.decode(bytes);
-                if (frames.isEmpty()) throw new IOException("No frames decoded from " + url);
-                return frames;
-
+                return new DownloadResult(bytes, contentTypeHint);
             } catch (Exception e) {
-                LOGGER.error("[EmojiDeco] DL/decode 失敗 [{}]: {}", url, e.toString(), e);
+                LOGGER.error("[EmojiDeco] DL 失敗 [{}]: {}", url, e.toString(), e);
                 throw new RuntimeException(e);
             }
-        }, FETCH_EXECUTOR)
-        // Stage 2: GPU アップロード（ImageResolver に委譲）
-        .thenCompose(ImageResolver::uploadAsync);
+        }, FETCH_EXECUTOR);
     }
 
     // ── disk cache ────────────────────────────────────────────────────────────
