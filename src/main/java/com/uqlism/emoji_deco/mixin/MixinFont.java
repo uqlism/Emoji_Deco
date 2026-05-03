@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
+import com.uqlism.emoji_deco.render.sequence.DynamicLineSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
@@ -93,12 +94,18 @@ public class MixinFont {
         enterDraw(packedLight);
         Font self = (Font)(Object)this;
 
-        // DynamicFormattedCharSequence: 毎フレーム computeNow() で解決し drawInBatch に通し直す。
-        // accept(FormattedCharSink) 経由では AffineSequence の行列変換が失われるため
-        // ここで drawInBatch(FCS) 経路を維持する必要がある。
+        // Dynamic 系: accept(FormattedCharSink) 経由では AffineSequence の行列変換が失われるため
+        // ここで毎フレーム解決して drawInBatch(FCS) 経路に通し直す。
         if (text instanceof DynamicFormattedCharSequence dfcs) {
             FormattedCharSequence resolved = ComponentConverter.computeNow(self, dfcs.original());
             cir.setReturnValue(self.drawInBatch(resolved, x, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
+            return;
+        }
+        // DynamicLineSequence: チャットの動的1行。toLines() で解決して drawInBatch(FCS) に通す。
+        if (text instanceof DynamicLineSequence dls) {
+            List<FormattedCharSequence> lines = ComponentConverter.toLines(self, dls.original(), dls.width());
+            FormattedCharSequence line = dls.lineIndex() < lines.size() ? lines.get(dls.lineIndex()) : FormattedCharSequence.EMPTY;
+            cir.setReturnValue(self.drawInBatch(line, x, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
             return;
         }
         if (text instanceof LightSequence gs) {
@@ -243,6 +250,12 @@ public class MixinFont {
     @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$width(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
+        if (text instanceof DynamicLineSequence dls) {
+            List<FormattedCharSequence> lines = ComponentConverter.toLines(self, dls.original(), dls.width());
+            int w = dls.lineIndex() < lines.size() ? self.width(lines.get(dls.lineIndex())) : 0;
+            cir.setReturnValue(w);
+            return;
+        }
         if (text instanceof LightSequence gs) {
             cir.setReturnValue(self.width(gs.inner()));
             return;

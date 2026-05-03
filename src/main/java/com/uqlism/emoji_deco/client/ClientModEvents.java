@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.EmojiDeco;
 import com.uqlism.emoji_deco.Registration;
 import com.uqlism.emoji_deco.client.renderer.GraffitiRenderer;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
+import com.uqlism.emoji_deco.render.image.source.UrlAllowlist;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.network.chat.Component;
@@ -32,6 +33,7 @@ public class ClientModEvents {
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener(ShortcodeManager.INSTANCE);
         event.registerReloadListener(DecoratorManager.INSTANCE);
+        event.registerReloadListener(UrlAllowlist.INSTANCE);
         event.registerReloadListener(new net.minecraft.server.packs.resources.PreparableReloadListener() {
             @Override
             public CompletableFuture<Void> reload(PreparationBarrier barrier, ResourceManager rm,

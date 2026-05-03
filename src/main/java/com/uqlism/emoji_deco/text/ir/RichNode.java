@@ -222,34 +222,35 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
      * RichNode ツリーをスペース区切りの「単語」FCS リストに分解する。
      * scale/glow 等のトランスフォームは各単語に個別に適用されるため、
      * packIntoLines でそれぞれの表示幅を正確に計測してワードラップできる。
+     * maxWidth を超えるスペースなし Latin 文字列は1文字単位に分解して折り返しを可能にする。
      */
-    public static List<FormattedCharSequence> toWordSegments(Font font, RichNode root, Style inherited) {
+    public static List<FormattedCharSequence> toWordSegments(Font font, RichNode root, Style inherited, int maxWidth) {
         List<FormattedCharSequence> words = new ArrayList<>();
-        collectWordSegments(font, root, LightMode.BYPASS, inherited, words);
+        collectWordSegments(font, root, LightMode.BYPASS, inherited, words, maxWidth);
         return words;
     }
 
     private static void collectWordSegments(Font font, RichNode node, LightMode lightMode,
-                                             Style inherited, List<FormattedCharSequence> out) {
+                                             Style inherited, List<FormattedCharSequence> out, int maxWidth) {
         if (node instanceof Text t) {
             Style combined = t.style().applyTo(inherited);
-            splitAtSpaces(font, t.literal(), combined, lightMode, out);
+            splitAtSpaces(font, t.literal(), combined, lightMode, out, maxWidth);
             for (RichNode child : t.children())
-                collectWordSegments(font, child, lightMode, combined, out);
+                collectWordSegments(font, child, lightMode, combined, out, maxWidth);
         } else if (node instanceof Glowing g) {
             for (RichNode child : g.children())
-                collectWordSegments(font, child, g.lightMode(), inherited, out);
+                collectWordSegments(font, child, g.lightMode(), inherited, out, maxWidth);
         } else if (node instanceof Image img) {
             addLeaf(font, withInherited(imageComponent(img), inherited), lightMode, out);
         } else if (node instanceof Hover h) {
             Style s = inherited.withHoverEvent(h.hoverEvent());
-            for (RichNode child : h.children()) collectWordSegments(font, child, lightMode, s, out);
+            for (RichNode child : h.children()) collectWordSegments(font, child, lightMode, s, out, maxWidth);
         } else if (node instanceof Click cl) {
             Style s = inherited.withClickEvent(cl.clickEvent());
-            for (RichNode child : cl.children()) collectWordSegments(font, child, lightMode, s, out);
+            for (RichNode child : cl.children()) collectWordSegments(font, child, lightMode, s, out, maxWidth);
         } else if (node instanceof Insertion ins) {
             Style s = inherited.withInsertion(ins.insertion());
-            for (RichNode child : ins.children()) collectWordSegments(font, child, lightMode, s, out);
+            for (RichNode child : ins.children()) collectWordSegments(font, child, lightMode, s, out, maxWidth);
         } else if (node instanceof Offset o) {
             Matrix4f mat = new Matrix4f().translate(o.x(), o.y(), o.z());
             wrapWordsAffine(font, o.children(), lightMode, inherited, out, seq -> mat, true);
@@ -270,40 +271,89 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         }
     }
 
-    /** 各単語を個別にトランスフォームでラップして追加する。 */
+    /**
+     * 各単語を個別にトランスフォームでラップして追加する。
+     * 変換内部ではスケールが不明なため maxWidth を使った文字単位分解は行わない。
+     */
     private static void wrapWordsAffine(Font font, List<RichNode> children, LightMode lightMode,
                                          Style inherited, List<FormattedCharSequence> out,
                                          Function<FormattedCharSequence, Matrix4f> matrixFn,
                                          boolean useInnerWidth) {
         List<FormattedCharSequence> inner = new ArrayList<>();
         for (RichNode child : children)
-            collectWordSegments(font, child, lightMode, inherited, inner);
+            collectWordSegments(font, child, lightMode, inherited, inner, Integer.MAX_VALUE);
         for (FormattedCharSequence word : inner)
             out.add(new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
     }
 
     /**
-     * テキストリテラルをスペース区切りの単語に分割して追加する。
-     * "hello world foo" → ["hello ", "world ", "foo"]
-     * 先頭スペースはスキップ（改行後の先頭スペースと同様の扱い）。
+     * テキストリテラルを折り返し単位に分割して追加する。
+     * - ラテン系: スペース区切り。maxWidth を超える連続列は1文字ずつに分解する。
+     * - CJK・かな・ハングル: 1文字ずつ独立したユニット。後続スペースがあれば同ユニットに含める。
+     * 先頭スペースはスキップ（折り返し後の行頭スペース除去と同様の扱い）。
      */
     private static void splitAtSpaces(Font font, String literal, Style style,
-                                       LightMode lightMode, List<FormattedCharSequence> out) {
+                                       LightMode lightMode, List<FormattedCharSequence> out, int maxWidth) {
         if (literal.isEmpty()) return;
         int i = 0, len = literal.length();
-        // 先頭スペースをスキップ（折り返し後の行頭スペース除去と同じ扱い）
         while (i < len && literal.charAt(i) == ' ') i++;
+
+        int wordStart = i;
         while (i < len) {
-            int j = i;
-            // 非スペース文字を収集
-            while (j < len && literal.charAt(j) != ' ') j++;
-            // 続くスペースも同じ単語ユニットに含める（幅計算をシンプルに保つ）
-            while (j < len && literal.charAt(j) == ' ') j++;
-            if (j > i) {
-                addLeaf(font, Component.literal(literal.substring(i, j)).withStyle(style), lightMode, out);
-                i = j;
-            } else break;
+            int cp = literal.codePointAt(i);
+            int cpLen = Character.charCount(cp);
+            if (cp == ' ') {
+                // 現在の単語 + 後続スペースをひとつのユニットとして追加
+                int end = i;
+                while (end < len && literal.charAt(end) == ' ') end++;
+                emitLatinRun(font, literal, wordStart, end, style, lightMode, out, maxWidth);
+                wordStart = end;
+                i = end;
+            } else if (isCjkCodePoint(cp)) {
+                // CJK文字の前に溜まったラテン系単語を先に追加
+                if (i > wordStart) emitLatinRun(font, literal, wordStart, i, style, lightMode, out, maxWidth);
+                // CJK文字1文字 + 後続スペースをひとつのユニットとして追加
+                int end = i + cpLen;
+                while (end < len && literal.charAt(end) == ' ') end++;
+                addLeaf(font, Component.literal(literal.substring(i, end)).withStyle(style), lightMode, out);
+                wordStart = end;
+                i = end;
+            } else {
+                i += cpLen;
+            }
         }
+        if (wordStart < len) emitLatinRun(font, literal, wordStart, len, style, lightMode, out, maxWidth);
+    }
+
+    /**
+     * Latin テキストのひと塊を追加する。
+     * maxWidth 以下なら1ユニット、超過する場合は1文字ずつに分解して packIntoLines に折り返しを委ねる。
+     */
+    private static void emitLatinRun(Font font, String literal, int from, int to,
+                                      Style style, LightMode lightMode,
+                                      List<FormattedCharSequence> out, int maxWidth) {
+        String run = literal.substring(from, to);
+        if (maxWidth == Integer.MAX_VALUE
+                || font.width(Component.literal(run).withStyle(style)) <= maxWidth) {
+            addLeaf(font, Component.literal(run).withStyle(style), lightMode, out);
+        } else {
+            for (int k = from; k < to; ) {
+                int cp = literal.codePointAt(k);
+                int cpLen = Character.charCount(cp);
+                addLeaf(font, Component.literal(literal.substring(k, k + cpLen)).withStyle(style), lightMode, out);
+                k += cpLen;
+            }
+        }
+    }
+
+    private static boolean isCjkCodePoint(int cp) {
+        return Character.isIdeographic(cp)                    // CJK統合漢字・拡張各種・互換漢字
+            || (cp >= 0x3040 && cp <= 0x309F)                // ひらがな
+            || (cp >= 0x30A0 && cp <= 0x30FF)                // カタカナ
+            || (cp >= 0x31F0 && cp <= 0x31FF)                // カタカナ拡張
+            || (cp >= 0x3000 && cp <= 0x303F)                // CJK記号・句読点
+            || (cp >= 0xAC00 && cp <= 0xD7AF)                // ハングル音節
+            || (cp >= 0x1100 && cp <= 0x11FF);               // ハングル字母
     }
 
     private static Component withInherited(Component c, Style inherited) {

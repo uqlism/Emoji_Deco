@@ -11,8 +11,9 @@ import java.util.List;
 
 /**
  * チャット1行分の動的 FormattedCharSequence。
- * accept() が呼ばれるたびに ComponentConverter.toLines() で再評価するため
- * #rainbow 等の時刻依存デコレータがアニメーションし、かつ scale/glow も保持される。
+ * MixinFont.drawInBatch が毎フレーム ComponentConverter.toLines() で解決して
+ * drawInBatch(FCS) 経路に通すことで #rainbow 等がアニメーションし scale/glow も保持される。
+ * accept(FormattedCharSink) は AffineSequence の変換を失うため、描画には必ず drawInBatch 経路を使う。
  */
 public final class DynamicLineSequence implements FormattedCharSequence {
 
@@ -25,6 +26,10 @@ public final class DynamicLineSequence implements FormattedCharSequence {
         this.lineIndex = lineIndex;
         this.width = width;
     }
+
+    public Component original()  { return original; }
+    public int       lineIndex() { return lineIndex; }
+    public int       width()     { return width; }
 
     @Override
     public boolean accept(FormattedCharSink sink) {

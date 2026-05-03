@@ -112,7 +112,7 @@ public final class ComponentConverter {
         List<FormattedCharSequence> words = new ArrayList<>();
         component.visit((style, str) -> {
             if (!str.isEmpty()) {
-                words.addAll(RichNode.toWordSegments(font, RichTextParser.parse(str), style));
+                words.addAll(RichNode.toWordSegments(font, RichTextParser.parse(str), style, width));
             }
             return Optional.empty();
         }, Style.EMPTY);

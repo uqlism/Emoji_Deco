@@ -92,6 +92,11 @@ public class UrlSourceResolver {
         if (!url.startsWith("https://") && !url.startsWith("http://"))
             return CompletableFuture.failedFuture(
                     new IllegalArgumentException("Only http/https URLs are allowed"));
+        if (!UrlAllowlist.INSTANCE.isAllowed(url)) {
+            LOGGER.warn("[EmojiDeco] URL フェッチ拒否 (allowlist 未登録またはURLフェッチ無効): {}", url);
+            return CompletableFuture.failedFuture(
+                    new SecurityException("URL not permitted by allowlist: " + url));
+        }
 
         String cacheKey = url + "\0" + (format != null ? format : "");
         long expiresAt = ttlSeconds > 0
