@@ -1,7 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
-import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -34,7 +34,7 @@ public class MixinSignText {
                 result[i] = FormattedCharSequence.EMPTY;
                 continue;
             }
-            result[i] = ComponentSequenceConverter.toSequence(font, original);
+            result[i] = ComponentConverter.toSequence(font, original);
         }
         cir.setReturnValue(result);
     }

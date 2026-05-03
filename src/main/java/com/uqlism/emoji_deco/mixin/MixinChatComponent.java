@@ -2,7 +2,7 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.render.sequence.DynamicLineSequence;
-import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * ComponentRenderUtils.wrapComponents() を差し替えてリッチテキストを適用する。
  *
- * ComponentSequenceConverter.toLines(font, component, width) で
+ * ComponentConverter.toLines(font, component, width) で
  * ワードラップ・scale/glow・hover/click を同時に処理する。
  * 動的コンテンツ（#rainbow 等）は DynamicLineSequence でラップして毎フレーム再評価。
  */
@@ -57,8 +57,8 @@ public class MixinChatComponent {
         if (!Config.enableChat || !(text instanceof Component c)) {
             return font.split(text, width);
         }
-        List<FormattedCharSequence> lines = ComponentSequenceConverter.toLines(font, c, width);
-        if (!ComponentSequenceConverter.isDynamic(c)) return lines;
+        List<FormattedCharSequence> lines = ComponentConverter.toLines(font, c, width);
+        if (!ComponentConverter.isDynamic(c)) return lines;
         // 動的コンテンツは各行を毎フレーム再評価する DynamicLineSequence でラップ
         List<FormattedCharSequence> dynamic = new ArrayList<>(lines.size());
         for (int i = 0; i < lines.size(); i++) {

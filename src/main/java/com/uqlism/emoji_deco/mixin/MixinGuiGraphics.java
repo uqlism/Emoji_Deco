@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
-import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import com.uqlism.emoji_deco.text.ir.HoverRichContents;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import net.minecraft.client.gui.Font;
@@ -41,7 +41,7 @@ public abstract class MixinGuiGraphics {
             CallbackInfoReturnable<Integer> cir) {
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
-        FormattedCharSequence fcs = ComponentSequenceConverter.toSequence(font, text);
+        FormattedCharSequence fcs = ComponentConverter.toSequence(font, text);
         // 呼び出し元がプレーンテキスト幅でセンタリングした x を渡している場合に備え、
         // (plainWidth - fcsWidth) / 2 だけ右にずらして中心を合わせる。
         int adj = (font.width(text) - font.width(fcs)) / 2;
@@ -55,7 +55,7 @@ public abstract class MixinGuiGraphics {
             CallbackInfo ci) {
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
-        FormattedCharSequence fcs = ComponentSequenceConverter.toSequence(font, text);
+        FormattedCharSequence fcs = ComponentConverter.toSequence(font, text);
         ((GuiGraphics)(Object)this).drawString(font, fcs, x - font.width(fcs) / 2, y, color);
         ci.cancel();
     }

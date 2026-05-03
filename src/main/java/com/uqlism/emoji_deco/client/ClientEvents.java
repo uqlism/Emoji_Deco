@@ -10,7 +10,7 @@ import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.item.GraffitiInkItem;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
-import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -40,14 +40,14 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = EmojiDeco.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class ClientEvents {
 
-    // チャットの変換は MixinChatComponent + ComponentSequenceConverter が担う。
+    // チャットの変換は MixinChatComponent + ComponentConverter が担う。
 
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
         if (!Config.enableItemNames) return;
         List<Component> tooltip = event.getToolTip();
         if (tooltip.isEmpty()) return;
-        tooltip.set(0, ComponentTransformer.transform(tooltip.get(0)));
+        tooltip.set(0, ComponentConverter.toComponent(tooltip.get(0)));
     }
 
     @SubscribeEvent

@@ -1,7 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
-import com.uqlism.emoji_deco.text.ComponentTransformer;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.client.gui.screens.inventory.BookViewScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -15,7 +15,7 @@ public class MixinWrittenBookAccess {
 
     // 書籍は font.split() → font.drawInBatch(FormattedCharSequence) の経路を使うため
     // MixinFont.drawInBatch(Component) の catch-all が効かない。
-    // ComponentTransformer.transform() で Component ツリーを保持したまま変換する。
+    // ComponentConverter.toComponent() で Component ツリーを保持したまま変換する。
     // （scale/glow は font.split() 経由では未対応のため将来課題）
     @Inject(
         method = "m_7303_",
@@ -28,6 +28,6 @@ public class MixinWrittenBookAccess {
         FormattedText page = cir.getReturnValue();
         if (!(page instanceof Component component)) return;
         if (component.getString().isBlank()) return;
-        cir.setReturnValue(ComponentTransformer.transform(component));
+        cir.setReturnValue(ComponentConverter.toComponent(component));
     }
 }

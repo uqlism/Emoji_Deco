@@ -1,6 +1,6 @@
 package com.uqlism.emoji_deco.render.sequence;
 
-import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -12,7 +12,7 @@ import net.minecraft.util.FormattedCharSequence;
  * accept() call so that time-dependent decorators (e.g. #rainbow) animate each frame.
  *
  * "original" is the pre-transformation component from the ClientChatReceivedEvent.
- * accept() calls ComponentTransformer.transform(original) to get a fresh component
+ * accept() calls ComponentConverter.computeNow(original) to get a fresh component
  * with current-frame colors, then passes its visual-order text to the sink.
  * This does NOT go through DynamicComponentContents again, so there is no recursion.
  */
@@ -30,6 +30,6 @@ public final class DynamicFormattedCharSequence implements FormattedCharSequence
     public boolean accept(FormattedCharSink sink) {
         Font font = Minecraft.getInstance().font;
         if (font == null) return true;
-        return ComponentSequenceConverter.computeNow(font, original).accept(sink);
+        return ComponentConverter.computeNow(font, original).accept(sink);
     }
 }

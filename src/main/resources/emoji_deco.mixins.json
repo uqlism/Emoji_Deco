@@ -12,11 +12,9 @@
     "MixinChatComponent",
     "MixinGuiGraphics",
     "MixinFontSet",
-    "MixinGui",
     "MixinSignText",
     "MixinAbstractSignEditScreen",
     "MixinBookEditScreen",
-    "MixinEntityRenderer",
     "MixinWrittenBookAccess"
   ],
   "injectors": {

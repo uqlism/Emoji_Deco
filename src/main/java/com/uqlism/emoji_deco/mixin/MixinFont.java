@@ -1,12 +1,13 @@
 package com.uqlism.emoji_deco.mixin;
 
+import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
 import com.uqlism.emoji_deco.render.sequence.LightMode;
 import com.uqlism.emoji_deco.render.image.ImageGlyphPool;
-import com.uqlism.emoji_deco.text.ComponentSequenceConverter;
+import com.uqlism.emoji_deco.text.ComponentConverter;
 import net.minecraft.network.chat.FormattedText;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.gui.Font;
@@ -58,10 +59,9 @@ public class MixinFont {
     // ── drawInBatch(Component) → catch-all transform ──────────────────────────
 
     // m_272077_ = drawInBatch(Component, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
-    // すべての Component ベース描画を捕捉する catch-all。個別ミックスイン（EntityRenderer 等）が
-    // 変換せずにオリジナル Component を返した場合でもここで ComponentSequenceConverter が処理する。
-    // '#' / ':' を含まない Component は即リターン（性能上の高速パス）。
-    // FormattedCharSequence を生成して drawInBatch(FCS) に委ねるため再帰ガード不要。
+    // EntityRenderer.renderNameTag() が Font.drawInBatch(Component) を直接呼ぶ唯一の経路。
+    // GuiGraphics 経由のコンテキストは Language.getVisualOrder() に入る前に MixinGuiGraphics が処理するため
+    // ここには来ない。'#' / ':' を含まない Component は即リターン（性能上の高速パス）。
     @Inject(method = "m_272077_", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$transformDrawBatchComponent(
             Component text, float x, float y,
@@ -69,10 +69,11 @@ public class MixinFont {
             Matrix4f matrix, MultiBufferSource buffers,
             Font.DisplayMode mode, int bgColor, int packedLight,
             CallbackInfoReturnable<Integer> cir) {
+        if (!Config.enableEntityNames) return;
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
         Font self = (Font)(Object)this;
-        FormattedCharSequence seq = ComponentSequenceConverter.computeNow(self, text);
+        FormattedCharSequence seq = ComponentConverter.toSequence(self, text);
         float adj = (self.width(text) - self.width(seq)) / 2.0f;
         cir.setReturnValue(self.drawInBatch(seq, x + adj, y, color, dropShadow,
                 matrix, buffers, mode, bgColor, packedLight));
@@ -96,7 +97,7 @@ public class MixinFont {
         // accept(FormattedCharSink) 経由では AffineSequence の行列変換が失われるため
         // ここで drawInBatch(FCS) 経路を維持する必要がある。
         if (text instanceof DynamicFormattedCharSequence dfcs) {
-            FormattedCharSequence resolved = ComponentSequenceConverter.computeNow(self, dfcs.original());
+            FormattedCharSequence resolved = ComponentConverter.computeNow(self, dfcs.original());
             cir.setReturnValue(self.drawInBatch(resolved, x, y, color, dropShadow, matrix, buffers, mode, bgColor, packedLight));
             return;
         }
