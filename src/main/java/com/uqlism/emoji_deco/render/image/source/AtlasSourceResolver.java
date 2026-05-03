@@ -33,6 +33,7 @@ public class AtlasSourceResolver {
                 atlasRL,
                 textureSprite.getU0(), textureSprite.getV0(),
                 textureSprite.getU1(), textureSprite.getV1(),
-                textureSprite.contents().width(), textureSprite.contents().height());
+                textureSprite.contents().width(), textureSprite.contents().height(),
+                null);
     }
 }

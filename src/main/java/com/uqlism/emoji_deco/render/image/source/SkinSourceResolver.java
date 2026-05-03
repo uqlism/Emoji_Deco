@@ -23,7 +23,7 @@ public class SkinSourceResolver {
     public static ResolvedSource resolveSync(String player) {
         ResourceLocation skin = getSkinTexture(player);
         if (skin == null) return null;
-        return new ResolvedSource.Static(skin, 0f, 0f, 1f, 1f, 64, 64);
+        return new ResolvedSource.Static(skin, 0f, 0f, 1f, 1f, 64, 64, null);
     }
 
     @Nullable

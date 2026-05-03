@@ -1,55 +1,93 @@
 package com.uqlism.emoji_deco.render.image.source;
 
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.logging.LogUtils;
-import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
-import com.uqlism.emoji_deco.render.image.ImageDecoder;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
+import com.uqlism.emoji_deco.render.image.ImageResolver;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
-import com.uqlism.emoji_deco.render.image.decoder.ApngDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
-import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * emoji_deco:fetch_resource ソースリゾルバ。
  *
- * フォーマット: JSON "format" フィールド > ファイル拡張子 で判別。
- *   GIF  → GifDecoder（アニメーション対応）
- *   その他 → StbDecoder（PNG / JPEG 静止画）
- *
- * アニメーションの tick 管理は ImageGlyphPool が担う。
+ * resolveAsync: バイト読み込み（レンダースレッド）→ デコード（バックグラウンド）
+ *               → GPU アップロード（レンダースレッド, ImageResolver.uploadAsync）。
+ * resolveSync:  ローディング GIF 専用の同期解決（リロードごとに 1 回のみ呼ばれる）。
  */
 public class ResourceSourceResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final AtomicInteger counter = new AtomicInteger();
+    private static final ClassLoader MOD_CLASSLOADER = ResourceSourceResolver.class.getClassLoader();
 
-    private static final Map<ResourceLocation, ResolvedSource> LOADED = new ConcurrentHashMap<>();
-    private static final Set<ResourceLocation> FAILED = ConcurrentHashMap.newKeySet();
+    /** デコード専用バックグラウンドスレッドプール（最大 4 スレッド）。 */
+    private static final java.util.concurrent.Executor DECODE_EXECUTOR =
+            new ThreadPoolExecutor(0, 4, 60L, TimeUnit.SECONDS,
+                    new LinkedBlockingQueue<>(),
+                    r -> {
+                        Thread t = new Thread(r, "EmojiDeco-Decode-" + counter.getAndIncrement());
+                        t.setDaemon(true);
+                        t.setContextClassLoader(MOD_CLASSLOADER);
+                        return t;
+                    });
 
+    /**
+     * 非同期解決。
+     * バイト読み込みはレンダースレッドで行い（ResourceManager はスレッドセーフでないため）、
+     * デコードをバックグラウンドで実行後、ImageResolver.uploadAsync で GPU に転送する。
+     */
+    public static CompletableFuture<ResolvedSource> resolveAsync(String path, @Nullable String format) {
+        ResourceLocation rl = ResourceLocation.tryParse(path);
+        if (rl == null)
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid path: " + path));
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null)
+            return CompletableFuture.failedFuture(new IllegalStateException("Minecraft unavailable"));
+
+        final byte[] data;
+        try {
+            data = readBytes(mc, rl);
+        } catch (IOException e) {
+            LOGGER.warn("[EmojiDeco] Failed to read {}: {}", path, e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        }
+
+        Format fmt = (format != null)
+                ? ImageFormatDetector.fromHint(format)
+                : ImageFormatDetector.fromHint(extension(rl.getPath()));
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                var frames = ImageResolver.decoderFor(fmt).decode(data);
+                if (frames.isEmpty()) throw new IOException("No frames decoded from " + path);
+                return frames;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, DECODE_EXECUTOR)
+        .thenCompose(ImageResolver::uploadAsync);
+    }
+
+    /**
+     * ローディング GIF 専用の同期解決。レンダースレッドから呼ぶこと。
+     * キャッシュなし（呼び出し側が loadingSlot.resolved で 1 回保持する）。
+     */
     @Nullable
     public static ResolvedSource resolveSync(String path, @Nullable String format) {
         ResourceLocation rl = ResourceLocation.tryParse(path);
         if (rl == null) return null;
-
-        ResolvedSource cached = LOADED.get(rl);
-        if (cached != null) return cached;
-        if (FAILED.contains(rl)) return null;
-
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return null;
 
@@ -57,53 +95,18 @@ public class ResourceSourceResolver {
                 ? ImageFormatDetector.fromHint(format)
                 : ImageFormatDetector.fromHint(extension(rl.getPath()));
 
-        ImageDecoder decoder = switch (fmt) {
-            case GIF  -> new GifDecoder();
-            case WEBP -> new WebpDecoder();
-            case PNG, APNG -> new ApngDecoder();
-            default   -> new StbDecoder();
-        };
-
-        ResolvedSource result = resolve(mc, rl, decoder);
-        if (result != null) LOADED.put(rl, result);
-        else                FAILED.add(rl);
-        return result;
-    }
-
-    public static void onResourceReload() {
-        LOADED.clear();
-        FAILED.clear();
-    }
-
-    // ── 内部ヘルパー ──────────────────────────────────────────────────────────
-
-    @Nullable
-    private static ResolvedSource resolve(Minecraft mc, ResourceLocation rl, ImageDecoder decoder) {
         try {
-            byte[] data = readBytes(mc, rl);
-            List<ImageDecoder.Frame> frames = decoder.decode(data);
+            var frames = ImageResolver.decoderFor(fmt).decode(readBytes(mc, rl));
             if (frames.isEmpty()) return null;
-
-            int w = frames.get(0).pixels().getWidth();
-            int h = frames.get(0).pixels().getHeight();
-
-            if (frames.size() == 1) {
-                NativeImage pixels = frames.get(0).pixels();
-                DynamicTexture tex = new DynamicTexture(pixels);
-                TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
-                tex.upload();
-                mc.getTextureManager().register(rl, tex);
-                return new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h);
-            }
-            AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
-            mc.getTextureManager().register(rl, animator);
-            return new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator);
-
+            return ImageResolver.uploadSync(frames);
         } catch (IOException e) {
-            LOGGER.warn("[EmojiDeco] Failed to load texture {}: {}", rl, e.getMessage());
+            LOGGER.warn("[EmojiDeco] Failed to load {}: {}", path, e.getMessage());
             return null;
         }
     }
+
+    /** onResourceReload はキャッシュ廃止につき no-op。 */
+    public static void onResourceReload() {}
 
     private static byte[] readBytes(Minecraft mc, ResourceLocation rl) throws IOException {
         Resource res = mc.getResourceManager().getResource(rl)
@@ -115,4 +118,6 @@ public class ResourceSourceResolver {
         int dot = path.lastIndexOf('.');
         return dot >= 0 ? path.substring(dot + 1) : "";
     }
+
+    private ResourceSourceResolver() {}
 }

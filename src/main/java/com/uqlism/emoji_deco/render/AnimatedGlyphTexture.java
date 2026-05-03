@@ -13,17 +13,16 @@ import java.util.List;
 import java.util.concurrent.Executor;
 
 /**
- * 事前デコード済みフレームリストから生成されるアニメーションテクスチャ。
+ * アニメーショングリフテクスチャ。
  *
- * 全フレームをロード時に縦並びアトラス（W × H×N）として1枚のGLテクスチャにまとめてアップロードする。
- * フレーム切り替えはUV座標の切り替えのみ（GPU転送なし）。
+ * 全フレームを縦並びアトラス（W × H×N）として GPU にアップロードし、
+ * アップロード後は CPU 側コピーを保持しない。フレーム切り替えは UV 座標のみ。
  *
- * GLテクスチャはImageGlyphPoolからunloadGpu()が呼ばれたとき解放され、
- * 次回ensureGpu()でアトラスから再アップロードする。
+ * 非表示期間後の再描画が必要な場合は、ImageGlyphPool が resolved をリセットし
+ * ソースから再デコード・再アップロードする（ensureGpu/unloadGpu は廃止）。
  */
 public class AnimatedGlyphTexture extends AbstractTexture {
 
-    private final NativeImage atlas;
     private final int numFrames;
     private final int frameH;
     private final long[] cumulativeMs;
@@ -31,7 +30,6 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     private final boolean animated;
     private int  currentFrame = 0;
     private boolean closed    = false;
-    private boolean gpuLoaded = false;
 
     private AnimatedGlyphTexture(List<ImageDecoder.Frame> frames) {
         numFrames = frames.size();
@@ -39,16 +37,18 @@ public class AnimatedGlyphTexture extends AbstractTexture {
         int fw = frames.get(0).pixels().getWidth();
         frameH = frames.get(0).pixels().getHeight();
 
-        // 全フレームを縦に並べたアトラスを構築し、元フレームは即座に解放
-        atlas = new NativeImage(fw, frameH * numFrames, false);
-        for (int i = 0; i < numFrames; i++) {
-            NativeImage src = frames.get(i).pixels();
-            for (int y = 0; y < frameH; y++) {
-                for (int x = 0; x < fw; x++) {
-                    atlas.setPixelRGBA(x, i * frameH + y, src.getPixelRGBA(x, y));
-                }
+        // アトラスを構築して即 GPU にアップロードし、CPU コピーは解放する
+        try (NativeImage atlas = new NativeImage(fw, frameH * numFrames, false)) {
+            for (int i = 0; i < numFrames; i++) {
+                NativeImage src = frames.get(i).pixels();
+                for (int y = 0; y < frameH; y++)
+                    for (int x = 0; x < fw; x++)
+                        atlas.setPixelRGBA(x, i * frameH + y, src.getPixelRGBA(x, y));
+                src.close();
             }
-            src.close();
+            TextureUtil.prepareImage(getId(), fw, frameH * numFrames);
+            RenderSystem.bindTexture(getId());
+            atlas.upload(0, 0, 0, false);
         }
 
         int n = numFrames;
@@ -64,25 +64,7 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     /** フレームリストから生成する。レンダースレッドから呼ぶこと。 */
     public static AnimatedGlyphTexture fromFrames(List<ImageDecoder.Frame> frames) {
         if (frames.isEmpty()) throw new IllegalArgumentException("Empty frame list");
-        AnimatedGlyphTexture tex = new AnimatedGlyphTexture(frames);
-        tex.ensureGpu();
-        return tex;
-    }
-
-    // ── GPU ストリーミング ────────────────────────────────────────────────────
-
-    public void ensureGpu() {
-        if (closed || gpuLoaded) return;
-        TextureUtil.prepareImage(getId(), atlas.getWidth(), atlas.getHeight());
-        RenderSystem.bindTexture(getId());
-        atlas.upload(0, 0, 0, false);
-        gpuLoaded = true;
-    }
-
-    public void unloadGpu() {
-        if (!gpuLoaded) return;
-        releaseId();
-        gpuLoaded = false;
+        return new AnimatedGlyphTexture(frames);
     }
 
     // ── アニメーション ────────────────────────────────────────────────────────
@@ -117,7 +99,6 @@ public class AnimatedGlyphTexture extends AbstractTexture {
     public void close() {
         if (closed) return;
         closed = true;
-        if (gpuLoaded) { releaseId(); gpuLoaded = false; }
-        atlas.close();
+        releaseId();
     }
 }

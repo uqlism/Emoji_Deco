@@ -16,28 +16,39 @@ import org.slf4j.Logger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * コードポイントプール（0xD000–0xD7FF、最大 2048 スロット）。
+ * コードポイントプール（最大 10,000 スロット、2 セグメント構成）。
  *
- * LRU 退避は行わない。コードポイントを再利用すると既存の Component が
- * 別の画像を指してしまう（黒四角・壊れた表示）ため、一度割り当てたスロットは
- * ゲームプレイ中は解放しない。プール満杯時は新規画像を tofu として表示する。
+ * セグメント 1: 0xD000–0xD7FF（2048 スロット、インデックス 0–2047）
+ * セグメント 2: 0xE000–0xFEEF（7952 スロット、インデックス 2048–9999）
+ * ※ 0xD800–0xDFFF は Java サロゲート範囲のため使用しない。
+ *
+ * コードポイントの再利用はしない。再利用すると既存 Component が別画像を指してしまう
+ * （黒四角・壊れた表示）ため、一度割り当てたスロットはゲームプレイ中は解放しない。
+ * プール満杯時は新規画像を tofu として表示する。
+ *
+ * GPU メモリ管理:
+ * - AnimatedGlyphTexture: GPU_UNLOAD_TICKS（5 秒）未使用で VRAM 解放、次回描画時に再アップロード。
+ * - StaticGlyphTexture:   同上（CPU コピーを保持するため再アップロードは即座）。
+ * - Atlas / Skin（glyphTexture == null）: Minecraft 管理のため解放しない。
  *
  * リソースリロード時: URL 以外のスロットは evict、URL スロットは glyph のみクリア。
- * tick 最適化: ANIM_PAUSE_TICKS 以内に描画されたアニメーションスロットのみ進める。
  */
 public class ImageGlyphPool {
 
     public static final ResourceLocation IMAGE_FONT = ResourceLocation.parse("emoji_deco:image");
     public static final int  BASE_CP         = 0xD000;
-    /** 0xD000+2048 = 0xD800（サロゲート開始）の直前まで安全に使用できる最大値 */
-    private static final int  POOL_SIZE        = 2048;
-    /** この tick 数以上描画されなければ GL テクスチャを解放する（5秒） */
-    private static final long GPU_UNLOAD_TICKS = 100L;
+    private static final int  POOL_SIZE        = 10_000;
+    /** セグメント 1: 0xD000–0xD7FF */
+    private static final int  SEG1_CP          = 0xD000;
+    private static final int  SEG1_SIZE        = 0x800;   // 2048
+    /** セグメント 2: 0xE000–0xFEEF */
+    private static final int  SEG2_CP          = 0xE000;
+    /** この tick 数以上描画されなければ GL テクスチャを解放する（30秒）。解放後は次回描画時に再デコードする。 */
+    private static final long GPU_UNLOAD_TICKS = 600L;
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -60,6 +71,8 @@ public class ImageGlyphPool {
 
         void evict(Map<String, Integer> index) {
             if (resolved instanceof ResolvedSource.Animated a) a.animator().close();
+            else if (resolved instanceof ResolvedSource.Static st && st.glyphTexture() != null)
+                st.glyphTexture().close();
             index.remove(key);
             key         = null;
             imageSpec   = null;
@@ -94,7 +107,7 @@ public class ImageGlyphPool {
             int displayW, int displayH, float advanceOverride) {
         String key = buildKey(imageSpec, crop, displayW, displayH, advanceOverride);
         Integer existing = keyToSlot.get(key);
-        if (existing != null) { slots[existing].lastUsed = tick; return BASE_CP + existing; }
+        if (existing != null) { slots[existing].lastUsed = tick; return cpForIdx(existing); }
 
         int idx = claimSlot(key);
         if (idx < 0) return 0; // pool full → tofu (0 はフォントに存在しないコードポイント)
@@ -110,17 +123,25 @@ public class ImageGlyphPool {
         s.resolved = null;
         s.glyph    = null;
         s.future   = null; // URL フェッチは getGlyph() 呼び出し時（実描画時）まで遅延する
-        return BASE_CP + idx;
+        return cpForIdx(idx);
     }
 
     public static synchronized void tick() {
         tick++;
         long gpuThreshold = tick - GPU_UNLOAD_TICKS;
         for (Slot s : slots) {
-            if (!(s.resolved instanceof ResolvedSource.Animated a)) continue;
-            if (s.lastUsed < gpuThreshold) {
-                a.animator().unloadGpu();  // 長時間非表示: VRAM 解放
+            if (s.isEmpty() || s.resolved == null || s.lastUsed >= gpuThreshold) continue;
+            if (s.resolved instanceof ResolvedSource.Animated a) {
+                a.animator().close();
+            } else if (s.resolved instanceof ResolvedSource.Static st && st.glyphTexture() != null) {
+                st.glyphTexture().close();
+            } else {
+                continue; // Atlas / Skin: Minecraft 管理のため解放しない
             }
+            s.resolved    = null;
+            s.glyph       = null;
+            s.frameGlyphs = null;
+            s.future      = null; // 次回 getGlyph() で再デコードを起動する
         }
     }
 
@@ -165,17 +186,8 @@ public class ImageGlyphPool {
         s.lastUsed = tick;
 
         if (s.future == null && s.resolved == null) {
-            if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Url u) {
-                // 実描画が必要になった初回にフェッチ起動（getOrAllocate 時には起動しない）
-                s.future = UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
-            } else {
-                ResolvedSource fresh = resolveSync(s);
-                if (!Objects.equals(fresh, s.resolved)) {
-                    s.resolved    = fresh;
-                    s.glyph       = null;
-                    s.frameGlyphs = null;
-                }
-            }
+            // 実描画が必要になった初回（または GPU 解放後の再描画時）に非同期解決を起動する
+            s.future = resolveAsync(s);
         } else if (s.future != null && s.resolved == null && s.future.isDone()) {
             if (!s.future.isCompletedExceptionally()) {
                 try { s.resolved = s.future.get(); } catch (Exception ignored) {}
@@ -213,9 +225,6 @@ public class ImageGlyphPool {
         }
 
         if (s.resolved instanceof ResolvedSource.Animated a) {
-            // 非表示期間中に GL テクスチャが解放されていれば再アップロード
-            a.animator().ensureGpu();
-            // フレーム更新はウォールクロックで行う（GPU 転送なし）
             a.animator().tickMs(System.currentTimeMillis());
             if (s.frameGlyphs == null) s.frameGlyphs = bakeAllFrames(s, a);
             return s.frameGlyphs[a.animator().currentFrame()];
@@ -246,7 +255,6 @@ public class ImageGlyphPool {
             loadingSlot.frameGlyphs = null;
         }
         if (loadingSlot.resolved instanceof ResolvedSource.Animated a) {
-            a.animator().ensureGpu();
             a.animator().tickMs(System.currentTimeMillis());
             if (loadingSlot.frameGlyphs == null)
                 loadingSlot.frameGlyphs = bakeAllFrames(loadingSlot, a);
@@ -258,21 +266,40 @@ public class ImageGlyphPool {
 
     @Nullable
     private static Slot slotAt(int codePoint) {
-        int idx = codePoint - BASE_CP;
-        if (idx < 0 || idx >= POOL_SIZE) return null;
+        int idx = idxForCp(codePoint);
+        if (idx < 0) return null;
         Slot s = slots[idx];
         return s.isEmpty() ? null : s;
     }
 
-    @Nullable
-    private static ResolvedSource resolveSync(Slot s) {
-        if (s.imageSpec instanceof ImageSpec.Decoded d && d.source() instanceof BinarySource.Resource r)
-            return ResourceSourceResolver.resolveSync(r.path(), d.format());
-        if (s.imageSpec instanceof ImageSpec.Atlas a)
-            return AtlasSourceResolver.resolveSync(a.atlas(), a.sprite());
-        if (s.imageSpec instanceof ImageSpec.Skin sk)
-            return SkinSourceResolver.resolveSync(sk.player());
-        return null;
+    private static int cpForIdx(int idx) {
+        return idx < SEG1_SIZE ? SEG1_CP + idx : SEG2_CP + (idx - SEG1_SIZE);
+    }
+
+    private static int idxForCp(int cp) {
+        if (cp >= SEG1_CP && cp < SEG1_CP + SEG1_SIZE) return cp - SEG1_CP;
+        if (cp >= SEG2_CP && cp < SEG2_CP + (POOL_SIZE - SEG1_SIZE)) return SEG1_SIZE + (cp - SEG2_CP);
+        return -1;
+    }
+
+    private static CompletableFuture<ResolvedSource> resolveAsync(Slot s) {
+        if (s.imageSpec instanceof ImageSpec.Decoded d) {
+            if (d.source() instanceof BinarySource.Url u)
+                return UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
+            if (d.source() instanceof BinarySource.Resource r)
+                return ResourceSourceResolver.resolveAsync(r.path(), d.format());
+        }
+        if (s.imageSpec instanceof ImageSpec.Atlas a) {
+            ResolvedSource rs = AtlasSourceResolver.resolveSync(a.atlas(), a.sprite());
+            return rs != null ? CompletableFuture.completedFuture(rs)
+                              : CompletableFuture.failedFuture(new Exception("Atlas sprite not found"));
+        }
+        if (s.imageSpec instanceof ImageSpec.Skin sk) {
+            ResolvedSource rs = SkinSourceResolver.resolveSync(sk.player());
+            return rs != null ? CompletableFuture.completedFuture(rs)
+                              : CompletableFuture.failedFuture(new Exception("Skin not available"));
+        }
+        return CompletableFuture.failedFuture(new IllegalStateException("Unknown ImageSpec: " + s.imageSpec));
     }
 
     private static BakedGlyph[] bakeAllFrames(Slot s, ResolvedSource.Animated a) {

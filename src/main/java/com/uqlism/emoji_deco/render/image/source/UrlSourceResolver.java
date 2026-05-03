@@ -1,10 +1,8 @@
 package com.uqlism.emoji_deco.render.image.source;
 
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.platform.TextureUtil;
 import com.mojang.logging.LogUtils;
-import com.uqlism.emoji_deco.render.AnimatedGlyphTexture;
 import com.uqlism.emoji_deco.render.image.ImageDecoder;
+import com.uqlism.emoji_deco.render.image.ImageResolver;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector;
 import com.uqlism.emoji_deco.render.image.ImageFormatDetector.Format;
 import com.uqlism.emoji_deco.render.image.ResolvedSource;
@@ -13,8 +11,6 @@ import com.uqlism.emoji_deco.render.image.decoder.GifDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.StbDecoder;
 import com.uqlism.emoji_deco.render.image.decoder.WebpDecoder;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -166,34 +162,8 @@ public class UrlSourceResolver {
                 throw new RuntimeException(e);
             }
         }, FETCH_EXECUTOR)
-        // Stage 2: GPU アップロード（render thread に委譲して即リターン、join() しない）
-        .thenCompose(frames -> {
-            CompletableFuture<ResolvedSource> upload = new CompletableFuture<>();
-            int w = frames.get(0).pixels().getWidth();
-            int h = frames.get(0).pixels().getHeight();
-            Minecraft.getInstance().execute(() -> {
-                try {
-                    ResourceLocation rl = ResourceLocation.parse(
-                            "emoji_deco:fetch_url_" + counter.getAndIncrement());
-                    if (frames.size() == 1) {
-                        NativeImage pixels = frames.get(0).pixels();
-                        DynamicTexture tex = new DynamicTexture(pixels);
-                        TextureUtil.prepareImage(tex.getId(), pixels.getWidth(), pixels.getHeight());
-                        tex.upload();   // GL にピクセルデータを転送（これを忘れると黒になる）
-                        Minecraft.getInstance().getTextureManager().register(rl, tex);
-                        upload.complete(new ResolvedSource.Static(rl, 0f, 0f, 1f, 1f, w, h));
-                    } else {
-                        AnimatedGlyphTexture animator = AnimatedGlyphTexture.fromFrames(frames);
-                        Minecraft.getInstance().getTextureManager().register(rl, animator);
-                        upload.complete(new ResolvedSource.Animated(rl, 0f, 0f, 1f, 1f, w, h, animator));
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("[EmojiDeco] GPU アップロード失敗 [{}]: {}", url, e.toString(), e);
-                    upload.completeExceptionally(e);
-                }
-            });
-            return upload;
-        });
+        // Stage 2: GPU アップロード（ImageResolver に委譲）
+        .thenCompose(ImageResolver::uploadAsync);
     }
 
     // ── disk cache ────────────────────────────────────────────────────────────
