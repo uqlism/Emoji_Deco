@@ -212,7 +212,10 @@ public class ImageGlyphPool {
             s.future = resolveAsync(s);
         } else if (s.future != null && s.resolved == null && s.future.isDone()) {
             if (!s.future.isCompletedExceptionally()) {
-                try { s.resolved = s.future.get(); } catch (Exception ignored) {}
+                try {
+                    s.resolved = s.future.get();
+                    s.future   = null; // クリアしないと次フレームでスワップ分岐が誤発火する
+                } catch (Exception ignored) {}
             } else if (s.imageSpec instanceof ImageSpec.Decoded d
                     && d.source() instanceof BinarySource.Url u) {
                 // 失敗 Future の場合は UrlSourceResolver に再問い合わせ。
