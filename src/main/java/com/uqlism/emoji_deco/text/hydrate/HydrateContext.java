@@ -1,8 +1,9 @@
 package com.uqlism.emoji_deco.text.hydrate;
 
-import com.uqlism.emoji_deco.text.ir.RichNode;
-
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.uqlism.emoji_deco.text.ir.RichNode;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -11,24 +12,27 @@ import java.util.*;
  * Runtime context passed to NodeHydrator.hydrate().
  * Use track() to wrap it in a Tracked context that records which dimensions are accessed,
  * allowing derivation of a wildcard-based AccessPattern for caching.
+ *
+ * args は JsonElement[] で保持する。テキスト構文由来の引数は ShortcodeManager / DecoratorManager が
+ * argSpec に従って事前に適切な型へ変換して渡す。JSON 呼び出し由来の引数はそのまま渡される。
  */
 public final class HydrateContext {
-    public static final HydrateContext EMPTY = new HydrateContext(new String[0], null, null);
+    public static final HydrateContext EMPTY = new HydrateContext(new JsonElement[0], null, null);
 
-    private final String[]      args;
+    private final JsonElement[]       args;
     private final @Nullable JsonArray topArgSpecs;
     private final @Nullable RichNode  slot;
 
-    public HydrateContext(String[] args, @Nullable JsonArray topArgSpecs, @Nullable RichNode slot) {
+    public HydrateContext(JsonElement[] args, @Nullable JsonArray topArgSpecs, @Nullable RichNode slot) {
         this.args        = args;
         this.topArgSpecs = topArgSpecs;
         this.slot        = slot;
     }
 
-    public String            getArg(int index)  { return index >= 0 && index < args.length ? args[index] : ""; }
-    public @Nullable RichNode  getSlot()          { return slot; }
-    public @Nullable JsonArray getTopArgSpecs()   { return topArgSpecs; }
-    public String[]            args()             { return args; }
+    public JsonElement          getArg(int index)  { return index >= 0 && index < args.length ? args[index] : JsonNull.INSTANCE; }
+    public @Nullable RichNode   getSlot()          { return slot; }
+    public @Nullable JsonArray  getTopArgSpecs()   { return topArgSpecs; }
+    public JsonElement[]        args()             { return args; }
 
     public Tracked track() { return new Tracked(this); }
 
@@ -38,12 +42,12 @@ public final class HydrateContext {
     public static final class Tracked {
         private final HydrateContext base;
         boolean slotAccessed, playerNamesAccessed, timeAccessed, urlDataAccessed;
-        private final Map<Integer, String> accessedArgs = new LinkedHashMap<>();
+        private final Map<Integer, JsonElement> accessedArgs = new LinkedHashMap<>();
 
         Tracked(HydrateContext base) { this.base = base; }
 
-        public String getArg(int index) {
-            String v = base.getArg(index);
+        public JsonElement getArg(int index) {
+            JsonElement v = base.getArg(index);
             if (index >= 0) accessedArgs.put(index, v);
             return v;
         }
@@ -87,7 +91,7 @@ public final class HydrateContext {
             boolean usesUrlData,
             boolean usesSlot,
             @Nullable RichNode slotSnapshot,
-            Map<Integer, String> argValues) {
+            Map<Integer, JsonElement> argValues) {
 
         /** True when the result depends on data that changes independently of args/slot. */
         public boolean isDynamic() { return usesTime || usesPlayerNames || usesUrlData; }

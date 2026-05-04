@@ -82,11 +82,11 @@ public interface Hydrator<T> {
     final class CacheEntry<V> {
         final V value;
         private final int[]           argIndices;
-        private final String[]        argValues;
+        private final JsonElement[]    argValues;
         private final boolean         neverCache, usesTime, usesPlayerNames, usesUrlData, usesSlot;
         private final @Nullable RichNode slotSnapshot;
 
-        private CacheEntry(V value, int[] argIndices, String[] argValues,
+        private CacheEntry(V value, int[] argIndices, JsonElement[] argValues,
                            boolean neverCache,
                            boolean usesTime, boolean usesPlayerNames, boolean usesUrlData,
                            boolean usesSlot, @Nullable RichNode slotSnapshot) {
@@ -100,8 +100,8 @@ public interface Hydrator<T> {
         static <V> CacheEntry<V> from(V value, HydrateContext.Tracked sub) {
             var p = sub.extractPattern();
             var argMap = p.argValues();
-            int[]    indices = argMap.keySet().stream().mapToInt(Integer::intValue).toArray();
-            String[] values  = new String[indices.length];
+            int[]         indices = argMap.keySet().stream().mapToInt(Integer::intValue).toArray();
+            JsonElement[] values  = new JsonElement[indices.length];
             for (int i = 0; i < indices.length; i++) values[i] = argMap.get(indices[i]);
             return new CacheEntry<>(value, indices, values,
                     p.isDynamic(),
@@ -221,10 +221,15 @@ public interface Hydrator<T> {
                 JsonObject obj = el.getAsJsonObject();
                 if ("emoji_deco:arg".equals(obj.has("type") ? obj.get("type").getAsString() : null)) {
                     int index = obj.has("index") ? obj.get("index").getAsInt() : 0;
-                    String raw = ctx.getArg(index);
+                    JsonElement rawEl = ctx.getArg(index);
                     JsonArray arr = new JsonArray();
-                    if (!raw.isBlank())
-                        for (String part : raw.split(",")) arr.add(part.strip());
+                    if (rawEl.isJsonArray()) {
+                        arr = rawEl.getAsJsonArray();
+                    } else if (rawEl.isJsonPrimitive()) {
+                        String raw = rawEl.getAsString();
+                        if (!raw.isBlank())
+                            for (String part : raw.split(",")) arr.add(part.strip());
+                    }
                     List<T> result = new ArrayList<>(arr.size());
                     for (JsonElement e : arr) {
                         T r = item.hydrate(e, ctx);

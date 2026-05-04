@@ -2,7 +2,9 @@ package com.uqlism.emoji_deco.text.hydrate;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.util.function.Function;
 import com.mojang.logging.LogUtils;
 import com.uqlism.emoji_deco.render.image.BinarySource;
@@ -57,7 +59,7 @@ public final class Hydrators {
     public static final Hydrator<String> STRING = Hydrator.firstOf(
             (el, ctx) -> el != null && el.isJsonPrimitive() ? el.getAsString() : null,
             Hydrator.dispatch(Map.ofEntries(
-                    Map.entry("emoji_deco:arg",          argOf(Function.identity(), Hydrator.lazy(() -> Hydrators.STRING))),
+                    Map.entry("emoji_deco:arg",          argOf(el -> el.isJsonPrimitive() ? el.getAsString() : null, Hydrator.lazy(() -> Hydrators.STRING))),
                     Map.entry("emoji_deco:join",         Hydrator.lazy(() -> Hydrators.JOIN_STR)),
                     Map.entry("emoji_deco:player_names", (el, ctx) -> { ctx.markPlayerNamesAccessed(); return ""; }),
                     // HSV → "#RRGGBB" 文字列。h/s/v はすべて 0.0〜1.0 の FLOAT 式。
@@ -436,13 +438,19 @@ public final class Hydrators {
     @SuppressWarnings("unchecked")
     private static <T> Hydrator<T> cached(Hydrator<? extends T> h) { return (Hydrator<T>) h.cached(); }
 
-    private static @Nullable Float tryParseFloat(String s) {
-        try { return Float.parseFloat(s); } catch (NumberFormatException e) { return null; }
+    private static @Nullable Float tryParseFloat(JsonElement el) {
+        if (!el.isJsonPrimitive()) return null;
+        try { return el.getAsFloat(); } catch (NumberFormatException e) { return null; }
     }
 
     // ── Bool handler ───────────────────────────────────────────────────────────
 
-    private static Boolean parseBool(String s) {
+    private static @Nullable Boolean parseBool(JsonElement el) {
+        if (!el.isJsonPrimitive()) return null;
+        JsonPrimitive p = el.getAsJsonPrimitive();
+        if (p.isBoolean()) return p.getAsBoolean();
+        if (p.isNumber())  return p.getAsInt() != 0;
+        String s = p.getAsString();
         return s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes");
     }
 
@@ -519,8 +527,8 @@ public final class Hydrators {
         JsonObject obj  = el.getAsJsonObject();
         String     name = fld(obj, "shortcode", ctx);
         if (name.isEmpty() || !ShortcodeManager.has(name)) return RichNode.empty();
-        String[] args = extractCallArgs(obj, ctx);
-        String   key  = "s:" + name;
+        JsonElement[] args = extractCallArgs(obj, ctx);
+        String        key  = "s:" + name;
         if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_shortcode: '{}'", name); return RichNode.empty(); }
         try { return ShortcodeManager.hydrateWith(name, args, null, ctx); }
         finally { RESOLVING.get().remove(key); }
@@ -531,8 +539,8 @@ public final class Hydrators {
         String     name = fld(obj, "decorator", ctx);
         if (name.isEmpty() || !DecoratorManager.has(name)) return RichNode.empty();
         RichNode slot = obj.has("slot") ? NODE.hydrate(obj.get("slot"), ctx) : RichNode.empty();
-        String[] args = extractCallArgs(obj, ctx);
-        String   key  = "d:" + name;
+        JsonElement[] args = extractCallArgs(obj, ctx);
+        String        key  = "d:" + name;
         if (!RESOLVING.get().add(key)) { LOGGER.warn("[EmojiDeco] Cyclic apply_decorator: '{}'", name); return slot; }
         try {
             RichNode result = DecoratorManager.hydrateWith(name, slot, args, ctx);
@@ -540,11 +548,15 @@ public final class Hydrators {
         } finally { RESOLVING.get().remove(key); }
     }
 
-    private static String[] extractCallArgs(JsonObject obj, HydrateContext.Tracked ctx) {
-        return Hydrator.field("args", Hydrator.list(STRING.withDefault("")))
-                .withDefault(List.of())
-                .hydrate(obj, ctx)
-                .toArray(String[]::new);
+    private static JsonElement[] extractCallArgs(JsonObject obj, HydrateContext.Tracked ctx) {
+        if (!obj.has("args") || !obj.get("args").isJsonArray()) return new JsonElement[0];
+        JsonArray arr = obj.getAsJsonArray("args");
+        JsonElement[] out = new JsonElement[arr.size()];
+        for (int i = 0; i < arr.size(); i++) {
+            JsonElement e = arr.get(i);
+            out[i] = e == null || e.isJsonNull() ? JsonNull.INSTANCE : e;
+        }
+        return out;
     }
 
     // ── Field accessors with defaults ──────────────────────────────────────────
@@ -601,15 +613,15 @@ public final class Hydrators {
     // ── Arg helpers ────────────────────────────────────────────────────────────
 
     /** Shared logic for {type:"emoji_deco:arg"} handlers.
-     *  Extracts the arg string, applies parse; on empty/failure falls back
+     *  Extracts the arg value, applies parse; JsonNull/failure falls back
      *  to the "default" field (evaluated via defaultH, so defaults can be expressions). */
     private static <T> Hydrator<T> argOf(
-            Function<String, @Nullable T> parse, Hydrator<T> defaultH) {
+            Function<JsonElement, @Nullable T> parse, Hydrator<T> defaultH) {
         return (el, ctx) -> {
             JsonObject  obj = el.getAsJsonObject();
             int         idx = obj.has("index") ? obj.get("index").getAsInt() : 0;
-            String      v   = ctx.getArg(idx);
-            if (!v.isEmpty()) {
+            JsonElement v   = ctx.getArg(idx);
+            if (!v.isJsonNull()) {
                 T r = parse.apply(v);
                 if (r != null) return r;
             }

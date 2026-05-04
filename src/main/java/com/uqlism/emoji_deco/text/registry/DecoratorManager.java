@@ -18,7 +18,9 @@ import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -86,13 +88,14 @@ public class DecoratorManager implements PreparableReloadListener {
 
     // ── Hydration ─────────────────────────────────────────────────────────────
 
+    /** JSON 呼び出し用（JsonElement[] を直接受け取る）。 */
     @Nullable
-    public static RichNode hydrateWith(String name, RichNode slotNode, String[] args) {
+    public static RichNode hydrateWith(String name, RichNode slotNode, JsonElement[] args) {
         return hydrateWith(name, slotNode, args, null);
     }
 
     @Nullable
-    public static RichNode hydrateWith(String name, RichNode slotNode, String[] args,
+    public static RichNode hydrateWith(String name, RichNode slotNode, JsonElement[] args,
                                         @Nullable HydrateContext.Tracked parentCtx) {
         JsonObject json = JSON_REGISTRY.get(name);
         if (json == null) return null;
@@ -103,14 +106,50 @@ public class DecoratorManager implements PreparableReloadListener {
         return result;
     }
 
+    /**
+     * テキスト構文用（"#decorator.arg1,arg2[content]" など）。
+     * argSpec に従って String[] を適切な型の JsonElement[] に事前変換してから hydrate する。
+     */
     @Nullable
-    public static RichNode resolve(String name, RichNode slotNode, String[] args) {
-        return hydrateWith(name, slotNode, args);
+    public static RichNode resolve(String name, RichNode slotNode, String[] textArgs) {
+        return hydrateWith(name, slotNode, parseTextArgs(name, textArgs));
     }
 
     @Nullable
     public static RichNode resolve(String name, RichNode slotNode) {
-        return hydrateWith(name, slotNode, new String[0]);
+        return hydrateWith(name, slotNode, new JsonElement[0]);
+    }
+
+    private static JsonElement[] parseTextArgs(String name, String[] textArgs) {
+        if (textArgs.length == 0) return new JsonElement[0];
+        JsonObject json  = JSON_REGISTRY.get(name);
+        JsonArray  specs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
+        JsonElement[] out = new JsonElement[textArgs.length];
+        for (int i = 0; i < textArgs.length; i++)
+            out[i] = parseTextArg(textArgs[i], argType(specs, i));
+        return out;
+    }
+
+    private static JsonElement parseTextArg(String s, @Nullable String type) {
+        if (s.isEmpty()) return JsonNull.INSTANCE;
+        return switch (type != null ? type : "string") {
+            case "integer" -> { try { yield new JsonPrimitive(Integer.parseInt(s)); }
+                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
+            case "float"   -> { try { yield new JsonPrimitive(Float.parseFloat(s)); }
+                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
+            case "boolean" -> new JsonPrimitive(
+                    s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes"));
+            default        -> new JsonPrimitive(s);
+        };
+    }
+
+    @Nullable
+    private static String argType(@Nullable JsonArray specs, int idx) {
+        if (specs == null || idx < 0 || idx >= specs.size()) return null;
+        JsonElement el = specs.get(idx);
+        if (!el.isJsonObject()) return null;
+        JsonObject spec = el.getAsJsonObject();
+        return spec.has("type") ? spec.get("type").getAsString() : null;
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
