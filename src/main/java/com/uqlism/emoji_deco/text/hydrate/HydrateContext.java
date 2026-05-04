@@ -3,6 +3,8 @@ package com.uqlism.emoji_deco.text.hydrate;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,6 +37,42 @@ public final class HydrateContext {
     public JsonElement[]        args()             { return args; }
 
     public Tracked track() { return new Tracked(this); }
+
+    // ── テキスト構文 arg 変換 ───────────────────────────────────────────────────
+
+    /**
+     * テキスト構文（:shortcode.a,b: / #dec.a,b[...]）の String[] 引数を、
+     * argSpecs の type フィールドに従って適切な JsonElement に変換する。
+     * argSpecs が null または対応する spec がない場合は string 扱い。
+     */
+    public static JsonElement[] parseTextArgs(@Nullable JsonArray argSpecs, String[] textArgs) {
+        JsonElement[] out = new JsonElement[textArgs.length];
+        for (int i = 0; i < textArgs.length; i++)
+            out[i] = parseTextArg(textArgs[i], argType(argSpecs, i));
+        return out;
+    }
+
+    private static JsonElement parseTextArg(String s, @Nullable String type) {
+        if (s.isEmpty()) return JsonNull.INSTANCE;
+        return switch (type != null ? type : "string") {
+            case "integer" -> { try { yield new JsonPrimitive(Integer.parseInt(s)); }
+                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
+            case "float"   -> { try { yield new JsonPrimitive(Float.parseFloat(s)); }
+                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
+            case "boolean" -> new JsonPrimitive(
+                    s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes"));
+            default        -> new JsonPrimitive(s);
+        };
+    }
+
+    @Nullable
+    private static String argType(@Nullable JsonArray specs, int idx) {
+        if (specs == null || idx < 0 || idx >= specs.size()) return null;
+        JsonElement el = specs.get(idx);
+        if (!el.isJsonObject()) return null;
+        JsonObject spec = el.getAsJsonObject();
+        return spec.has("type") ? spec.get("type").getAsString() : null;
+    }
 
     // ── Tracked ───────────────────────────────────────────────────────────────
 

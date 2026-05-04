@@ -19,9 +19,7 @@ import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import org.jetbrains.annotations.Nullable;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Style;
@@ -130,37 +128,11 @@ public class ShortcodeManager implements PreparableReloadListener {
     }
     public static RichNode resolve(String code) { return hydrateWith(code, new JsonElement[0], null); }
 
-    /** テキスト構文の String 引数を argSpec の type に従って JsonElement に変換する。 */
     private static JsonElement[] parseTextArgs(String code, String[] textArgs) {
         if (textArgs.length == 0) return new JsonElement[0];
         JsonObject json  = JSON_REGISTRY.get(code);
         JsonArray  specs = (json != null && json.has("args")) ? json.getAsJsonArray("args") : null;
-        JsonElement[] out = new JsonElement[textArgs.length];
-        for (int i = 0; i < textArgs.length; i++)
-            out[i] = parseTextArg(textArgs[i], argType(specs, i));
-        return out;
-    }
-
-    private static JsonElement parseTextArg(String s, @Nullable String type) {
-        if (s.isEmpty()) return JsonNull.INSTANCE;
-        return switch (type != null ? type : "string") {
-            case "integer" -> { try { yield new JsonPrimitive(Integer.parseInt(s)); }
-                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
-            case "float"   -> { try { yield new JsonPrimitive(Float.parseFloat(s)); }
-                                catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
-            case "boolean" -> new JsonPrimitive(
-                    s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes"));
-            default        -> new JsonPrimitive(s);
-        };
-    }
-
-    @Nullable
-    private static String argType(@Nullable JsonArray specs, int idx) {
-        if (specs == null || idx < 0 || idx >= specs.size()) return null;
-        JsonElement el = specs.get(idx);
-        if (!el.isJsonObject()) return null;
-        JsonObject spec = el.getAsJsonObject();
-        return spec.has("type") ? spec.get("type").getAsString() : null;
+        return HydrateContext.parseTextArgs(specs, textArgs);
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
