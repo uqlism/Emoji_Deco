@@ -89,7 +89,7 @@ public class RichTextParser {
                     String inner = text.substring(pos + 1, close);
                     int dot = inner.indexOf('.');
                     String code = dot > 0 ? inner.substring(0, dot) : inner;
-                    String[] args = dot > 0 ? inner.substring(dot + 1).split(",", -1) : new String[0];
+                    String[] args = dot > 0 ? splitArgs(inner.substring(dot + 1)) : new String[0];
                     if (isValidShortcodeName(code) && ShortcodeManager.has(code)) {
                         flush(children, text, litStart, pos, base);
                         children.add(ShortcodeManager.resolve(code, args));
@@ -108,7 +108,7 @@ public class RichTextParser {
                     int contentStart = nameEnd;
                     if (text.charAt(nameEnd) == '.') {
                         int bracketPos = text.indexOf('[', nameEnd + 1);
-                        if (bracketPos > nameEnd) { args = text.substring(nameEnd + 1, bracketPos).split(",", -1); contentStart = bracketPos; }
+                        if (bracketPos > nameEnd) { args = splitArgs(text.substring(nameEnd + 1, bracketPos)); contentStart = bracketPos; }
                     }
                     if (text.charAt(contentStart) == '[' && DecoratorManager.has(tagName)) {
                         int bracketClose = findMatchingBracket(text, contentStart);
@@ -151,7 +151,7 @@ public class RichTextParser {
                     String inner = raw.substring(pos + 1, close);
                     int dot = inner.indexOf('.');
                     String code = dot > 0 ? inner.substring(0, dot) : inner;
-                    String[] args = dot > 0 ? inner.substring(dot + 1).split(",", -1) : new String[0];
+                    String[] args = dot > 0 ? splitArgs(inner.substring(dot + 1)) : new String[0];
                     if (isValidShortcodeName(code) && ShortcodeManager.has(code)) {
                         if (pos > litStart) result.add(raw.substring(litStart, pos));
                         result.add(shortcodeJson(code, args));
@@ -169,7 +169,7 @@ public class RichTextParser {
                     int contentStart = nameEnd;
                     if (raw.charAt(nameEnd) == '.') {
                         int bp = raw.indexOf('[', nameEnd + 1);
-                        if (bp > nameEnd) { args = raw.substring(nameEnd + 1, bp).split(",", -1); contentStart = bp; }
+                        if (bp > nameEnd) { args = splitArgs(raw.substring(nameEnd + 1, bp)); contentStart = bp; }
                     }
                     if (contentStart < raw.length() && raw.charAt(contentStart) == '[' && DecoratorManager.has(tagName)) {
                         int bc = findMatchingBracket(raw, contentStart);
@@ -302,6 +302,29 @@ public class RichTextParser {
 
     private static boolean isEscapable(char c) {
         return c == '#' || c == ':' || c == '[' || c == ']' || c == '.' || c == ',' || c == '\\';
+    }
+
+    /**
+     * カンマ区切りで引数を分割する。\, はカンマリテラルとして扱い区切りにしない。
+     * 例: "a\,b,c" → ["a,b", "c"]
+     */
+    static String[] splitArgs(String s) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length() && s.charAt(i + 1) == ',') {
+                cur.append(',');
+                i++;
+            } else if (c == ',') {
+                parts.add(cur.toString());
+                cur = new StringBuilder();
+            } else {
+                cur.append(c);
+            }
+        }
+        parts.add(cur.toString());
+        return parts.toArray(String[]::new);
     }
 
     private static boolean isValidShortcodeName(String code) {

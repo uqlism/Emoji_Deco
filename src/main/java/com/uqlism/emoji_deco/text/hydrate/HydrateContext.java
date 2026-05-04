@@ -1,10 +1,6 @@
 package com.uqlism.emoji_deco.text.hydrate;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,8 +57,40 @@ public final class HydrateContext {
                                 catch (NumberFormatException e) { yield JsonNull.INSTANCE; } }
             case "boolean" -> new JsonPrimitive(
                     s.equalsIgnoreCase("true") || s.equals("1") || s.equalsIgnoreCase("yes"));
+            case "json"    -> { try { yield JsonParser.parseString(s); }
+                                catch (Exception e) { yield JsonNull.INSTANCE; } }
+            case "snbt"    -> { try { yield snbtToJson(net.minecraft.nbt.TagParser.parseTag(s)); }
+                                catch (Exception e) { yield JsonNull.INSTANCE; } }
             default        -> new JsonPrimitive(s);
         };
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static JsonElement snbtToJson(net.minecraft.nbt.Tag tag) {
+        if (tag instanceof net.minecraft.nbt.NumericTag n) {
+            if (tag instanceof net.minecraft.nbt.ByteTag  ||
+                tag instanceof net.minecraft.nbt.ShortTag ||
+                tag instanceof net.minecraft.nbt.IntTag   ||
+                tag instanceof net.minecraft.nbt.LongTag)
+                return new JsonPrimitive(n.getAsLong());
+            return new JsonPrimitive(n.getAsDouble());
+        }
+        if (tag instanceof net.minecraft.nbt.StringTag st)
+            return new JsonPrimitive(st.getAsString());
+        if (tag instanceof net.minecraft.nbt.CompoundTag c) {
+            JsonObject obj = new JsonObject();
+            for (String key : c.getAllKeys()) {
+                net.minecraft.nbt.Tag v = c.get(key);
+                if (v != null) obj.add(key, snbtToJson(v));
+            }
+            return obj;
+        }
+        if (tag instanceof net.minecraft.nbt.CollectionTag col) {
+            JsonArray arr = new JsonArray();
+            for (Object t : col) arr.add(snbtToJson((net.minecraft.nbt.Tag) t));
+            return arr;
+        }
+        return JsonNull.INSTANCE;
     }
 
     @Nullable
