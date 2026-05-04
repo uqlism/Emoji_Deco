@@ -3,6 +3,7 @@ package com.uqlism.emoji_deco.render.image;
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.blaze3d.font.SheetGlyphInfo;
 import com.mojang.logging.LogUtils;
+import com.uqlism.emoji_deco.network.UrlFetcher;
 import com.uqlism.emoji_deco.render.image.source.AtlasSourceResolver;
 import com.uqlism.emoji_deco.render.image.source.ResourceSourceResolver;
 import com.uqlism.emoji_deco.render.image.source.SkinSourceResolver;
@@ -161,7 +162,7 @@ public class ImageGlyphPool {
             if (s.future == null
                     && s.imageSpec instanceof ImageSpec.Decoded d
                     && d.source() instanceof BinarySource.Url u
-                    && UrlSourceResolver.isStale(u.url(), d.format())) {
+                    && UrlFetcher.isStale(u)) {
                 s.future = resolveAsync(s); // 旧テクスチャを保持したまま裏で再フェッチ
             }
         }
@@ -223,7 +224,7 @@ public class ImageGlyphPool {
                 // isDone() の場合はバイトキャッシュが未失効で即失敗するため切り替えない
                 // （毎フレーム失敗 Future を生成するホットループを防ぐ）。
                 CompletableFuture<ResolvedSource> retry =
-                        UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
+                        UrlSourceResolver.resolve(u, d.format());
                 if (!retry.isDone()) s.future = retry;
             }
         } else if (s.future != null && s.resolved != null && s.future.isDone()) {
@@ -329,7 +330,7 @@ public class ImageGlyphPool {
     private static CompletableFuture<ResolvedSource> resolveAsync(Slot s) {
         if (s.imageSpec instanceof ImageSpec.Decoded d) {
             if (d.source() instanceof BinarySource.Url u)
-                return UrlSourceResolver.resolve(u.url(), d.format(), u.diskCache(), u.ttlSeconds());
+                return UrlSourceResolver.resolve(u, d.format());
             if (d.source() instanceof BinarySource.Resource r)
                 return ResourceSourceResolver.resolveAsync(r.path(), d.format());
         }
