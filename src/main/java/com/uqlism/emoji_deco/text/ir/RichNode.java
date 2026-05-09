@@ -90,7 +90,15 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         if (this instanceof Hover hm) {
             MutableComponent c = Component.empty();
             for (RichNode child : hm.children()) c.append(child.toComponent());
-            return c.withStyle(s -> s.withHoverEvent(hm.hoverEvent()));
+            HoverEvent ev = hm.hoverEvent();
+            if (ev.getAction() == HoverEvent.Action.SHOW_TEXT) {
+                Component val = ev.getValue(HoverEvent.Action.SHOW_TEXT);
+                if (val != null && val.getContents() instanceof HoverRichContents hrc) {
+                    ev = new HoverEvent(HoverEvent.Action.SHOW_TEXT, hrc.node().toComponent());
+                }
+            }
+            final HoverEvent finalEv = ev;
+            return c.withStyle(s -> s.withHoverEvent(finalEv));
         }
         if (this instanceof Click cl) {
             MutableComponent c = Component.empty();

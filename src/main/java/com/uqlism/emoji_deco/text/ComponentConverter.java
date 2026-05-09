@@ -46,14 +46,7 @@ public final class ComponentConverter {
 
         if (contents instanceof LiteralContents lc) {
             String text = lc.text();
-            HydrateContext.Tracked ctx = HydrateContext.EMPTY.track();
-            RichTextParser.parseTracked(text, ctx);
-            MutableComponent base;
-            if (ctx.extractPattern().isDynamic()) {
-                base = MutableComponent.create(new DynamicRichContents(text, style));
-            } else {
-                base = RichTextParser.parseInline(text, style).toComponent().withStyle(style);
-            }
+            MutableComponent base = RichTextParser.parseInline(text, style).toComponent().withStyle(style);
             for (Component sibling : siblings) base.append(walkComponent(sibling));
             return base;
         }
