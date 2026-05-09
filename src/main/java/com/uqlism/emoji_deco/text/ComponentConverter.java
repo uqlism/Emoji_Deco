@@ -9,7 +9,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.contents.LiteralContents;
+import net.minecraft.network.chat.contents.PlainTextContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -44,7 +44,7 @@ public final class ComponentConverter {
         var style = component.getStyle();
         var siblings = component.getSiblings();
 
-        if (contents instanceof LiteralContents lc) {
+        if (contents instanceof PlainTextContents.LiteralContents lc) {
             String text = lc.text();
             MutableComponent base = RichTextParser.parseInline(text, style).toComponent().withStyle(style);
             for (Component sibling : siblings) base.append(walkComponent(sibling));

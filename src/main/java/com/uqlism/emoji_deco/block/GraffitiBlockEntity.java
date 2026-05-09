@@ -4,6 +4,7 @@ import com.uqlism.emoji_deco.Registration;
 import com.uqlism.emoji_deco.text.ir.RichNode;
 import com.uqlism.emoji_deco.text.parse.RichTextParser;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
@@ -63,16 +64,16 @@ public class GraffitiBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         for (int i = 0; i < MAX_LINES; i++) tag.putString("line" + i, lines[i]);
         tag.putString("align", alignment.getSerializedName());
         tag.putInt("displayedLines", displayedLines);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
         for (int i = 0; i < MAX_LINES; i++)
             lines[i] = tag.contains("line" + i) ? tag.getString("line" + i) : "";
         alignment = GraffitiAlignment.byName(tag.getString("align"));
@@ -87,7 +88,12 @@ public class GraffitiBlockEntity extends BlockEntity {
         }
     }
 
-    @Override public CompoundTag getUpdateTag() { CompoundTag t = super.getUpdateTag(); saveAdditional(t); return t; }
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag t = super.getUpdateTag(registries);
+        saveAdditional(t, registries);
+        return t;
+    }
 
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
@@ -95,7 +101,7 @@ public class GraffitiBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
-        if (pkt.getTag() != null) load(pkt.getTag());
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        if (pkt.getTag() != null) loadAdditional(pkt.getTag(), registries);
     }
 }

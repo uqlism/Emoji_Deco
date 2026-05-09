@@ -5,7 +5,9 @@ import com.uqlism.emoji_deco.block.GraffitiBlock;
 import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
 import com.uqlism.emoji_deco.client.screen.GraffitiEditScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -55,7 +57,7 @@ public class GraffitiInkItem extends Item {
         } else {
             if (player != null && !player.isCreative()) {
                 context.getItemInHand().hurtAndBreak(1, player,
-                        p -> p.broadcastBreakEvent(context.getHand()));
+                        context.getHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
             }
         }
 

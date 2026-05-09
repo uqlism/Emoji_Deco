@@ -129,7 +129,8 @@ public class ClientEvents {
         if (!holdingInk) return;
 
         Vec3 camPos = event.getCamera().getPosition();
-        PoseStack poseStack = event.getPoseStack();
+        PoseStack poseStack = new PoseStack();
+        poseStack.last().pose().mul(event.getPoseStack());
         VertexConsumer consumer = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
 
         BlockPos center = mc.player.blockPosition();

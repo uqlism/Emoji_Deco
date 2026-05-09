@@ -40,7 +40,7 @@ public class UrlAllowlist implements PreparableReloadListener {
     public static final UrlAllowlist INSTANCE = new UrlAllowlist();
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation LOCATION =
-            new ResourceLocation("emoji_deco", "url_allowlist.json");
+            ResourceLocation.fromNamespaceAndPath("emoji_deco", "url_allowlist.json");
 
     private volatile Set<String> packPatterns = Set.of();
 

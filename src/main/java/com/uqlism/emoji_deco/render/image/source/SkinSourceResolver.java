@@ -34,11 +34,11 @@ public class SkinSourceResolver {
         Minecraft mc = Minecraft.getInstance();
         ResourceLocation skin = null;
         if (mc.player != null && mc.player.getName().getString().equalsIgnoreCase(username)) {
-            skin = mc.player.getSkinTextureLocation();
+            skin = mc.player.getSkin().texture();
         } else if (mc.level != null) {
             for (AbstractClientPlayer p : mc.level.players()) {
                 if (p.getName().getString().equalsIgnoreCase(username)) {
-                    skin = p.getSkinTextureLocation();
+                    skin = p.getSkin().texture();
                     break;
                 }
             }

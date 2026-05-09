@@ -3,14 +3,15 @@ package com.uqlism.emoji_deco.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -29,6 +30,13 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implements EntityBlock {
+
+    public static final MapCodec<GraffitiBlock> CODEC = simpleCodec(GraffitiBlock::new);
+
+    @Override
+    protected MapCodec<? extends FaceAttachedHorizontalDirectionalBlock> codec() {
+        return CODEC;
+    }
 
     public static final SoundType GRAFFITI_SOUND_TYPE = new SoundType(
             0.8f, 1.8f,
@@ -113,8 +121,8 @@ public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implem
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+                                               BlockHitResult hit) {
         if (level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof GraffitiBlockEntity graffiti) {
@@ -126,16 +134,7 @@ public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implem
     }
 
     @Override
-    public ItemStack getCloneItemStack(BlockState state, HitResult target,
-            BlockGetter level, BlockPos pos, Player player) {
-        // Return the actual stack from inventory so the damage value matches for pick-block comparison
-        var inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack slot = inv.getItem(i);
-            if (slot.getItem() instanceof com.uqlism.emoji_deco.item.GraffitiInkItem) {
-                return slot.copy();
-            }
-        }
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
         return new ItemStack(com.uqlism.emoji_deco.Registration.GRAFFITI_INK_ITEM.get());
     }
 

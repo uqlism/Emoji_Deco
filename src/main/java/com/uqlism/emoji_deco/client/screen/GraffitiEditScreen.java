@@ -5,6 +5,7 @@ import com.uqlism.emoji_deco.block.GraffitiBlockEntity;
 import com.uqlism.emoji_deco.client.CompletionRenderer;
 import com.uqlism.emoji_deco.network.GraffitiUpdatePacket;
 import com.uqlism.emoji_deco.network.Network;
+import net.minecraftforge.network.PacketDistributor;
 import com.uqlism.emoji_deco.client.SuggestionState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -131,7 +132,7 @@ public class GraffitiEditScreen extends Screen {
                 // Place cursor at the junction (end of what was previously line focused-1)
                 if (boxes[focusedLine] != null) {
                     int cur = Math.min(prev.length(), boxes[focusedLine].getValue().length());
-                    boxes[focusedLine].moveCursorTo(cur);
+                    boxes[focusedLine].moveCursorTo(cur, false);
                     boxes[focusedLine].setHighlightPos(cur);
                 }
                 return true;
@@ -168,7 +169,7 @@ public class GraffitiEditScreen extends Screen {
                 rebuildWidgets();
                 // Move cursor to start of the newly created line
                 if (boxes[focusedLine] != null) {
-                    boxes[focusedLine].moveCursorTo(0);
+                    boxes[focusedLine].moveCursorTo(0, false);
                     boxes[focusedLine].setHighlightPos(0);
                 }
             }
@@ -217,7 +218,7 @@ public class GraffitiEditScreen extends Screen {
             box.setValue(completed);
             int cursor = completionState.pendingCursor;
             if (cursor >= 0) {
-                box.moveCursorTo(cursor);
+                box.moveCursorTo(cursor, false);
                 box.setHighlightPos(cursor);
             }
             completionState.clear();
@@ -229,7 +230,7 @@ public class GraffitiEditScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFF);
 
         // Panel
@@ -293,7 +294,7 @@ public class GraffitiEditScreen extends Screen {
     private void save() {
         saveBoxValues();
         for (int i = activeLines; i < lineValues.length; i++) lineValues[i] = "";
-        Network.CHANNEL.sendToServer(new GraffitiUpdatePacket(target.getBlockPos(), lineValues, alignment, activeLines));
+        Network.CHANNEL.send(new GraffitiUpdatePacket(target.getBlockPos(), lineValues, alignment, activeLines), PacketDistributor.SERVER.noArg());
         target.applyUpdate(lineValues, alignment, activeLines);
         onClose();
     }

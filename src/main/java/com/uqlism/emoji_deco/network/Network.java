@@ -2,22 +2,21 @@ package com.uqlism.emoji_deco.network;
 
 import com.uqlism.emoji_deco.EmojiDeco;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraftforge.network.ChannelBuilder;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.SimpleChannel;
 
 public class Network {
-    private static final String VERSION = "1";
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            ResourceLocation.parse(EmojiDeco.MODID + ":main"),
-            () -> VERSION,
-            VERSION::equals,
-            VERSION::equals);
+    public static final SimpleChannel CHANNEL = ChannelBuilder
+            .named(ResourceLocation.fromNamespaceAndPath(EmojiDeco.MODID, "main"))
+            .networkProtocolVersion(1)
+            .simpleChannel();
 
     public static void register() {
-        int id = 0;
-        CHANNEL.registerMessage(id++, GraffitiUpdatePacket.class,
-                GraffitiUpdatePacket::encode,
-                GraffitiUpdatePacket::decode,
-                GraffitiUpdatePacket::handle);
+        CHANNEL.messageBuilder(GraffitiUpdatePacket.class)
+                .encoder(GraffitiUpdatePacket::encode)
+                .decoder(GraffitiUpdatePacket::decode)
+                .consumerMainThread(GraffitiUpdatePacket::handle)
+                .add();
     }
 }

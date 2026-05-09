@@ -56,7 +56,7 @@ public class MixinChatScreen {
 
                 int newCursor = ss.pendingCursor;
                 if (newCursor >= 0) {
-                    f_95573_.moveCursorTo(newCursor);
+                    f_95573_.moveCursorTo(newCursor, false);
                     f_95573_.setHighlightPos(newCursor);
                 }
                 ss.clear();

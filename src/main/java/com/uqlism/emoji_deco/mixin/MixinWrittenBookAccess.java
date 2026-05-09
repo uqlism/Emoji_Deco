@@ -2,7 +2,6 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.text.ComponentConverter;
-import net.minecraft.client.gui.screens.inventory.BookViewScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import org.spongepowered.asm.mixin.Mixin;
@@ -10,7 +9,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(BookViewScreen.WrittenBookAccess.class)
+// TODO: BookViewScreen.WrittenBookAccess was removed in 1.21.1. Find the replacement target.
+@Mixin(targets = "net.minecraft.client.gui.screens.inventory.BookViewScreen$WrittenBookAccess", remap = false)
 public class MixinWrittenBookAccess {
 
     // 書籍は font.split() → font.drawInBatch(FormattedCharSequence) の経路を使うため

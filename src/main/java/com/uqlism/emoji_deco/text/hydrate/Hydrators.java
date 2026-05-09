@@ -183,7 +183,7 @@ public final class Hydrators {
                         Minecraft mc      = Minecraft.getInstance();
                         long gameTime     = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
                         long dayTime      = (mc != null && mc.level != null) ? mc.level.getDayTime()  : 0L;
-                        float partial     = (mc != null) ? mc.getPartialTick() : 0f;
+                        float partial     = (mc != null) ? mc.getTimer().getGameTimeDeltaPartialTick(true) : 0f;
                         float raw = switch (timeType) {
                             case "daytime" -> (float)(dayTime % 24000L) + partial;
                             case "day"     -> (float)(dayTime / 24000L);
@@ -238,9 +238,7 @@ public final class Hydrators {
                 var rl = ResourceLocation.tryParse(id);
                 Item item = rl != null ? BuiltInRegistries.ITEM.get(rl) : Items.AIR;
                 ItemStack stack = new ItemStack(item, count);
-                if (nbt != null && !nbt.isEmpty()) {
-                    try { stack.setTag(TagParser.parseTag(nbt)); } catch (Exception ignored) {}
-                }
+                // TODO: ItemStack.setTag() was removed in 1.21.1 (data components); NBT not applied for now
                 return new RichNode.Hover(
                     new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(stack)),
                     children);
@@ -462,7 +460,7 @@ public final class Hydrators {
         Style      style = Style.EMPTY;
 
         if (obj.has("color")) {
-            TextColor color = TextColor.parseColor(fld(obj, "color", ctx));
+            TextColor color = TextColor.parseColor(fld(obj, "color", ctx)).result().orElse(null);
             if (color != null) style = style.withColor(color);
         }
         if (obj.has("bold"))          style = style.withBold(fld(obj, "bold", false, ctx));
@@ -503,7 +501,7 @@ public final class Hydrators {
 
         String colorStr = STRING.hydrate(obj.get("color"), ctx);
         if (colorStr != null) {
-            TextColor tc = TextColor.parseColor(colorStr);
+            TextColor tc = TextColor.parseColor(colorStr).result().orElse(null);
             if (tc != null) style = style.withColor(tc);
         }
         Boolean bold          = BOOL.hydrate(obj.get("bold"),          ctx); if (bold          != null) style = style.withBold(bold);

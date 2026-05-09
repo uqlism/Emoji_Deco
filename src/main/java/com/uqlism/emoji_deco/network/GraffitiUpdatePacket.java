@@ -7,9 +7,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.minecraftforge.event.network.CustomPayloadEvent;
 
 public record GraffitiUpdatePacket(BlockPos pos, String[] lines, GraffitiAlignment alignment, int displayedLines) {
 
@@ -18,9 +16,7 @@ public record GraffitiUpdatePacket(BlockPos pos, String[] lines, GraffitiAlignme
         buf.writeByte(pkt.alignment.ordinal());
         buf.writeVarInt(pkt.displayedLines);
         buf.writeVarInt(pkt.lines.length);
-        for (String line : pkt.lines) {
-            buf.writeUtf(line == null ? "" : line, 1024);
-        }
+        for (String line : pkt.lines) buf.writeUtf(line == null ? "" : line, 1024);
     }
 
     public static GraffitiUpdatePacket decode(FriendlyByteBuf buf) {
@@ -38,9 +34,9 @@ public record GraffitiUpdatePacket(BlockPos pos, String[] lines, GraffitiAlignme
         return new GraffitiUpdatePacket(pos, lines, align, displayedLines);
     }
 
-    public static void handle(GraffitiUpdatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(GraffitiUpdatePacket pkt, CustomPayloadEvent.Context ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
             if (player == null) return;
             Level level = player.level();
             if (!level.isLoaded(pkt.pos)) return;
@@ -50,6 +46,6 @@ public record GraffitiUpdatePacket(BlockPos pos, String[] lines, GraffitiAlignme
                 g.applyUpdate(pkt.lines, pkt.alignment, pkt.displayedLines);
             }
         });
-        ctx.get().setPacketHandled(true);
+        ctx.setPacketHandled(true);
     }
 }

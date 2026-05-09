@@ -175,7 +175,7 @@ public class SuggestionState {
         return (resolved != null ? resolved : List.<String>of()).stream()
                 .filter(v -> v.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT)))
                 .map(v -> {
-                    TextColor color = TextColor.parseColor(v);
+                    TextColor color = TextColor.parseColor(v).result().orElse(null);
                     Supplier<Component> preview = color != null
                             ? () -> Component.literal("■ " + v).withStyle(Style.EMPTY.withColor(color))
                             : () -> Component.literal(v);

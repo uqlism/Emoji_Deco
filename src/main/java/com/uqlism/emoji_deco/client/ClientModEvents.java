@@ -8,7 +8,11 @@ import com.uqlism.emoji_deco.render.image.source.UrlAllowlist;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -20,7 +24,8 @@ import net.minecraftforge.event.AddPackFindersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.resource.PathPackResources;
+
+import java.util.Optional;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -59,13 +64,15 @@ public class ClientModEvents {
                 .getFile()
                 .findResource("resourcepacks", "emoji_deco_starter");
         Pack pack = Pack.readMetaAndCreate(
-                "builtin/emoji_deco_starter",
-                Component.translatable("pack.emoji_deco.starter"),
-                false,
-                id -> new PathPackResources(id, true, packPath),
+                new PackLocationInfo("builtin/emoji_deco_starter",
+                        Component.translatable("pack.emoji_deco.starter"),
+                        PackSource.BUILT_IN, Optional.empty()),
+                new Pack.ResourcesSupplier() {
+                    @Override public PackResources openPrimary(PackLocationInfo i) { return new PathPackResources(i, packPath); }
+                    @Override public PackResources openFull(PackLocationInfo i, Pack.Metadata m) { return new PathPackResources(i, packPath); }
+                },
                 PackType.CLIENT_RESOURCES,
-                Pack.Position.TOP,
-                PackSource.BUILT_IN
+                new PackSelectionConfig(false, Pack.Position.TOP, false)
         );
         if (pack != null) {
             event.addRepositorySource(packConsumer -> packConsumer.accept(pack));
