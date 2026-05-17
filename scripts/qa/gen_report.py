@@ -72,13 +72,28 @@ def main():
         icon = ICONS.get(result, "?")
         date = r.get("date", "?")
         commit = r.get("commit", "")[:7] or "?"
-        ss = r.get("screenshot", "")
-        ss_link = f" [📷](../{ss})" if ss else ""
-        lines.append(f"| [{tc}](results/{r['_file']}.md) | {feature} | {icon} {result}{ss_link} | {date} | `{commit}` |")
+        lines.append(f"| [{tc}](results/{r['_file']}.md) | {feature} | {icon} {result} | {date} | `{commit}` |")
+
+    # スクリーンショットセクション
+    with_ss = [r for r in records if r.get("screenshot")]
+    if with_ss:
+        lines += ["", "---", "", "## スクリーンショット", ""]
+        for r in with_ss:
+            tc = r.get("test", r["_file"])
+            feature = r.get("feature", "")
+            result = r.get("result", "?").upper()
+            icon = ICONS.get(result, "?")
+            ss = r["screenshot"]
+            lines += [
+                f"### {icon} {tc} — {feature}",
+                f"![{tc}]({ss})",
+                f"> {r['_body']}",
+                "",
+            ]
 
     fails = [r for r in records if r.get("result", "").upper() == "FAIL"]
     if fails:
-        lines += ["", "---", "", "## ❌ 未解決の FAIL", ""]
+        lines += ["---", "", "## ❌ 未解決の FAIL", ""]
         for r in fails:
             tc = r.get("test", r["_file"])
             lines += [f"### {tc}", "", r["_body"], ""]
