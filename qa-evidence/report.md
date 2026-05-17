@@ -1,11 +1,13 @@
 # QA Report
 
-> 自動生成: 2026-05-18 02:20 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 02:23 — `python scripts/qa/gen_report.py`
 
-**合計**: 72件 / ✅ PASS: 65件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
+**合計**: 82件 / ✅ PASS: 65件 / ⚠ CONDITIONAL: 13件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
+| [TC-ACTIONBAR-GLOW](results/TC-ACTIONBAR-GLOW.md) | アクションバー #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-ACTIONBAR-PLAYER-HEAD](results/TC-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-AUTO-01](results/TC-AUTO-01.md) | オートコンプリート デコレータ候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-AUTO-02](results/TC-AUTO-02.md) | オートコンプリート ショートコード候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-AUTO-03](results/TC-AUTO-03.md) | オートコンプリート デコレータ引数候補 | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -18,6 +20,7 @@
 | [TC-BOOK-06](results/TC-BOOK-06.md) | 本 #color | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-BOOK-07](results/TC-BOOK-07.md) | 本 ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-BOOK-08](results/TC-BOOK-08.md) | 本 #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-BOOK-PLAYER-HEAD](results/TC-BOOK-PLAYER-HEAD.md) | 本 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-03](results/TC-CHAT-03.md) | チャット ショートコード（プレイヤーヘッド） | ⚠ CONDITIONAL | 2026-05-17 | `f3f8074` |
@@ -36,6 +39,7 @@
 | [TC-ENTITY-03](results/TC-ENTITY-03.md) | エンティティ名前タグ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-04](results/TC-ENTITY-04.md) | エンティティ名前タグ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-05](results/TC-ENTITY-05.md) | エンティティ名前タグ ネスト複合 (#bold + #color.gold) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-ENTITY-PLAYER-HEAD](results/TC-ENTITY-PLAYER-HEAD.md) | エンティティ名前タグ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GRAFFITI-03](results/TC-GRAFFITI-03.md) | Graffiti #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
@@ -43,6 +47,7 @@
 | [TC-GRAFFITI-05](results/TC-GRAFFITI-05.md) | Graffiti #size | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-GRAFFITI-06](results/TC-GRAFFITI-06.md) | Graffiti ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-GRAFFITI-07](results/TC-GRAFFITI-07.md) | Graffiti #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-PLAYER-HEAD](results/TC-GRAFFITI-PLAYER-HEAD.md) | Graffiti ブロック player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-GUI-03](results/TC-GUI-03.md) | アクションバー #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
@@ -65,6 +70,7 @@
 | [TC-HOTBAR-08](results/TC-HOTBAR-08.md) | ホットバーアイテム名 #underline #strike | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-09](results/TC-HOTBAR-09.md) | ホットバーアイテム名 ネスト (#bold[#color.red[...]]) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-10](results/TC-HOTBAR-10.md) | ホットバーアイテム名 エスケープ (\#bold) | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-PLAYER-HEAD](results/TC-HOTBAR-PLAYER-HEAD.md) | ホットバーアイテム名 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-SIGN-03](results/TC-SIGN-03.md) | 看板 #bold | ✅ PASS | 2026-05-18 | `4a52b56` |
@@ -73,11 +79,15 @@
 | [TC-SIGN-06](results/TC-SIGN-06.md) | 看板 #underline #strike | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-07](results/TC-SIGN-07.md) | 看板 ネスト複合 (#bold + #color.red) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-08](results/TC-SIGN-08.md) | 看板 #size | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-PLAYER-HEAD](results/TC-SIGN-PLAYER-HEAD.md) | 看板 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-TITLE-GLOW](results/TC-TITLE-GLOW.md) | タイトル #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-TITLE-PLAYER-HEAD](results/TC-TITLE-PLAYER-HEAD.md) | タイトル player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-TOOLTIP-02](results/TC-TOOLTIP-02.md) | ホバーツールチップ sprite (:item.diamond:) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-03](results/TC-TOOLTIP-03.md) | ホバーツールチップ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-04](results/TC-TOOLTIP-04.md) | ホバーツールチップ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-05](results/TC-TOOLTIP-05.md) | ホバーツールチップ ネスト複合 (#bold + #color.green) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-TOOLTIP-PLAYER-HEAD](results/TC-TOOLTIP-PLAYER-HEAD.md) | ホバーツールチップ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 
 ---
 
