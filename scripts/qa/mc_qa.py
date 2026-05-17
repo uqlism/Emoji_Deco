@@ -383,6 +383,9 @@ def cmd_sequence(args):
             time.sleep(0.05)
             _chat_send(_hwnd_c, cmd_args_str)
             time.sleep(0.3)
+        elif cmd_name == "rclick":
+            x, y = map(int, cmd_args_str.split(","))
+            pyautogui.rightClick(x, y)
         else:
             print(f"[seq] WARN: unknown command '{cmd_name}', skipping")
 
