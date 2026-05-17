@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 08:26 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 08:40 — `python scripts/qa/gen_report.py`
 
-**合計**: 97件 / ✅ PASS: 71件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 21件 / — N/A: 4件
+**合計**: 97件 / ✅ PASS: 72件 / ⚠ CONDITIONAL: 21件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -102,7 +102,7 @@
 | [TC-TOOLTIP-DECORATION](results/TC-TOOLTIP-DECORATION.md) | ホバーツールチップ #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-TOOLTIP-ESCAPE](results/TC-TOOLTIP-ESCAPE.md) | ホバーツールチップ エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-TOOLTIP-PLAYER-HEAD](results/TC-TOOLTIP-PLAYER-HEAD.md) | ホバーツールチップ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
-| [TC-TOOLTIP-SIZE](results/TC-TOOLTIP-SIZE.md) | ホバーツールチップ #size | ❌ FAIL | 2026-05-18 | `81b2e92` |
+| [TC-TOOLTIP-SIZE](results/TC-TOOLTIP-SIZE.md) | ホバーツールチップ #size | ✅ PASS | 2026-05-18 | `783e292` |
 
 ---
 
@@ -474,23 +474,11 @@ GuiGraphics.renderComponentHoverEffect → toComponent() 経路でも装飾ス�
 コマンドベースでのツールチップエスケープテストは実行不可（環境制限）。
 RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
 
-### ❌ TC-TOOLTIP-SIZE — ホバーツールチップ #size
+### ✅ TC-TOOLTIP-SIZE — ホバーツールチップ #size
 ![TC-TOOLTIP-SIZE](screenshots/TC-TOOLTIP-SIZE.png)
-> `#size.2[BIG GEM]` をカスタム名に持つアイテムのツールチップに "BIG GEM" が通常サイズで表示される。
+> `#size.2[BIG GEM]` がホバーツールチップで2倍サイズで表示されている。
 
-**原因**: ツールチップは `GuiGraphics.renderTooltip()` → `Language.getVisualOrder()` → `font.drawInBatch(FormattedCharSequence)` の経路を通るため、`MixinGuiGraphics.runicink$drawStringComponent` をバイパスする。`DynamicFormattedCharSequence` でラップされないため `computeNow()` → `toSequence()` が呼ばれず `Scaled` ノードが無効。
+`MixinGuiGraphics.runicink$renderTooltipComponents` の追加により `renderTooltip(Font, List<Component>, Optional<TooltipComponent>, int, int)` の経路で `DynamicFormattedCharSequence` が有効化された。これにより `Sized` ノードが `ScaledSequence` に変換され、`MixinFont` が正しくスケールを適用する。
 
-修正対象: `renderTooltip` の経路に `DynamicFormattedCharSequence` を通す仕組みを追加。
-
----
-
-## FAIL 未解決
-
-### TC-TOOLTIP-SIZE
-
-`#size.2[BIG GEM]` をカスタム名に持つアイテムのツールチップに "BIG GEM" が通常サイズで表示される。
-
-**原因**: ツールチップは `GuiGraphics.renderTooltip()` → `Language.getVisualOrder()` → `font.drawInBatch(FormattedCharSequence)` の経路を通るため、`MixinGuiGraphics.runicink$drawStringComponent` をバイパスする。`DynamicFormattedCharSequence` でラップされないため `computeNow()` → `toSequence()` が呼ばれず `Scaled` ノードが無効。
-
-修正対象: `renderTooltip` の経路に `DynamicFormattedCharSequence` を通す仕組みを追加。
+通常ツールチップ（`/give @p minecraft:stick`）のリグレッションなし。
 

@@ -1,16 +1,16 @@
 ---
 test: TC-TOOLTIP-SIZE
 feature: ホバーツールチップ #size
-result: FAIL
+result: PASS
 date: 2026-05-18
-commit: 81b2e92
+commit: 783e292
 screenshot: screenshots/TC-TOOLTIP-SIZE.png
 location: tooltip
 content: size
 ---
 
-`#size.2[BIG GEM]` をカスタム名に持つアイテムのツールチップに "BIG GEM" が通常サイズで表示される。
+`#size.2[BIG GEM]` がホバーツールチップで2倍サイズで表示されている。
 
-**原因**: ツールチップは `GuiGraphics.renderTooltip()` → `Language.getVisualOrder()` → `font.drawInBatch(FormattedCharSequence)` の経路を通るため、`MixinGuiGraphics.runicink$drawStringComponent` をバイパスする。`DynamicFormattedCharSequence` でラップされないため `computeNow()` → `toSequence()` が呼ばれず `Scaled` ノードが無効。
+`MixinGuiGraphics.runicink$renderTooltipComponents` の追加により `renderTooltip(Font, List<Component>, Optional<TooltipComponent>, int, int)` の経路で `DynamicFormattedCharSequence` が有効化された。これにより `Sized` ノードが `ScaledSequence` に変換され、`MixinFont` が正しくスケールを適用する。
 
-修正対象: `renderTooltip` の経路に `DynamicFormattedCharSequence` を通す仕組みを追加。
+通常ツールチップ（`/give @p minecraft:stick`）のリグレッションなし。
