@@ -84,7 +84,43 @@ python scripts/qa/mc_qa.py world-exists "QA Test World"
 Step 1 で特定した変更に対応するテストケースを実行する。
 各テストの結果を記録する。
 
-### Step 7: レポート出力
+### Step 7: 証拠保存
+PASS になったテストの最終スクリーンショットを `qa-evidence/YYYY-MM-DD/` にコピーし、レポートを更新する。
+
+```bash
+# 日付ディレクトリを作成（例: 2026-05-17）
+mkdir -p qa-evidence/$(date +%Y-%m-%d)
+
+# PASS したテストのスクリーンショットをコピー
+cp run/qa-screenshots/<test-dir>/<final-screenshot>.png qa-evidence/$(date +%Y-%m-%d)/TC-xxx.png
+```
+
+`qa-evidence/YYYY-MM-DD/report.md` を以下の形式で生成する:
+
+```markdown
+# QA Evidence — YYYY-MM-DD
+
+**ブランチ**: <branch>
+**コミット**: <commit>
+
+## 結果サマリー
+
+合計 N件 / ✅ PASS: N件 / ❌ FAIL: N件
+
+| # | テストケース | 機能 | 結果 |
+|---|---|---|---|
+| 1 | TC-xxx | 機能名 | ✅ PASS |
+
+## スクリーンショット
+
+### TC-xxx — テスト名
+![TC-xxx](TC-xxx.png)
+> PASS の根拠を一行で説明
+```
+
+`qa-evidence/README.md` の一覧表にも行を追記する。
+
+### Step 8: レポート出力
 テスト完了後、以下の形式で結果を出力する:
 
 ```
