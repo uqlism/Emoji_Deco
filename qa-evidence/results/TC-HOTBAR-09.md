@@ -6,7 +6,7 @@ date: 2026-05-18
 commit: 4a3aeab
 screenshot: screenshots/TC-HOTBAR-09.png
 location: hotbar
-content: nested
+content: nest
 ---
 
 ホットバーアイテム名に `#bold[#color.red[Bold Red]]` が太字かつ赤色で表示されている。

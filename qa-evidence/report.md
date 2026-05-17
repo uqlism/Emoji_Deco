@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 01:18 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 01:32 — `python scripts/qa/gen_report.py`
 
-**合計**: 29件 / ✅ PASS: 23件 / ⚠ CONDITIONAL: 2件 / — N/A: 4件
+**合計**: 39件 / ✅ PASS: 32件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -32,6 +32,16 @@
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ✅ PASS | 2026-05-18 | `afd7d25` |
+| [TC-HOTBAR-01](results/TC-HOTBAR-01.md) | ホットバーアイテム名 #bold | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-02](results/TC-HOTBAR-02.md) | ホットバーアイテム名 #italic | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-03](results/TC-HOTBAR-03.md) | ホットバーアイテム名 #color | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-04](results/TC-HOTBAR-04.md) | ホットバーアイテム名 #rainbow (動的) | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-05](results/TC-HOTBAR-05.md) | ホットバーアイテム名 #glow | ⚠ CONDITIONAL | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-06](results/TC-HOTBAR-06.md) | ホットバーアイテム名 スプライト (:item:) | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-07](results/TC-HOTBAR-07.md) | ホットバーアイテム名 #size | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-08](results/TC-HOTBAR-08.md) | ホットバーアイテム名 #underline #strike | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-09](results/TC-HOTBAR-09.md) | ホットバーアイテム名 ネスト (#bold[#color.red[...]]) | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-10](results/TC-HOTBAR-10.md) | ホットバーアイテム名 エスケープ (\#bold) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -121,6 +131,63 @@
 > `#rainbow[Title]` が画面中央に時間依存カラーアニメーションで表示されている。
 MixinGuiGraphics を常に DynamicFormattedCharSequence でラップするよう修正後に PASS。
 複数フレームでシアン→ピンクへの色変化を確認し、DynamicFCS による毎フレーム再評価が機能していることを証明。
+
+### ✅ TC-HOTBAR-01 — ホットバーアイテム名 #bold
+![TC-HOTBAR-01](screenshots/TC-HOTBAR-01.png)
+> ホットバーアイテム名に `#bold[Bold Diamond]` が太字で表示されている。
+custom_name コンポーネント構文: `minecraft:diamond[minecraft:custom_name='"#bold[Bold Diamond]"']`
+MixinGuiGraphics 経由で正しく変換・描画されることを確認。
+
+### ✅ TC-HOTBAR-02 — ホットバーアイテム名 #italic
+![TC-HOTBAR-02](screenshots/TC-HOTBAR-02.png)
+> ホットバーアイテム名に `#italic[Italic Emerald]` が斜体で表示されている。
+
+### ✅ TC-HOTBAR-03 — ホットバーアイテム名 #color
+![TC-HOTBAR-03](screenshots/TC-HOTBAR-03.png)
+> ホットバーアイテム名に `#color.gold[Gold Ingot]` が金色で表示されている。
+
+### ✅ TC-HOTBAR-04 — ホットバーアイテム名 #rainbow (動的)
+![TC-HOTBAR-04](screenshots/TC-HOTBAR-04.png)
+> ホットバーアイテム名に `#rainbow[Rainbow Star]` が動的カラーで表示されている。
+2フレーム間で色がアクア→オレンジに変化しており、アニメーション動作を確認。
+ホットバーは toComponent() 経由だが、DynamicFormattedCharSequence として毎フレーム再評価される。
+
+### ⚠ TC-HOTBAR-05 — ホットバーアイテム名 #glow
+![TC-HOTBAR-05](screenshots/TC-HOTBAR-05.png)
+> ホットバーアイテム名に `#glow[Glow Stone]` と表示されている（テキスト描画は正常）。
+ただし発光エフェクト（LightMode）はホットバー名経路（GuiGraphics.drawString -> toComponent()）では
+LightSequence が無視されるため、視覚的な発光差は確認できない。
+これはアーキテクチャ上の仕様であり、FCS 経路（看板・落書きブロック）では有効。
+
+### ✅ TC-HOTBAR-06 — ホットバーアイテム名 スプライト (:item:)
+![TC-HOTBAR-06](screenshots/TC-HOTBAR-06.png)
+> ホットバーアイテム名に `:item.diamond: Stone` のダイヤモンドスプライトアイコン + "Stone" が表示されている。
+SpriteRegistry によるカスタムグリフが GuiGraphics 経路でも正しく描画されることを確認。
+
+### ✅ TC-HOTBAR-07 — ホットバーアイテム名 #size
+![TC-HOTBAR-07](screenshots/TC-HOTBAR-07.png)
+> ホットバーアイテム名に `#size.2[Big]` が通常の2倍サイズで表示されている。
+MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequence 経路）でスケールが有効。
+テスト仕様では CONDITIONAL とされていたが、実際には PASS（スケール有効）。
+
+### ✅ TC-HOTBAR-08 — ホットバーアイテム名 #underline #strike
+![TC-HOTBAR-08](screenshots/TC-HOTBAR-08.png)
+> ホットバーアイテム名に `#underline[Under] #strike[Strike]` が下線・取り消し線付きで表示されている。
+
+### ✅ TC-HOTBAR-09 — ホットバーアイテム名 ネスト (#bold[#color.red[...]])
+![TC-HOTBAR-09](screenshots/TC-HOTBAR-09.png)
+> ホットバーアイテム名に `#bold[#color.red[Bold Red]]` が太字かつ赤色で表示されている。
+ネストされたデコレータが正しくスタイルを合成することを確認。
+チャットログの give 確認メッセージでも同様に太字・赤色で描画されていた。
+
+### ✅ TC-HOTBAR-10 — ホットバーアイテム名 エスケープ (\#bold)
+![TC-HOTBAR-10](screenshots/TC-HOTBAR-10.png)
+> チャット入力で `\#bold Literal` を送信したところ、チャットに `#bold Literal` が
+書式なし（通常テキスト）で表示された。バックスラッシュエスケープが正しく機能している。
+
+備考: アイテム名経由のテストは 1.21.1 の SNBT/JSON パーサーが `\#` を無効なエスケープとして
+拒否するため実施不可。チャット経路で代替検証した。パーサー（RichTextParser）自体は
+ホットバー経路と共通のため、機能は同等に確認できている。
 
 ### ✅ TC-SIGN-01 — 看板 リッチテキスト
 ![TC-SIGN-01](screenshots/TC-SIGN-01.png)

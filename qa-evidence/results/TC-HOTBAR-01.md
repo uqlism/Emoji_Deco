@@ -6,7 +6,7 @@ date: 2026-05-18
 commit: 4a3aeab
 screenshot: screenshots/TC-HOTBAR-01.png
 location: hotbar
-content: bold
+content: bold_italic
 ---
 
 ホットバーアイテム名に `#bold[Bold Diamond]` が太字で表示されている。
