@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-gen_report.py — qa-evidence/results/TC-*.md から qa-evidence/report.md を自動生成する。
+gen_report.py — qa-evidence/results/TC-*.md から report.md と coverage-matrix.md を自動生成する。
 
 Usage: python scripts/qa/gen_report.py
 """
@@ -10,11 +10,46 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-RESULTS_DIR = Path("qa-evidence/results")
-SCREENSHOTS_DIR = Path("qa-evidence/screenshots")
-REPORT_PATH = Path("qa-evidence/report.md")
+RESULTS_DIR    = Path("qa-evidence/results")
+REPORT_PATH    = Path("qa-evidence/report.md")
+MATRIX_PATH    = Path("qa-evidence/coverage-matrix.md")
 
 ICONS = {"PASS": "✅", "FAIL": "❌", "CONDITIONAL": "⚠", "N/A": "—"}
+
+# マトリックスの軸定義
+LOCATIONS = [
+    ("chat",       "チャット"),
+    ("sign",       "看板"),
+    ("entity",     "エンティティ名タグ"),
+    ("book",       "本 (Written Book)"),
+    ("graffiti",   "Graffiti ブロック"),
+    ("actionbar",  "アクションバー"),
+    ("title",      "タイトル / サブタイトル"),
+    ("hotbar",     "ホットバーアイテム名"),
+    ("tooltip",    "ホバーツールチップ"),
+]
+CONTENT_TYPES = [
+    ("sprite",      "sprite\n:item: :block:"),
+    ("player_head", "player\nhead"),
+    ("bold_italic", "#bold\n#italic"),
+    ("color",       "#color"),
+    ("size",        "#size"),
+    ("glow",        "#glow"),
+    ("rainbow",     "#rainbow\n（動的）"),
+    ("decoration",  "#underline\n#strike"),
+    ("nest",        "ネスト\n複合"),
+    ("escape",      "エスケープ\n\\#"),
+]
+
+# 設計上非対応の組み合わせ（テストが存在しなくても "—" と表示）
+NOT_SUPPORTED = {
+    ("chat",   "size"):  "toComponent() 経路では Sized 無効",
+    ("book",   "size"):  "font.split() 経路では Sized 無効",
+    ("book",   "glow"):  "font.split() 経路では Glowing 無効",
+    ("book",   "rainbow"): "font.split() 経路では動的デコレータ無効",
+}
+
+RESULT_PRIORITY = {"PASS": 3, "FAIL": 2, "CONDITIONAL": 1, "N/A": 0}
 
 
 def parse_frontmatter(text):
@@ -27,6 +62,15 @@ def parse_frontmatter(text):
             k, _, v = line.partition(":")
             fm[k.strip()] = v.strip()
     return fm, text[m.end():].strip()
+
+
+def merge_result(current, new):
+    """優先度の高い結果を採用する（PASS > FAIL > CONDITIONAL > N/A > ?）"""
+    if current == "?":
+        return new
+    cp = RESULT_PRIORITY.get(current, -1)
+    np = RESULT_PRIORITY.get(new, -1)
+    return current if cp >= np else new
 
 
 def main():
@@ -44,6 +88,7 @@ def main():
         fm["_file"] = path.stem
         records.append(fm)
 
+    # ── report.md ────────────────────────────────────────────────────────────
     counts = {k: 0 for k in ICONS}
     for r in records:
         res = r.get("result", "").upper()
@@ -74,7 +119,6 @@ def main():
         commit = r.get("commit", "")[:7] or "?"
         lines.append(f"| [{tc}](results/{r['_file']}.md) | {feature} | {icon} {result} | {date} | `{commit}` |")
 
-    # スクリーンショットセクション
     with_ss = [r for r in records if r.get("screenshot")]
     if with_ss:
         lines += ["", "---", "", "## スクリーンショット", ""]
@@ -93,14 +137,90 @@ def main():
 
     fails = [r for r in records if r.get("result", "").upper() == "FAIL"]
     if fails:
-        lines += ["---", "", "## ❌ 未解決の FAIL", ""]
+        lines += ["---", "", "## FAIL 未解決", ""]
         for r in fails:
             tc = r.get("test", r["_file"])
             lines += [f"### {tc}", "", r["_body"], ""]
 
     REPORT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # ── coverage-matrix.md ────────────────────────────────────────────────────
+    # (location, content) → result のマップを構築
+    cell = {}
+    for r in records:
+        loc = r.get("location", "").strip()
+        contents_raw = r.get("content", "").strip()
+        result = r.get("result", "?").upper()
+        if not loc or not contents_raw:
+            continue
+        for content in [c.strip() for c in contents_raw.split(",")]:
+            key = (loc, content)
+            cell[key] = merge_result(cell.get(key, "?"), result)
+
+    # 設計上非対応を上書き
+    for key, _ in NOT_SUPPORTED.items():
+        if cell.get(key, "?") == "?":
+            cell[key] = "N/A"
+
+    content_keys = [c for c, _ in CONTENT_TYPES]
+    header_row = "| 表示位置 | " + " | ".join(
+        label.replace("\n", "<br>") for _, label in CONTENT_TYPES
+    ) + " |"
+    sep_row = "|---" + "|:---:" * len(CONTENT_TYPES) + "|"
+
+    mx_lines = [
+        "# RunicInk QA カバレッジマトリックス",
+        "",
+        f"> 自動生成: {now} — `python scripts/qa/gen_report.py`",
+        "",
+        "**凡例**: ✅ PASS / ❌ FAIL / ⚠ CONDITIONAL / — 非対応（設計上） / ? 未確認",
+        "",
+        header_row,
+        sep_row,
+    ]
+
+    for loc_key, loc_label in LOCATIONS:
+        cells = []
+        for c_key in content_keys:
+            key = (loc_key, c_key)
+            val = cell.get(key, "?")
+            if val == "N/A":
+                cells.append("—")
+            else:
+                cells.append(ICONS.get(val, "?"))
+        mx_lines.append(f"| **{loc_label}** | " + " | ".join(cells) + " |")
+
+    # 備考
+    mx_lines += [
+        "",
+        "## 備考",
+        "",
+        "- **#size**: `toComponent()` 経路（チャット・本・GUI）では `Sized` ノードが無効。看板・Graffiti の `toSequence()` 経路のみ有効。",
+        "- **本**: `Sized` / `Glowing` / 動的デコレータは `font.split()` 経路のため非対応（設計上）。",
+        "- **player head オフライン**: グリフ確保は動作、スキンテクスチャはネット接続が必要。",
+        "- **?**: 未テスト。次の QA 優先候補。",
+    ]
+
+    # 未テストの優先候補を列挙
+    untested = [(loc, c) for (loc, c), v in cell.items() if v == "?" ]
+    not_in_cell = [
+        (loc, c) for loc, _ in LOCATIONS for c in content_keys
+        if cell.get((loc, c), "?") == "?" and (loc, c) not in NOT_SUPPORTED
+    ]
+    if not_in_cell:
+        mx_lines += ["", "## 優先確認候補 (?)", ""]
+        for loc, c in not_in_cell:
+            loc_label = next((l for k, l in LOCATIONS if k == loc), loc)
+            c_label = next((l.replace("\n", " ") for k, l in CONTENT_TYPES if k == c), c)
+            mx_lines.append(f"- {loc_label} × {c_label}")
+
+    MATRIX_PATH.write_text("\n".join(mx_lines) + "\n", encoding="utf-8")
+
     print(f"Generated {REPORT_PATH}  ({total} tests: "
           + ", ".join(f"{k}={counts[k]}" for k in ICONS if counts[k] > 0) + ")")
+    tested = sum(1 for v in cell.values() if v != "?")
+    total_cells = len(LOCATIONS) * len(content_keys)
+    print(f"Generated {MATRIX_PATH}  ({tested}/{total_cells} cells tested)")
 
 
 if __name__ == "__main__":

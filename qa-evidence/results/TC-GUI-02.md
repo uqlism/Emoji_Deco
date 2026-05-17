@@ -5,6 +5,8 @@ result: PASS
 date: 2026-05-18
 commit: afd7d25
 screenshot: screenshots/TC-GUI-02.png
+location: title
+content: rainbow
 ---
 
 `#rainbow[Title]` が画面中央に時間依存カラーアニメーションで表示されている。
