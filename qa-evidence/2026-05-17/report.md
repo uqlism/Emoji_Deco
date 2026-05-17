@@ -6,7 +6,7 @@
 
 ## 結果サマリー
 
-合計 10件 / ✅ PASS: 8件 / ❌ FAIL: 0件 / ⚠ CONDITIONAL: 2件
+合計 11件 / ✅ PASS: 9件 / ❌ FAIL: 0件 / ⚠ CONDITIONAL: 2件
 
 | # | テストケース | 機能 | 結果 |
 |---|---|---|---|
@@ -20,6 +20,7 @@
 | 8 | TC-CHAT-06 | プレイヤーヘッド `:player.Steve:` | ⚠ グリフ描画は動作、スキンはオフライン時に取得不可（白い四角） |
 | 9 | TC-AUTOCOMPLETE-01 | デコレータ補完（`#b` プレフィックス） | ✅ PASS |
 | 10 | TC-AUTOCOMPLETE-02 | ショートコード補完（`:di` プレフィックス） | ✅ PASS |
+| 11 | TC-GRAFFITI-01 | 落書きブロック リッチテキスト描画 (`GraffitiRenderer`) | ✅ PASS |
 
 ## スクリーンショット
 
@@ -92,3 +93,23 @@
 |---|---|---|
 | スプライト縦位置 (up=1f) | PASS | TC-CHAT-01-v2.png |
 | 補完 z-order (z=400) | PASS | TC-AUTOCOMPLETE-02-v2.png |
+
+---
+
+## TC-GRAFFITI-01 — 落書きブロック リッチテキスト描画（2026-05-17）
+
+**手順**:
+1. `/setblock 0 64 1 emoji_deco:graffiti` で Graffiti ブロックを設置
+2. `/data merge block 0 64 1 {line0:"#rainbow[Graffiti]",line1:"#size.2[:item.diamond:]",displayedLines:2}` で NBT データを直接設定
+3. コマンド応答 `Modified block data of 0, 64, 1` を確認
+4. プレイヤーをブロック正面から観察
+
+**確認内容**:
+- Graffiti ブロック正面に複数色（赤・橙・黄等の虹色）テキスト `Graffiti` が描画されている
+- `:item.diamond:` スプライト（青緑色のダイヤモンドアイコン）が下行に描画されている
+- raw テキスト（`#rainbow[Graffiti]`）がそのまま表示されておらず、デコレータとショートコードが正しく処理されている
+
+### TC-GRAFFITI-01 — 落書きブロック描画結果
+![TC-GRAFFITI-01](TC-GRAFFITI-01.png)
+> Graffiti ブロック正面に虹色の "Graffiti" テキストとダイヤモンドスプライトが描画されている。`#rainbow` デコレータと `:item.diamond:` ショートコードが `GraffitiRenderer` + `RichNode.toSequence()` 経路で正しく処理されていることを確認。  
+> **結果: PASS**
