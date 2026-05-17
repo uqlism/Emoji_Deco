@@ -2,6 +2,7 @@ package com.uqlism.emoji_deco.mixin;
 
 import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.text.ComponentConverter;
+import net.minecraft.client.gui.screens.inventory.BookViewScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,8 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-// TODO: BookViewScreen.WrittenBookAccess was removed in 1.21.1. Find the replacement target.
-@Mixin(targets = "net.minecraft.client.gui.screens.inventory.BookViewScreen$WrittenBookAccess", remap = false)
+// 1.21.1 で BookViewScreen$WrittenBookAccess が削除され BookViewScreen$BookAccess (record) に変わった。
+// BookAccess.m_98310_(int) が旧 WrittenBookAccess.m_7303_(int) に相当するページ取得メソッド。
+@Mixin(BookViewScreen.BookAccess.class)
 public class MixinWrittenBookAccess {
 
     // 書籍は font.split() → font.drawInBatch(FormattedCharSequence) の経路を使うため
@@ -18,7 +20,7 @@ public class MixinWrittenBookAccess {
     // ComponentConverter.toComponent() で Component ツリーを保持したまま変換する。
     // （scale/glow は font.split() 経由では未対応のため将来課題）
     @Inject(
-        method = "m_7303_",
+        method = "m_98310_",
         at = @At("RETURN"),
         cancellable = true,
         remap = false,
