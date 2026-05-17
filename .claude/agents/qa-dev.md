@@ -11,21 +11,26 @@ description: RunicInk mod の開発QAエージェント。最近の変更が Min
 
 ## ツール
 ```
-# ── フォーカス不要 (いつでも使える) ──────────────────────────────────
-python scripts/qa/mc_qa.py wscreenshot <path>        # PrintWindow でスクリーンショット（OpenGL 対応・フォーカス不要）
-python scripts/qa/mc_qa.py wait-log "<pattern>" [--timeout N]   # ログパターン待機
-python scripts/qa/mc_qa.py world-exists "<name>"     # テストワールドの存在確認
-python scripts/qa/mc_qa.py sleep <seconds>           # 待機
+# ── フォーカス不要 ──────────────────────────────────────────────────
+python scripts/qa/mc_qa.py wscreenshot <path>            # PrintWindow でスクリーンショット（OpenGL 対応）
+python scripts/qa/mc_qa.py wtype "<text>"                # WM_CHAR でテキスト入力（openchat 後に使用）
+python scripts/qa/mc_qa.py wkey <key>                    # WM_KEYDOWN 送信（return/backspace/escape/1-9）
+python scripts/qa/mc_qa.py wait-log "<pattern>" [--timeout N] [--fresh]
+python scripts/qa/mc_qa.py world-exists "<name>"
+python scripts/qa/mc_qa.py sleep <seconds>
 
-# ── sequence: 複数操作を1プロセス内で実行（フォーカスを保持したまま連続操作） ──
-# 書式: python scripts/qa/mc_qa.py sequence "cmd1:arg" "cmd2:arg1,arg2" ...
-# 利用可能なサブコマンド: key:<key>, type:<text>, click:<x>,<y>, sleep:<sec>,
-#                         wscreenshot:<path>, wkey:<key>, wtype:<text>
-python scripts/qa/mc_qa.py sequence "key:t" "sleep:0.3" "type::item.diamond:" "key:return" "sleep:0.5" "wscreenshot:out.png"
+# ── フォーカス奪取1回（以降はフォーカス不要） ───────────────────────
+python scripts/qa/mc_qa.py sendcmd "<text>" [--screenshot <path>] [--sleep N]
+#   openchat + wtype + return を1コマンドで。撮影まで一括。デフォルト sleep=0.5s
 
-# ── 個別操作（フォーカスを一時的に奪い、操作後に元のウィンドウへ戻す） ──
-python scripts/qa/mc_qa.py key <key> [<key> ...]     # キー/ショートカット（フォーカス奪取→復元）
-python scripts/qa/mc_qa.py click <x> <y>             # クリック（フォーカス奪取→復元）
+# ── sequence: 複数コマンドや撮影を組み合わせる場合 ──────────────────
+# サブコマンド: cmd:<text>, openchat, wkey:<key>, wtype:<text>,
+#               key:<key>, click:<x>,<y>, sleep:<sec>, wscreenshot:<path>
+python scripts/qa/mc_qa.py sequence "cmd:/tp @p 0 64 -1 0 0" "sleep:0.5" "wscreenshot:out.png"
+
+# ── フォーカス奪取が必要（in-game キーバインド） ─────────────────────
+python scripts/qa/mc_qa.py key <key> [<key> ...]         # ホットバー切替など
+python scripts/qa/mc_qa.py click <x> <y>                 # クリック
 ```
 
 スクリーンショットの保存先: `run/qa-screenshots/` (gitignore 済み)
@@ -135,106 +140,61 @@ Step 1 で特定した変更に対応するテストケースを実行する。
 
 ### TC-CHAT-01: ショートコード（アイテムスプライト）
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type ":item.diamond:"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-01.png
+python scripts/qa/mc_qa.py sendcmd ":item.diamond:" --screenshot run/qa-screenshots/tc-chat-01.png
 ```
 **PASS 条件**: チャット欄にダイヤモンドのアイコン（スプライト）が表示されている。
 `:item.diamond:` という文字列がそのまま表示されていれば FAIL。
 
 ### TC-CHAT-02: デコレータ（bold）
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "#bold[Hello]"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-02.png
+python scripts/qa/mc_qa.py sendcmd "#bold[Hello]" --screenshot run/qa-screenshots/tc-chat-02.png
 ```
 **PASS 条件**: "Hello" がチャットに太字で表示されている。
 
 ### TC-CHAT-03: デコレータ（color）
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "#color.red[Hello]"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-03.png
+python scripts/qa/mc_qa.py sendcmd "#color.red[Hello]" --screenshot run/qa-screenshots/tc-chat-03.png
 ```
 **PASS 条件**: "Hello" が赤色で表示されている。
 
 ### TC-CHAT-04: デコレータ（size）
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "#size.2[Hi]"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-04.png
+python scripts/qa/mc_qa.py sendcmd "#size.2[Hi]" --screenshot run/qa-screenshots/tc-chat-04.png
 ```
 **PASS 条件**: "Hi" が通常より大きく表示されている。
 
 ### TC-CHAT-05: エスケープシーケンス
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "\#bold"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-05.png
+python scripts/qa/mc_qa.py sendcmd "\#bold" --screenshot run/qa-screenshots/tc-chat-05.png
 ```
 **PASS 条件**: チャットに `#bold` というテキストがそのまま（書式なしで）表示されている。
 
 ### TC-CHAT-06: プレイヤーヘッド
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type ":player.Dev:"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 1
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-chat-06.png
+python scripts/qa/mc_qa.py sendcmd ":player.Dev:" --sleep 1.0 --screenshot run/qa-screenshots/tc-chat-06.png
 ```
 **PASS 条件**: チャットにプレイヤースキンの頭部アイコンが表示されている。
 
 ### TC-AUTOCOMPLETE-01: デコレータ補完
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "#"
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-autocomplete-01.png
+python scripts/qa/mc_qa.py sequence "openchat" "wtype:#" "sleep:0.5" "wscreenshot:run/qa-screenshots/tc-autocomplete-01.png" "wkey:escape"
 ```
 **PASS 条件**: `#bold`, `#italic`, `#color` などのサジェストドロップダウンが表示されている。
-テスト後: `Escape` でチャットを閉じる。
 
 ### TC-AUTOCOMPLETE-02: ショートコード補完
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type ":"
-python scripts/qa/mc_qa.py sleep 0.5
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-autocomplete-02.png
+python scripts/qa/mc_qa.py sequence "openchat" "wtype::" "sleep:0.5" "wscreenshot:run/qa-screenshots/tc-autocomplete-02.png" "wkey:escape"
 ```
 **PASS 条件**: `:item`, `:block`, `:player` などのサジェストが表示されている。
-テスト後: `Escape` でチャットを閉じる。
 
 ### TC-SIGN-01: 看板のリッチテキスト
 ```
-# 看板を入手
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "/give @p minecraft:oak_sign"
-python scripts/qa/mc_qa.py key return
-python scripts/qa/mc_qa.py sleep 0.5
+python scripts/qa/mc_qa.py sendcmd "/time set day"
+python scripts/qa/mc_qa.py sendcmd "/tp @p 0 64 -1 0 0"
+python scripts/qa/mc_qa.py sendcmd "/setblock 0 64 2 minecraft:oak_wall_sign[facing=north]{front_text:{messages:['[{\"text\":\"#color.gold[Hello Sign]\"}]','[\"\"]','[\"\"]','[\"\"]']}}" --sleep 1.0 --screenshot run/qa-screenshots/tc-sign-01.png
 ```
-地面に看板を設置（vision でプレイヤー前の地面の座標を特定してクリック）:
-```
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-sign-01-before.png
-```
-プレイヤー前方の地面を右クリックして設置、看板エディタが開いたら:
-```
-python scripts/qa/mc_qa.py type "#color.gold[Hello]"
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-sign-01-editor.png
-# "Done" ボタンをクリック（vision で座標特定）
-python scripts/qa/mc_qa.py sleep 1
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-sign-01-result.png
-```
-**PASS 条件**: 設置した看板の面に金色の "Hello" が表示されている。
+**PASS 条件**: 座標 (0, 64, 2) の看板に金色の "Hello Sign" が表示されている。
+`#color.gold[Hello Sign]` という文字列がそのまま表示されていれば FAIL。
 
 ### TC-GRAFFITI-01: 落書きブロック
 ```
@@ -247,10 +207,10 @@ python scripts/qa/mc_qa.py sleep 0.5
 エディタでリッチテキストを入力して Done:
 ```
 python scripts/qa/mc_qa.py type "#rainbow[Graffiti]"
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-graffiti-01-editor.png
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-01-editor.png
 # Done ボタンクリック
 python scripts/qa/mc_qa.py sleep 1
-python scripts/qa/mc_qa.py screenshot run/qa-screenshots/tc-graffiti-01-result.png
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-01-result.png
 ```
 **PASS 条件**: ブロック面にレインボーカラーの "Graffiti" が描画されている。
 

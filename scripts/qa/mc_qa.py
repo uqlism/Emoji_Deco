@@ -53,11 +53,17 @@ pyautogui.PAUSE = 0.05
 # ---------------------------------------------------------------------------
 
 def find_mc_window():
-    # QA_WINDOW_TITLE が設定されている場合は VM の Enhanced Session ウィンドウを対象とする。
-    # 例: QA_WINDOW_TITLE=RunicInk-QA  → "RunicInk-QA" を含むウィンドウを検索
-    target = os.environ.get("QA_WINDOW_TITLE", "Minecraft")
-    wins = [w for w in gw.getAllWindows() if target in w.title and w.width > 0]
-    return wins[0] if wins else None
+    if os.environ.get("QA_WINDOW_TITLE"):
+        target = os.environ["QA_WINDOW_TITLE"]
+        wins = [w for w in gw.getAllWindows() if target in w.title and w.width > 0]
+        return wins[0] if wins else None
+    all_wins = [w for w in gw.getAllWindows() if w.width > 0]
+    # Prefer Forge window (game) over Minecraft Launcher
+    forge_wins = [w for w in all_wins if "Forge" in w.title]
+    if forge_wins:
+        return forge_wins[0]
+    mc_wins = [w for w in all_wins if "Minecraft" in w.title and "Launcher" not in w.title]
+    return mc_wins[0] if mc_wins else None
 
 
 def _save_focus_state():
@@ -311,6 +317,26 @@ def cmd_sequence(args):
         elif cmd_name == "refocus":
             # Minecraft のフォーカスを再取得
             _focus()
+        elif cmd_name == "openchat":
+            pyautogui.press("t")
+            time.sleep(0.3)
+            _win = find_mc_window()
+            ctypes.windll.user32.PostMessageW(_win._hWnd, 0x0100, 0x08, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.PostMessageW(_win._hWnd, 0x0101, 0x08, 0)
+            time.sleep(0.1)
+        elif cmd_name == "cmd":
+            # openchat + wtype + return を1ステップで
+            pyautogui.press("t")
+            time.sleep(0.3)
+            _win_c = find_mc_window()
+            _hwnd_c = _win_c._hWnd
+            ctypes.windll.user32.PostMessageW(_hwnd_c, 0x0100, 0x08, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.PostMessageW(_hwnd_c, 0x0101, 0x08, 0)
+            time.sleep(0.05)
+            _chat_send(_hwnd_c, cmd_args_str)
+            time.sleep(0.3)
         else:
             print(f"[seq] WARN: unknown command '{cmd_name}', skipping")
 
@@ -361,7 +387,10 @@ def cmd_rcon(args):
 
 _VK_MAP = {
     "t": 0x54, "return": 0x0D, "enter": 0x0D, "escape": 0x1B, "space": 0x20,
+    "backspace": 0x08,
     "e": 0x45, "f": 0x46, "f3": 0x72, "f5": 0x74,
+    "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34, "5": 0x35,
+    "6": 0x36, "7": 0x37, "8": 0x38, "9": 0x39, "0": 0x30,
 }
 
 def _hwnd():
@@ -452,6 +481,57 @@ def cmd_wscreenshot(args):
     print(str(out.resolve()))
 
 
+def cmd_openchat(args):
+    """チャットを開いて 't' を削除し入力待機状態にする。以降は wtype/wkey でフォーカス不要。"""
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.press("t")
+    time.sleep(0.3)
+    _restore_focus_state(*prev)
+    time.sleep(0.1)
+    hwnd = _hwnd()
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0100, 0x08, 0)  # WM_KEYDOWN BACKSPACE
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0101, 0x08, 0)  # WM_KEYUP BACKSPACE
+    print("Chat opened")
+
+
+def _chat_send(hwnd, text):
+    """チャットフィールドにテキストを入力して送信する（フォーカス不要）。"""
+    for ch in text:
+        ctypes.windll.user32.PostMessageW(hwnd, 0x0102, ord(ch), 0)  # WM_CHAR
+        time.sleep(0.02)
+    time.sleep(0.1)
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0100, 0x0D, 0)  # WM_KEYDOWN RETURN
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0101, 0x0D, 0)  # WM_KEYUP RETURN
+
+
+def cmd_sendcmd(args):
+    """チャットを開いてテキストを送信し、オプションでスクリーンショットを撮る。
+    openchat + wtype + return を1コマンドで実行する。
+    """
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.press("t")
+    time.sleep(0.3)
+    _restore_focus_state(*prev)
+    time.sleep(0.1)
+    hwnd = _hwnd()
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0100, 0x08, 0)  # BACKSPACE で "t" を削除
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, 0x0101, 0x08, 0)
+    time.sleep(0.05)
+    _chat_send(hwnd, args.text)
+    if args.sleep > 0:
+        time.sleep(args.sleep)
+    if args.screenshot:
+        mock = type("A", (), {"output": args.screenshot})()
+        cmd_wscreenshot(mock)
+    else:
+        print("Sent")
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -511,6 +591,13 @@ def main():
     p = sub.add_parser("wscreenshot", help="PrintWindow screenshot (no focus, captures OpenGL)")
     p.add_argument("output")
 
+    sub.add_parser("openchat", help="Open chat and clear 't' (focus steal once, then wtype/wkey work without focus)")
+
+    p = sub.add_parser("sendcmd", help="Open chat, type text, send, optionally screenshot (openchat+wtype+return in one command)")
+    p.add_argument("text")
+    p.add_argument("--screenshot", default=None, metavar="PATH")
+    p.add_argument("--sleep", type=float, default=0.5, metavar="SEC")
+
     p = sub.add_parser("sequence", help="Run multiple commands in one process (Minecraft stays focused)")
     p.add_argument("steps", nargs="+", help="cmd:arg1,arg2 ...")
 
@@ -540,6 +627,8 @@ def main():
         "wkey":          cmd_wkey,
         "wtype":         cmd_wtype,
         "wscreenshot":   cmd_wscreenshot,
+        "openchat":      cmd_openchat,
+        "sendcmd":       cmd_sendcmd,
         "sequence":      cmd_sequence,
         "rcon":          cmd_rcon,
     }
