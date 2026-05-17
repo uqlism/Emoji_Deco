@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 01:32 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 01:50 — `python scripts/qa/gen_report.py`
 
-**合計**: 39件 / ✅ PASS: 32件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
+**合計**: 53件 / ✅ PASS: 46件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -28,6 +28,10 @@
 | [TC-CHAT-12](results/TC-CHAT-12.md) | チャット エスケープシーケンス | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-CHAT-13](results/TC-CHAT-13.md) | チャット 複合表現 | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-ENTITY-01](results/TC-ENTITY-01.md) | エンティティ名前タグ リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
+| [TC-ENTITY-02](results/TC-ENTITY-02.md) | エンティティ名前タグ sprite (:item.diamond:) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-ENTITY-03](results/TC-ENTITY-03.md) | エンティティ名前タグ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-ENTITY-04](results/TC-ENTITY-04.md) | エンティティ名前タグ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-ENTITY-05](results/TC-ENTITY-05.md) | エンティティ名前タグ ネスト複合 (#bold + #color.gold) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -44,7 +48,17 @@
 | [TC-HOTBAR-10](results/TC-HOTBAR-10.md) | ホットバーアイテム名 エスケープ (\#bold) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
+| [TC-SIGN-03](results/TC-SIGN-03.md) | 看板 #bold | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-04](results/TC-SIGN-04.md) | 看板 #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-05](results/TC-SIGN-05.md) | 看板 #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-06](results/TC-SIGN-06.md) | 看板 #underline #strike | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-07](results/TC-SIGN-07.md) | 看板 ネスト複合 (#bold + #color.red) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-08](results/TC-SIGN-08.md) | 看板 #size | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
+| [TC-TOOLTIP-02](results/TC-TOOLTIP-02.md) | ホバーツールチップ sprite (:item.diamond:) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-TOOLTIP-03](results/TC-TOOLTIP-03.md) | ホバーツールチップ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-TOOLTIP-04](results/TC-TOOLTIP-04.md) | ホバーツールチップ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-TOOLTIP-05](results/TC-TOOLTIP-05.md) | ホバーツールチップ ネスト複合 (#bold + #color.green) | ✅ PASS | 2026-05-18 | `4a52b56` |
 
 ---
 
@@ -113,6 +127,22 @@
 ### ✅ TC-ENTITY-01 — エンティティ名前タグ リッチテキスト
 ![TC-ENTITY-01](screenshots/TC-ENTITY-01.png)
 > 左 Cow: `#bold[Bold]`（太字）、右 Cow: `Normal`（通常）。`MixinFont.runicink$transformDrawBatchComponent` 正常動作確認。
+
+### ✅ TC-ENTITY-02 — エンティティ名前タグ sprite (:item.diamond:)
+![TC-ENTITY-02](screenshots/TC-ENTITY-02.png)
+> 牛の名前タグに `:item.diamond: Cow` が正しく描画されている。ダイヤモンドのスプライトアイコン + "Cow" テキストが並んで表示。
+
+### ✅ TC-ENTITY-03 — エンティティ名前タグ #glow
+![TC-ENTITY-03](screenshots/TC-ENTITY-03.png)
+> midnight + night_vision 環境で `#glow[GlowCow]` が牛の名前タグに明るく発光表示されている。Font.drawInBatch 経由の LightSequence が正常動作。
+
+### ✅ TC-ENTITY-04 — エンティティ名前タグ #rainbow
+![TC-ENTITY-04](screenshots/TC-ENTITY-04.png)
+> `#rainbow[RainbowCow]` が牛の名前タグに虹色で表示されている。DynamicFormattedCharSequence 経路で毎フレーム再評価される動的カラーが機能している。
+
+### ✅ TC-ENTITY-05 — エンティティ名前タグ ネスト複合 (#bold + #color.gold)
+![TC-ENTITY-05](screenshots/TC-ENTITY-05.png)
+> `#bold[#color.gold[GoldCow]]` が牛の名前タグに金色かつ太字で表示されている。ネストした decorator が正しく機能している。
 
 ### ✅ TC-GRAFFITI-01 — Graffiti ブロック リッチテキスト基本
 ![TC-GRAFFITI-01](screenshots/TC-GRAFFITI-01.png)
@@ -197,7 +227,47 @@ MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequen
 ![TC-SIGN-02](screenshots/TC-SIGN-02.png)
 > 看板に `:item.diamond:` のスプライトアイコンが描画されている。
 
+### ✅ TC-SIGN-03 — 看板 #bold
+![TC-SIGN-03](screenshots/TC-SIGN-03.png)
+> 看板に `#bold[Bold Sign]` が太字で描画されている。oak_wall_sign (south-facing) + `/data merge` でテキスト設定。
+
+### ✅ TC-SIGN-04 — 看板 #glow
+![TC-SIGN-04](screenshots/TC-SIGN-04.png)
+> midnight + night_vision 状態で `#glow[Glow Sign]` が看板に明るく発光表示されている。暗所でもテキストが鮮明に見える。
+
+### ✅ TC-SIGN-05 — 看板 #rainbow
+![TC-SIGN-05](screenshots/TC-SIGN-05.png)
+> `#rainbow[Rainbow Sign]` が看板に虹色で表示されている。toSequence() 経路のため動的グラデーションが機能している。
+
+### ✅ TC-SIGN-06 — 看板 #underline #strike
+![TC-SIGN-06](screenshots/TC-SIGN-06.png)
+> 看板の1行目に `#underline[Under]` が下線付きで、2行目に `#strike[Strike]` が取り消し線付きで描画されている。
+
+### ✅ TC-SIGN-07 — 看板 ネスト複合 (#bold + #color.red)
+![TC-SIGN-07](screenshots/TC-SIGN-07.png)
+> `#bold[#color.red[BoldRed]]` が看板に赤色かつ太字で描画されている。ネストした decorator が正しく機能している。
+
+### ✅ TC-SIGN-08 — 看板 #size
+![TC-SIGN-08](screenshots/TC-SIGN-08.png)
+> `#size.2[Big]` が看板に通常の2倍サイズで描画されている。toSequence() 経路のため Sized ノードが有効。
+
 ### ✅ TC-TOOLTIP-01 — ホバーツールチップ アイテム名リッチテキスト
 ![TC-TOOLTIP-01](screenshots/TC-TOOLTIP-01.png)
 > ホバーツールチップのアイテム名に `#bold[#color.aqua[Diamond]]` が太字アクア色で表示されている。
+
+### ✅ TC-TOOLTIP-02 — ホバーツールチップ sprite (:item.diamond:)
+![TC-TOOLTIP-02](screenshots/TC-TOOLTIP-02.png)
+> `:item.diamond: Gem` をカスタム名に持つダイヤモンドのツールチップに、ダイヤモンドスプライトアイコン + "Gem" が表示されている。1.21.1 コンポーネント構文 `minecraft:custom_name='{"text":"..."}` で動作確認。
+
+### ✅ TC-TOOLTIP-03 — ホバーツールチップ #rainbow
+![TC-TOOLTIP-03](screenshots/TC-TOOLTIP-03.png)
+> `#rainbow[Rainbow Item]` をカスタム名に持つネザースターのツールチップに "Rainbow Item" が虹色で表示されている。
+
+### ✅ TC-TOOLTIP-04 — ホバーツールチップ #glow
+![TC-TOOLTIP-04](screenshots/TC-TOOLTIP-04.png)
+> `#glow[Glow Item]` をカスタム名に持つグロウストーンダストのツールチップに "Glow Item" が正しく表示されている。ツールチップは toComponent() 経路のため LightMode による光度変化は非対応（設計上）。テキスト自体の描画は正常。
+
+### ✅ TC-TOOLTIP-05 — ホバーツールチップ ネスト複合 (#bold + #color.green)
+![TC-TOOLTIP-05](screenshots/TC-TOOLTIP-05.png)
+> `#bold[#color.green[Bold Green]]` をカスタム名に持つエメラルドのツールチップに "Bold Green" が太字緑色で表示されている。
 
