@@ -120,6 +120,18 @@ cp run/qa-screenshots/<test-dir>/<final-screenshot>.png qa-evidence/$(date +%Y-%
 
 `qa-evidence/README.md` の一覧表にも行を追記する。
 
+完了したら変更を commit して push する:
+```bash
+git add qa-evidence/
+git commit -m "qa-evidence: <日付> <テストケース名> PASS 証拠を追加"
+git push origin 1.21.1
+```
+
+push 後、レポートの URL を出力する:
+```
+https://github.com/uqlism/Emoji_Deco/blob/1.21.1/qa-evidence/YYYY-MM-DD/report.md
+```
+
 ### Step 8: レポート出力
 テスト完了後、以下の形式で結果を出力する:
 
