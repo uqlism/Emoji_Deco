@@ -84,6 +84,22 @@ python scripts/qa/mc_qa.py world-exists "QA Test World"
 Step 1 で特定した変更に対応するテストケースを実行する。
 各テストの結果を記録する。
 
+**既存の PASS テストでバグを発見した場合:**
+修正を始める前に必ず以下を先に行う:
+```bash
+# 1. result を FAIL に更新
+sed -i 's/^result: PASS/result: FAIL/' qa-evidence/results/TC-xxx.md
+# （または直接 Write で上書き）
+
+# 2. report.md を再生成してコミット
+python scripts/qa/gen_report.py
+git add qa-evidence/results/TC-xxx.md qa-evidence/report.md
+git commit -m "qa-evidence: TC-xxx FAIL を記録（バグ発見）"
+git push origin 1.21.1
+```
+その後に impl エージェントへ修正を依頼する。
+report.md は常に「現在の実際の状態」を反映させること。
+
 ### Step 7: 証拠保存
 テストごとに個別ファイルを更新し、`gen_report.py` でサマリーを自動生成する。
 
