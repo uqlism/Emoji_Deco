@@ -47,6 +47,10 @@ public class CompletionRenderer {
         x = Math.max(x, 0);
 
         int totalHeight = ITEM_HEIGHT * visible;
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(0f, 0f, 400f);
+
         graphics.fill(x, baseY, x + boxWidth, baseY + totalHeight, BG_COLOR);
 
         for (int i = 0; i < visible; i++) {
@@ -62,5 +66,7 @@ public class CompletionRenderer {
             }
             graphics.drawString(font, e.label(), tx, y, color, false);
         }
+
+        graphics.pose().popPose();
     }
 }

@@ -354,7 +354,7 @@ public class ImageGlyphPool {
         for (int i = 0; i < n; i++) {
             glyphs[i] = new BakedGlyph(rt, 0f, 1f,
                     a.animator().frameV0(i), a.animator().frameV1(i),
-                    0f, s.w, 3f, 3f + s.h);
+                    0f, s.w, 1f, 1f + s.h);
         }
         return glyphs;
     }
@@ -373,7 +373,7 @@ public class ImageGlyphPool {
             u0 = src.u0(); v0 = src.v0(); u1 = src.u1(); v1 = src.v1();
         }
         GlyphRenderTypes rt = GlyphRenderTypes.createForColorTexture(src.texture());
-        return new BakedGlyph(rt, u0, u1, v0, v1, 0f, s.w, 3f, 3f + s.h);
+        return new BakedGlyph(rt, u0, u1, v0, v1, 0f, s.w, 1f, 1f + s.h);
     }
 
     /** 空きスロットを確保して返す。プールが満杯なら -1 を返す（LRU 退避は行わない）。 */
