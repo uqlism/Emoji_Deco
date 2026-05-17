@@ -50,27 +50,42 @@ python scripts/qa/mc_qa.py scroll <x> <y> <amount>  # スクロール
 2. BUILD SUCCESSFUL を確認。エラーがあれば即中断してレポートに記載。
 3. `./gradlew test` を実行してユニットテストが全パスすることを確認。
 
-### Phase 2: 起動
-1. Bash ツールで `run_in_background=true` を使って起動:
-   ```
-   ./gradlew runQaClient
-   ```
-   `runQaClient` は `--quickPlaySingleplayer "QA Test World"` 付きで起動。
-   メインメニューをスキップして直接ワールドが開く。
+### Phase 2: 並列起動（3 グループ）
 
-2. ワールドロード完了を待機（最大120秒）:
-   ```
-   python scripts/qa/mc_qa.py wait-log "joined the game" --timeout 120
-   ```
-3. ゲーム内を確認:
-   ```
-   python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/release/00_ingame.png
-   ```
+まず元ワールドから各グループ用ワールドを複製する（QA Test World が存在する前提）:
+```bash
+python scripts/qa/mc_qa.py copy-world "QA Test World" "QA Test World A"
+python scripts/qa/mc_qa.py copy-world "QA Test World" "QA Test World B"
+python scripts/qa/mc_qa.py copy-world "QA Test World" "QA Test World C"
+```
+
+各グループのサブエージェントは `QA_PID_FILE` 環境変数を設定してから `mc_qa.py` を使う。
+
+#### グループ A — チャット・オートコンプリート
+```bash
+QA_PID_FILE=run/qa-pid-a.txt ./gradlew runQaClientA &
+python scripts/qa/mc_qa.py wait-log "joined the game" --timeout 120 --fresh
+```
+テスト: TC-CHAT-01〜13, TC-AUTO-01〜04
+
+#### グループ B — 看板・エンティティ・本
+```bash
+QA_PID_FILE=run/qa-pid-b.txt ./gradlew runQaClientB &
+python scripts/qa/mc_qa.py wait-log "joined the game" --timeout 120 --fresh
+```
+テスト: TC-SIGN-01〜02, TC-ENTITY-01, TC-BOOK-01
+
+#### グループ C — Graffiti・GUI・ツールチップ
+```bash
+QA_PID_FILE=run/qa-pid-c.txt ./gradlew runQaClientC &
+python scripts/qa/mc_qa.py wait-log "joined the game" --timeout 120 --fresh
+```
+テスト: TC-GRAFFITI-01〜02, TC-GUI-01〜02, TC-TOOLTIP-01
 
 ### Phase 3: ワールド確認
 `QA Test World` が存在しない場合のみ手動作成が必要。
-通常は Phase 2 の `runQaClient` が自動でロードするため Phase 3 は不要。
-ワールドがない場合 → `./gradlew runClient` で起動してメニューから手動作成後、再度 `runQaClient` で起動。
+通常は Phase 2 の複製コマンドの前提となるベースワールドを作成する。
+ワールドがない場合 → `./gradlew runClient` で起動してメニューから手動作成後、再度 Phase 2 へ。
 
 ### Phase 4: 全テスト実行
 下記テストケースをすべて順番に実行する。

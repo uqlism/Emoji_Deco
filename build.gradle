@@ -92,6 +92,27 @@ minecraft {
             args '--quickPlaySingleplayer', 'QA Test World'
         }
 
+        // 並列 QA 用 — グループ A: チャット・オートコンプリート
+        qaClientA {
+            parent runs.client
+            args '--quickPlaySingleplayer', 'QA Test World A'
+            property 'runicink.qa.pid.file', 'run/qa-pid-a.txt'
+        }
+
+        // 並列 QA 用 — グループ B: 看板・エンティティ・本
+        qaClientB {
+            parent runs.client
+            args '--quickPlaySingleplayer', 'QA Test World B'
+            property 'runicink.qa.pid.file', 'run/qa-pid-b.txt'
+        }
+
+        // 並列 QA 用 — グループ C: Graffiti・GUI・ツールチップ
+        qaClientC {
+            parent runs.client
+            args '--quickPlaySingleplayer', 'QA Test World C'
+            property 'runicink.qa.pid.file', 'run/qa-pid-c.txt'
+        }
+
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'

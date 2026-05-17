@@ -7,30 +7,31 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 // 1.21.1 で BookViewScreen$WrittenBookAccess が削除され BookViewScreen$BookAccess (record) に変わった。
-// BookAccess.m_98310_(int) が旧 WrittenBookAccess.m_7303_(int) に相当するページ取得メソッド。
-@Mixin(BookViewScreen.BookAccess.class)
+// record クラスへの @Inject RETURN は Mixin 0.8.7 で動作しない場合があるため、
+// BookViewScreen 側から @Redirect で BookAccess.m_98310_() 呼び出しをインターセプトする。
+@Mixin(BookViewScreen.class)
 public class MixinWrittenBookAccess {
 
-    // 書籍は font.split() → font.drawInBatch(FormattedCharSequence) の経路を使うため
-    // MixinFont.drawInBatch(Component) の catch-all が効かない。
-    // ComponentConverter.toComponent() で Component ツリーを保持したまま変換する。
-    // （scale/glow は font.split() 経由では未対応のため将来課題）
-    @Inject(
-        method = "m_98310_",
-        at = @At("RETURN"),
-        cancellable = true,
+    // m_98302_ は BookViewScreen のページ更新メソッドで、内部で BookAccess.m_98310_(index) を呼ぶ。
+    // その呼び出しを Redirect してリッチテキスト変換を挟む。
+    @Redirect(
+        method = "m_98302_",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/screens/inventory/BookViewScreen$BookAccess;m_98310_(I)Lnet/minecraft/network/chat/FormattedText;",
+            remap = false
+        ),
         remap = false,
         require = 0
     )
-    private void runicink$parseBookPage(int index, CallbackInfoReturnable<FormattedText> cir) {
-        if (!Config.enableBooks) return;
-        FormattedText page = cir.getReturnValue();
-        if (!(page instanceof Component component)) return;
-        if (component.getString().isBlank()) return;
-        cir.setReturnValue(ComponentConverter.toComponent(component));
+    private FormattedText runicink$redirectGetPage(BookViewScreen.BookAccess bookAccess, int index) {
+        FormattedText page = bookAccess.getPage(index);
+        if (!Config.enableBooks) return page;
+        if (!(page instanceof Component component)) return page;
+        if (component.getString().isBlank()) return page;
+        return ComponentConverter.toComponent(component);
     }
 }

@@ -52,7 +52,39 @@ pyautogui.PAUSE = 0.05
 # Window helpers
 # ---------------------------------------------------------------------------
 
+def _find_window_by_pid(pid):
+    """指定 PID のウィンドウを返す。"""
+    result = []
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+
+    def callback(hwnd, _):
+        wpid = ctypes.c_ulong()
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(wpid))
+        if wpid.value == pid:
+            rect = ctypes.wintypes.RECT()
+            ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+            w = rect.right - rect.left
+            if w > 200:  # 小さいウィンドウを除外
+                result.append(hwnd)
+        return True
+
+    ctypes.windll.user32.EnumWindows(WNDENUMPROC(callback), 0)
+    return result[0] if result else None
+
+
 def find_mc_window():
+    # PID ファイルが指定されている場合はそれを使う
+    pid_file = os.environ.get("QA_PID_FILE")
+    if pid_file and Path(pid_file).exists():
+        try:
+            pid = int(Path(pid_file).read_text().strip())
+            hwnd = _find_window_by_pid(pid)
+            if hwnd:
+                wins = [w for w in gw.getAllWindows() if w._hWnd == hwnd]
+                return wins[0] if wins else None
+        except Exception:
+            pass
+    # 既存のフォールバック
     if os.environ.get("QA_WINDOW_TITLE"):
         target = os.environ["QA_WINDOW_TITLE"]
         wins = [w for w in gw.getAllWindows() if target in w.title and w.width > 0]
@@ -242,6 +274,20 @@ def cmd_wait_log(args):
 def cmd_world_exists(args):
     path = Path("run/saves") / args.name
     print("true" if path.exists() else "false")
+
+
+def cmd_copy_world(args):
+    """run/saves/<src>/ を run/saves/<dst>/ にコピーする（session.lock を除外）。"""
+    import shutil
+    src = Path("run/saves") / args.src
+    dst = Path("run/saves") / args.dst
+    if not src.exists():
+        print(f"ERROR: {src} not found", file=sys.stderr)
+        sys.exit(1)
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("session.lock"))
+    print(f"Copied {src} -> {dst}")
 
 
 def cmd_sleep(args):
@@ -575,6 +621,10 @@ def main():
     p = sub.add_parser("world-exists", help="Check run/saves/<name>/ exists")
     p.add_argument("name")
 
+    p = sub.add_parser("copy-world", help="Copy run/saves/<src> to run/saves/<dst>, excluding session.lock")
+    p.add_argument("src")
+    p.add_argument("dst")
+
     p = sub.add_parser("sleep")
     p.add_argument("seconds", type=float)
 
@@ -622,6 +672,7 @@ def main():
         "scroll":       cmd_scroll,
         "wait-log":     cmd_wait_log,
         "world-exists":  cmd_world_exists,
+        "copy-world":    cmd_copy_world,
         "sleep":         cmd_sleep,
         "wclick":        cmd_wclick,
         "wkey":          cmd_wkey,
