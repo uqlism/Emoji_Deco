@@ -11,9 +11,8 @@
 
 ## 動作未確認の機能
 
-- [ ] **オートコンプリート** (`#` / `:` トリガー)
-  `MixinChatScreen` は適用済みだが、ドロップダウン表示の目視確認ができていない。
-  チャット欄に `#` を入力して候補が出るか確認する。
+- [x] **オートコンプリート** (`#` / `:` トリガー) — TC-AUTOCOMPLETE-01〜02 PASS
+  ⚠ `#` 単体では使用履歴が空の場合に候補が出ない（`#b` 等プレフィックスが必要）。将来改善候補。
 
 - [x] **看板のリッチテキスト描画** — TC-SIGN-01 PASS（`#color.gold[Hello Sign]` 描画確認済み）
 
@@ -21,16 +20,17 @@
 
 - [ ] **GUI（ホットバーアイテム名・ツールチップ）**
   `MixinGuiGraphics` は適用済み。アイテムの表示名に `#bold[...]` を設定して確認する。
+  ホットバー切替（`key:1` など）はフォーカス奪取が必要。
 
 ## QA テストスイート
 
-- [ ] **TC-CHAT-01〜06 全件実行** — shortcode / decorator / escape / player head
-- [ ] **TC-AUTOCOMPLETE-01〜02** — `#` / `:` の候補表示
-- [ ] **TC-SIGN-01** — 看板リッチテキスト
+- [x] **TC-CHAT-01〜06** — PASS（TC-04 size は Chat 非対応で仕様通り、TC-06 オフライン時スキン空白は想定内）
+- [x] **TC-AUTOCOMPLETE-01〜02** — PASS
+- [x] **TC-SIGN-01** — PASS
 - [ ] **TC-GRAFFITI-01** — 落書きブロック（`#rainbow[Graffiti]`）
 
 ## 将来課題
 
-- [ ] **書籍（Written Book）リッチテキスト対応** — WrittenBookAccess 修正後
+- [ ] **書籍（Written Book）リッチテキスト対応** — MixinWrittenBookAccess 修正済み、QA 未実施
 - [ ] **`size` デコレータの Chat/Sign 対応確認** — TC-CHAT-04
 - [ ] **player head shortcode の確認** — TC-CHAT-06（`:player.Dev:`）
