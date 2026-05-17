@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 01:52 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 02:20 — `python scripts/qa/gen_report.py`
 
-**合計**: 53件 / ✅ PASS: 46件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
+**合計**: 72件 / ✅ PASS: 65件 / ⚠ CONDITIONAL: 3件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -14,6 +14,10 @@
 | [TC-BOOK-02](results/TC-BOOK-02.md) | 本 #size（非対応） | — N/A | 2026-05-18 | `25280fa` |
 | [TC-BOOK-03](results/TC-BOOK-03.md) | 本 #glow（非対応） | — N/A | 2026-05-18 | `25280fa` |
 | [TC-BOOK-04](results/TC-BOOK-04.md) | 本 #rainbow（非対応） | — N/A | 2026-05-18 | `25280fa` |
+| [TC-BOOK-05](results/TC-BOOK-05.md) | 本 sprite | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-BOOK-06](results/TC-BOOK-06.md) | 本 #color | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-BOOK-07](results/TC-BOOK-07.md) | 本 ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-BOOK-08](results/TC-BOOK-08.md) | 本 #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-03](results/TC-CHAT-03.md) | チャット ショートコード（プレイヤーヘッド） | ⚠ CONDITIONAL | 2026-05-17 | `f3f8074` |
@@ -34,8 +38,23 @@
 | [TC-ENTITY-05](results/TC-ENTITY-05.md) | エンティティ名前タグ ネスト複合 (#bold + #color.gold) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
+| [TC-GRAFFITI-03](results/TC-GRAFFITI-03.md) | Graffiti #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-04](results/TC-GRAFFITI-04.md) | Graffiti #color | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-05](results/TC-GRAFFITI-05.md) | Graffiti #size | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-06](results/TC-GRAFFITI-06.md) | Graffiti ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-07](results/TC-GRAFFITI-07.md) | Graffiti #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ✅ PASS | 2026-05-18 | `afd7d25` |
+| [TC-GUI-03](results/TC-GUI-03.md) | アクションバー #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-04](results/TC-GUI-04.md) | アクションバー #rainbow | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-05](results/TC-GUI-05.md) | アクションバー #size | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-06](results/TC-GUI-06.md) | アクションバー sprite | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-07](results/TC-GUI-07.md) | アクションバー ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-08](results/TC-GUI-08.md) | タイトル #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-09](results/TC-GUI-09.md) | タイトル #color | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-10](results/TC-GUI-10.md) | タイトル #size | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-11](results/TC-GUI-11.md) | タイトル sprite | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GUI-12](results/TC-GUI-12.md) | タイトル ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-HOTBAR-01](results/TC-HOTBAR-01.md) | ホットバーアイテム名 #bold | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-02](results/TC-HOTBAR-02.md) | ホットバーアイテム名 #italic | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-03](results/TC-HOTBAR-03.md) | ホットバーアイテム名 #color | ✅ PASS | 2026-05-18 | `4a3aeab` |
@@ -79,6 +98,22 @@
 ### ✅ TC-BOOK-01 — Written Book リッチテキスト
 ![TC-BOOK-01](screenshots/TC-BOOK-01.png)
 > `#bold[Chapter 1]` が太字で描画されている。`MixinWrittenBookAccess` を Mojang マッピング名に修正後に PASS。
+
+### ✅ TC-BOOK-05 — 本 sprite
+![TC-BOOK-05](screenshots/TC-BOOK-05.png)
+> `:item.diamond: Diamond` が本のページにダイヤモンドスプライトアイコン + " Diamond" テキストとして表示されている。MixinWrittenBookAccess → ComponentTransformer 経路で変換済み。
+
+### ✅ TC-BOOK-06 — 本 #color
+![TC-BOOK-06](screenshots/TC-BOOK-06.png)
+> `#color.aqua[Aqua Text]` が本のページにアクア色テキストとして表示されている。
+
+### ✅ TC-BOOK-07 — 本 ネスト (#bold + #color)
+![TC-BOOK-07](screenshots/TC-BOOK-07.png)
+> `#bold[#color.red[BoldRed]]` が本のページに赤色・太字テキストとして表示されている。ネストしたデコレータが両方とも正しく適用されている。
+
+### ✅ TC-BOOK-08 — 本 #underline #strike
+![TC-BOOK-08](screenshots/TC-BOOK-08.png)
+> `#underline[Under] #strike[Strike]` が本のページに下線付き・打ち消し線付きテキストとして表示されている。
 
 ### ✅ TC-CHAT-01 — チャット ショートコード（アイテムスプライト）
 ![TC-CHAT-01](screenshots/TC-CHAT-01.png)
@@ -152,6 +187,26 @@
 ![TC-GRAFFITI-02](screenshots/TC-GRAFFITI-02.png)
 > 深夜の暗所で `#glow[GLOW]` テキストが最大輝度で発光表示されている。
 
+### ✅ TC-GRAFFITI-03 — Graffiti #bold
+![TC-GRAFFITI-03](screenshots/TC-GRAFFITI-03.png)
+> `#bold[Bold Graffiti]` がブロック面にテキストとして表示されている。GraffitiRenderer → RichNode.toSequence() 経路で描画。
+
+### ✅ TC-GRAFFITI-04 — Graffiti #color
+![TC-GRAFFITI-04](screenshots/TC-GRAFFITI-04.png)
+> `#color.blue[Blue Graffiti]` がブロック面に青色テキストとして表示されている。
+
+### ✅ TC-GRAFFITI-05 — Graffiti #size
+![TC-GRAFFITI-05](screenshots/TC-GRAFFITI-05.png)
+> `#size.2[BIG]` がブロック面に通常より大きなテキストとして表示されている。ScaledSequence が Graffiti の toSequence() 経路で機能している。
+
+### ✅ TC-GRAFFITI-06 — Graffiti ネスト (#bold + #color)
+![TC-GRAFFITI-06](screenshots/TC-GRAFFITI-06.png)
+> `#bold[#color.red[BoldRed]]` がブロック面に赤色テキストとして表示されている。ネストしたデコレータが適用されている。
+
+### ✅ TC-GRAFFITI-07 — Graffiti #underline #strike
+![TC-GRAFFITI-07](screenshots/TC-GRAFFITI-07.png)
+> `#underline[Under] #strike[Strike]` がブロック面に下線付き・打ち消し線付きテキストとして表示されている。
+
 ### ✅ TC-GUI-01 — GUI アクションバー
 ![TC-GUI-01](screenshots/TC-GUI-01.png)
 > `#color.gold[Action Bar]` が画面下部のアクションバーに金色で表示されている。`MixinGuiGraphics` 正常動作確認。
@@ -161,6 +216,46 @@
 > `#rainbow[Title]` が画面中央に時間依存カラーアニメーションで表示されている。
 MixinGuiGraphics を常に DynamicFormattedCharSequence でラップするよう修正後に PASS。
 複数フレームでシアン→ピンクへの色変化を確認し、DynamicFCS による毎フレーム再評価が機能していることを証明。
+
+### ✅ TC-GUI-03 — アクションバー #bold
+![TC-GUI-03](screenshots/TC-GUI-03.png)
+> `#bold[Bold Bar]` が太字でアクションバーに表示されている。MixinGuiGraphics → ComponentSequenceConverter 経路で変換済み。
+
+### ✅ TC-GUI-04 — アクションバー #rainbow
+![TC-GUI-04](screenshots/TC-GUI-04.png)
+> `#rainbow[Rainbow Bar]` がレインボーカラー（各文字が異なる色）でアクションバーに表示されている。
+
+### ✅ TC-GUI-05 — アクションバー #size
+![TC-GUI-05](screenshots/TC-GUI-05.png)
+> `#size.2[BIG]` がアクションバーに通常より大きなテキストとして表示されている。MixinGuiGraphics → DynamicFCS → toSequence() → ScaledSequence 経路でスケールが適用される。
+
+### ✅ TC-GUI-06 — アクションバー sprite
+![TC-GUI-06](screenshots/TC-GUI-06.png)
+> `:item.diamond: Bar` がアクションバーにダイヤモンドのスプライトアイコン + " Bar" テキストとして表示されている。
+
+### ✅ TC-GUI-07 — アクションバー ネスト (#bold + #color)
+![TC-GUI-07](screenshots/TC-GUI-07.png)
+> `#bold[#color.gold[Gold Bold Bar]]` が金色・太字でアクションバーに表示されている。ネストしたデコレータが正しく適用されている。
+
+### ✅ TC-GUI-08 — タイトル #bold
+![TC-GUI-08](screenshots/TC-GUI-08.png)
+> `#bold[Bold Title]` が大きな太字タイトルとして画面中央に表示されている。
+
+### ✅ TC-GUI-09 — タイトル #color
+![TC-GUI-09](screenshots/TC-GUI-09.png)
+> `#color.aqua[Aqua Title]` がアクア色の大きなタイトルとして表示されている。
+
+### ✅ TC-GUI-10 — タイトル #size
+![TC-GUI-10](screenshots/TC-GUI-10.png)
+> `#size.2[BIG TITLE]` が画面いっぱいに拡大されたテキストとしてタイトル表示されている。通常タイトルの2倍スケールが視覚的に確認できる。
+
+### ✅ TC-GUI-11 — タイトル sprite
+![TC-GUI-11](screenshots/TC-GUI-11.png)
+> `:item.diamond: Title` が大きなダイヤモンドスプライトアイコン + " Title" テキストとしてタイトル表示されている。スプライトがタイトルスケールで拡大レンダリングされている。
+
+### ✅ TC-GUI-12 — タイトル ネスト (#bold + #color)
+![TC-GUI-12](screenshots/TC-GUI-12.png)
+> `#bold[#color.red[Red Bold]]` が赤色・太字の大きなタイトルとして表示されている。ネストしたデコレータが両方とも正しく適用されている。
 
 ### ✅ TC-HOTBAR-01 — ホットバーアイテム名 #bold
 ![TC-HOTBAR-01](screenshots/TC-HOTBAR-01.png)

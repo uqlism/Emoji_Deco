@@ -1,6 +1,6 @@
 # RunicInk QA カバレッジマトリックス
 
-> 自動生成: 2026-05-18 01:52 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 02:20 — `python scripts/qa/gen_report.py`
 
 **凡例**: ✅ PASS / ❌ FAIL / ⚠ CONDITIONAL / — 非対応（設計上） / ? 未確認
 
@@ -9,10 +9,10 @@
 | **チャット** | ✅ | ⚠ | ✅ | ✅ | ⚠ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **看板** | ✅ | ? | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | **エンティティ名タグ** | ✅ | ? | ✅ | ✅ | ? | ✅ | ✅ | ? | ✅ | ? |
-| **本 (Written Book)** | ? | ? | ✅ | ? | — | — | — | ? | ? | ? |
-| **Graffiti ブロック** | ✅ | ? | ? | ? | ? | ✅ | ✅ | ? | ? | ? |
-| **アクションバー** | ? | ? | ? | ✅ | ? | ? | ? | ? | ? | ? |
-| **タイトル / サブタイトル** | ? | ? | ? | ? | ? | ? | ✅ | ? | ? | ? |
+| **本 (Written Book)** | ✅ | ? | ✅ | ✅ | — | — | — | ✅ | ✅ | ? |
+| **Graffiti ブロック** | ✅ | ? | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
+| **アクションバー** | ✅ | ? | ✅ | ✅ | ✅ | ? | ✅ | ? | ✅ | ? |
+| **タイトル / サブタイトル** | ✅ | ? | ✅ | ✅ | ✅ | ? | ✅ | ? | ✅ | ? |
 | **ホットバーアイテム名** | ✅ | ? | ✅ | ✅ | ✅ | ⚠ | ✅ | ✅ | ✅ | ? |
 | **ホバーツールチップ** | ✅ | ? | ✅ | ✅ | ? | ✅ | ✅ | ? | ✅ | ? |
 
@@ -31,36 +31,17 @@
 - エンティティ名タグ × #size
 - エンティティ名タグ × #underline #strike
 - エンティティ名タグ × エスケープ \#
-- 本 (Written Book) × sprite :item: :block:
 - 本 (Written Book) × player head
-- 本 (Written Book) × #color
-- 本 (Written Book) × #underline #strike
-- 本 (Written Book) × ネスト 複合
 - 本 (Written Book) × エスケープ \#
 - Graffiti ブロック × player head
-- Graffiti ブロック × #bold #italic
-- Graffiti ブロック × #color
-- Graffiti ブロック × #size
-- Graffiti ブロック × #underline #strike
-- Graffiti ブロック × ネスト 複合
 - Graffiti ブロック × エスケープ \#
-- アクションバー × sprite :item: :block:
 - アクションバー × player head
-- アクションバー × #bold #italic
-- アクションバー × #size
 - アクションバー × #glow
-- アクションバー × #rainbow （動的）
 - アクションバー × #underline #strike
-- アクションバー × ネスト 複合
 - アクションバー × エスケープ \#
-- タイトル / サブタイトル × sprite :item: :block:
 - タイトル / サブタイトル × player head
-- タイトル / サブタイトル × #bold #italic
-- タイトル / サブタイトル × #color
-- タイトル / サブタイトル × #size
 - タイトル / サブタイトル × #glow
 - タイトル / サブタイトル × #underline #strike
-- タイトル / サブタイトル × ネスト 複合
 - タイトル / サブタイトル × エスケープ \#
 - ホットバーアイテム名 × player head
 - ホットバーアイテム名 × エスケープ \#
