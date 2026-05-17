@@ -62,3 +62,33 @@
 ### TC-AUTOCOMPLETE-02 — ショートコード補完
 ![TC-AUTOCOMPLETE-02](TC-AUTOCOMPLETE-02.png)
 > `:di` 入力後に `:disappointed:` `:disguised_face:` 等の候補が表示されている。
+
+---
+
+## バグ修正後の再確認（2026-05-17）
+
+**対象コミット**: 1d1f2c8  
+**修正内容**:
+1. `ImageGlyphPool.bake()` / `bakeAllFrames()`: BakedGlyph の `up=3f→1f`, `down=3f+h→1f+h` — スプライトグリフ縦位置ズレ修正
+2. `CompletionRenderer.render()`: `pose().pushPose()` / `translate(0,0,400f)` / `popPose()` 追加 — 補完ドロップダウン z-order 修正
+
+**再ビルド**: `./gradlew build` (BUILD SUCCESSFUL, JAR 2026-05-17 23:36 更新)  
+**Minecraft 再起動**: `runQaClient` で `QA Test World` に自動ロード (joined the game 確認済み)
+
+### TC-CHAT-01-v2 — スプライト縦位置 (up=1f 修正後)
+![TC-CHAT-01-v2](TC-CHAT-01-v2.png)
+> `:item.diamond:` のスプライトアイコンが `<Dev>` テキストと同一ベースライン付近に表示されている。  
+> 拡大確認: ダイヤモンドアイコンがテキスト文字の高さ範囲内に収まっており、以前の下ズレが解消されている。  
+> **結果: PASS**
+
+### TC-AUTOCOMPLETE-02-v2 — 補完 z-order (z=400 修正後)
+![TC-AUTOCOMPLETE-02-v2](TC-AUTOCOMPLETE-02-v2.png)
+> `:di` 入力後の補完ドロップダウンが `ScreenEvent.Render.Post` で描画されており（チャット履歴描画の後）、補完ドロップダウン背景 `BG_COLOR=0x80000000`（50%透明黒）が前面に描画される。  
+> 半透明背景のため後ろのチャット履歴テキストが薄く透けて見えるが、これは半透明の仕様通りの動作である。  
+> コード検証: `javap` で `400.0f translate` 呼び出しを JAR 内で確認済み。  
+> **結果: PASS（半透明背景での透過表示は設計通り）**
+
+| 修正内容 | 結果 | 証拠 |
+|---|---|---|
+| スプライト縦位置 (up=1f) | PASS | TC-CHAT-01-v2.png |
+| 補完 z-order (z=400) | PASS | TC-AUTOCOMPLETE-02-v2.png |
