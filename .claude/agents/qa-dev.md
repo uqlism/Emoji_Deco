@@ -85,46 +85,43 @@ Step 1 で特定した変更に対応するテストケースを実行する。
 各テストの結果を記録する。
 
 ### Step 7: 証拠保存
-PASS になったテストの最終スクリーンショットを `qa-evidence/YYYY-MM-DD/` にコピーし、レポートを更新する。
+テストごとに個別ファイルを更新し、`gen_report.py` でサマリーを自動生成する。
 
+#### 1. スクリーンショットを保存
 ```bash
-# 日付ディレクトリを作成（例: 2026-05-17）
-mkdir -p qa-evidence/$(date +%Y-%m-%d)
-
-# PASS したテストのスクリーンショットをコピー
-cp run/qa-screenshots/<test-dir>/<final-screenshot>.png qa-evidence/$(date +%Y-%m-%d)/TC-xxx.png
+cp <最終スクリーンショット> qa-evidence/screenshots/TC-xxx.png
 ```
 
-`qa-evidence/YYYY-MM-DD/report.md` を以下の形式で生成する:
+#### 2. 個別結果ファイルを書き込む（PASS/FAIL どちらでも）
+`qa-evidence/results/TC-xxx.md` を作成/上書きする（再テスト時は上書きで OK）:
 
 ```markdown
-# QA Evidence — YYYY-MM-DD
+---
+test: TC-xxx
+feature: 機能名
+result: PASS
+date: YYYY-MM-DD
+commit: <git rev-parse --short HEAD>
+screenshot: screenshots/TC-xxx.png
+---
 
-**ブランチ**: <branch>
-**コミット**: <commit>
-
-## 結果サマリー
-
-合計 N件 / ✅ PASS: N件 / ❌ FAIL: N件
-
-| # | テストケース | 機能 | 結果 |
-|---|---|---|---|
-| 1 | TC-xxx | 機能名 | ✅ PASS |
-
-## スクリーンショット
-
-### TC-xxx — テスト名
-![TC-xxx](TC-xxx.png)
-> PASS の根拠を一行で説明
+PASS/FAIL の根拠を一行で説明する。
 ```
 
-`qa-evidence/README.md` の一覧表にも行を追記する。
-
-完了したら変更を commit して push する:
+#### 3. report.md を再生成
 ```bash
-git add qa-evidence/
-git commit -m "qa-evidence: <日付> <テストケース名> PASS 証拠を追加"
+python scripts/qa/gen_report.py
+```
+
+#### 4. コミット・push
+```bash
+git add qa-evidence/results/TC-xxx.md qa-evidence/screenshots/TC-xxx.png qa-evidence/report.md
+git commit -m "qa-evidence: TC-xxx PASS 証拠を更新"
 git push origin 1.21.1
+```
+push 後に URL を出力:
+```
+https://github.com/uqlism/Emoji_Deco/blob/1.21.1/qa-evidence/report.md
 ```
 
 push 後、レポートの URL を出力する:
