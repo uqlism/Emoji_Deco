@@ -3,8 +3,8 @@ test: TC-CHAT-01
 feature: チャット ショートコード（アイテムスプライト）
 result: PASS
 date: 2026-05-18
-commit: 0cca96b
+commit: afd7d25
 screenshot: screenshots/TC-CHAT-01.png
 ---
 
-`:item.diamond:` がダイヤモンドのスプライトアイコンとして描画されている。up=7f 修正後の再確認済み。
+`:item.diamond:` がダイヤモンドのスプライトアイコンとして描画されている。ImageGlyphPool.bake() up=0, down=h 修正後に "Hello" テキストと同じ高さに正しく揃っていることを確認。

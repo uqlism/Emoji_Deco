@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 01:00 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 01:10 — `python scripts/qa/gen_report.py`
 
-**合計**: 26件 / ✅ PASS: 22件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 2件 / — N/A: 1件
+**合計**: 26件 / ✅ PASS: 23件 / ⚠ CONDITIONAL: 2件 / — N/A: 1件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -11,8 +11,8 @@
 | [TC-AUTO-03](results/TC-AUTO-03.md) | オートコンプリート デコレータ引数候補 | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-AUTO-04](results/TC-AUTO-04.md) | オートコンプリート ショートコード引数候補 | — N/A | 2026-05-18 | `bf2c5ed` |
 | [TC-BOOK-01](results/TC-BOOK-01.md) | Written Book リッチテキスト | ✅ PASS | 2026-05-18 | `d2e8510` |
-| [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `0cca96b` |
-| [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `0cca96b` |
+| [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
+| [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-03](results/TC-CHAT-03.md) | チャット ショートコード（プレイヤーヘッド） | ⚠ CONDITIONAL | 2026-05-17 | `f3f8074` |
 | [TC-CHAT-04](results/TC-CHAT-04.md) | チャット デコレータ #bold | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-CHAT-05](results/TC-CHAT-05.md) | チャット デコレータ #italic | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -28,7 +28,7 @@
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
-| [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ❌ FAIL | 2026-05-18 | `bf2c5ed` |
+| [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -55,11 +55,11 @@
 
 ### ✅ TC-CHAT-01 — チャット ショートコード（アイテムスプライト）
 ![TC-CHAT-01](screenshots/TC-CHAT-01.png)
-> `:item.diamond:` がダイヤモンドのスプライトアイコンとして描画されている。up=7f 修正後の再確認済み。
+> `:item.diamond:` がダイヤモンドのスプライトアイコンとして描画されている。ImageGlyphPool.bake() up=0, down=h 修正後に "Hello" テキストと同じ高さに正しく揃っていることを確認。
 
 ### ✅ TC-CHAT-02 — チャット ショートコード（ブロックスプライト）
 ![TC-CHAT-02](screenshots/TC-CHAT-02.png)
-> `:block.stone:` がスプライトアイコンとして描画されている。
+> `:block.stone:` が石ブロックのスプライトアイコンとして描画されている。ImageGlyphPool.bake() up=0, down=h 修正後に "Hello" テキストと同じ高さに正しく揃っていることを確認。
 
 ### ✅ TC-CHAT-04 — チャット デコレータ #bold
 ![TC-CHAT-04](screenshots/TC-CHAT-04.png)
@@ -113,9 +113,11 @@
 ![TC-GUI-01](screenshots/TC-GUI-01.png)
 > `#color.gold[Action Bar]` が画面下部のアクションバーに金色で表示されている。`MixinGuiGraphics` 正常動作確認。
 
-### ❌ TC-GUI-02 — GUI タイトル画面 動的デコレータ
+### ✅ TC-GUI-02 — GUI タイトル画面 動的デコレータ
 ![TC-GUI-02](screenshots/TC-GUI-02.png)
-> `#rainbow` が緑単色になる。`toComponent()` 経路では動的（時間ベース）デコレータが静的 Component に変換時に固定色となる。修正対応中（DynamicFormattedCharSequence 経路への変更）。
+> `#rainbow[Title]` が画面中央に時間依存カラーアニメーションで表示されている。
+MixinGuiGraphics を常に DynamicFormattedCharSequence でラップするよう修正後に PASS。
+複数フレームでシアン→ピンクへの色変化を確認し、DynamicFCS による毎フレーム再評価が機能していることを証明。
 
 ### ✅ TC-SIGN-01 — 看板 リッチテキスト
 ![TC-SIGN-01](screenshots/TC-SIGN-01.png)
@@ -128,12 +130,4 @@
 ### ✅ TC-TOOLTIP-01 — ホバーツールチップ アイテム名リッチテキスト
 ![TC-TOOLTIP-01](screenshots/TC-TOOLTIP-01.png)
 > ホバーツールチップのアイテム名に `#bold[#color.aqua[Diamond]]` が太字アクア色で表示されている。
-
----
-
-## ❌ 未解決の FAIL
-
-### TC-GUI-02
-
-`#rainbow` が緑単色になる。`toComponent()` 経路では動的（時間ベース）デコレータが静的 Component に変換時に固定色となる。修正対応中（DynamicFormattedCharSequence 経路への変更）。
 
