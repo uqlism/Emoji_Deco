@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.mixin;
 
+import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
 import com.uqlism.emoji_deco.text.ComponentConverter;
 import com.uqlism.emoji_deco.text.ir.HoverRichContents;
 import com.uqlism.emoji_deco.text.ir.RichNode;
@@ -20,9 +21,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ホバーツールチップ描画を乗っ取り、emoji_deco:hover/text の hover_contents を
- * RichNode.toSequence() 経由でレンダリングする。
- * scale / glow 等のトランスフォームが MixinFont.drawInBatch 経由でホバーでも有効になる。
+ * GUI テキスト描画を乗っ取り、emoji_deco のリッチテキストを適用する。
+ *
+ * drawString(Component) / drawCenteredString(Component) は内部で
+ * Language.getVisualOrder() を呼んで静的 FCS に変換するため、
+ * MixinFont のキャッチオールでは動的デコレータ（#rainbow 等）が毎フレーム
+ * 再評価されない。
+ * → HEAD inject でキャンセルし、DynamicFormattedCharSequence でラップして渡す。
+ *   MixinFont.drawInBatch の HEAD inject が DynamicFormattedCharSequence を検出して
+ *   毎フレーム computeNow() を呼ぶことで、時間依存デコレータのアニメーションが動く。
  *
  * SRG: m_280304_ → GuiGraphics.renderComponentHoverEffect(Font, Style, int, int)
  */
@@ -33,6 +40,10 @@ public abstract class MixinGuiGraphics {
     // GuiGraphics.drawString(Component) / drawCenteredString(Component) は
     // Language.getVisualOrder() を経由して FCS に変換するため MixinFont catch-all は効かない。
     // Language は抽象クラスで inject 不可のため、ここで Component → FCS を直接処理する。
+    //
+    // 動的デコレータ（#rainbow 等）は isDynamic() にかかわらず DynamicFormattedCharSequence で
+    // ラップする。isDynamic() = false でも幅計算には computeNow() が使われるため問題ない。
+    // MixinFont.drawInBatch が DynamicFormattedCharSequence を毎フレーム computeNow() で解決する。
 
     // drawString(Font, Component, int, int, int, boolean) -> int
     @Inject(method = "drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
@@ -41,10 +52,11 @@ public abstract class MixinGuiGraphics {
             CallbackInfoReturnable<Integer> cir) {
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
-        FormattedCharSequence fcs = ComponentConverter.toSequence(font, text);
-        // 呼び出し元がプレーンテキスト幅でセンタリングした x を渡している場合に備え、
-        // (plainWidth - fcsWidth) / 2 だけ右にずらして中心を合わせる。
-        int adj = (font.width(text) - font.width(fcs)) / 2;
+        // 静的評価 (computeNow) で幅だけ先に取得してセンタリング補正を計算する。
+        // 実際の描画は DynamicFormattedCharSequence → MixinFont が毎フレーム computeNow() を呼ぶ。
+        FormattedCharSequence staticFcs = ComponentConverter.computeNow(font, text);
+        int adj = (font.width(text) - font.width(staticFcs)) / 2;
+        FormattedCharSequence fcs = new DynamicFormattedCharSequence(text);
         cir.setReturnValue(((GuiGraphics)(Object)this).drawString(font, fcs, x + adj, y, color, dropShadow));
     }
 
@@ -55,8 +67,11 @@ public abstract class MixinGuiGraphics {
             CallbackInfo ci) {
         String raw = text.getString();
         if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
-        FormattedCharSequence fcs = ComponentConverter.toSequence(font, text);
-        ((GuiGraphics)(Object)this).drawString(font, fcs, x - font.width(fcs) / 2, y, color);
+        // 幅計算は静的評価で取得し、描画は DynamicFormattedCharSequence で動的再評価する。
+        FormattedCharSequence staticFcs = ComponentConverter.computeNow(font, text);
+        int halfW = font.width(staticFcs) / 2;
+        FormattedCharSequence fcs = new DynamicFormattedCharSequence(text);
+        ((GuiGraphics)(Object)this).drawString(font, fcs, x - halfW, y, color);
         ci.cancel();
     }
 

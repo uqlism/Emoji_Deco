@@ -211,7 +211,9 @@ public class ImageGlyphPool {
         if (s.future == null && s.resolved == null) {
             // 実描画が必要になった初回（または GPU 解放後の再描画時）に非同期解決を起動する
             s.future = resolveAsync(s);
-        } else if (s.future != null && s.resolved == null && s.future.isDone()) {
+            // Atlas など同期解決の場合は future が即完了するため、そのまま落下して次の分岐で処理する
+        }
+        if (s.future != null && s.resolved == null && s.future.isDone()) {
             if (!s.future.isCompletedExceptionally()) {
                 try {
                     s.resolved = s.future.get();
@@ -351,12 +353,17 @@ public class ImageGlyphPool {
         int n = a.animator().numFrames();
         GlyphRenderTypes rt = GlyphRenderTypes.createForColorTexture(a.texture());
         BakedGlyph[] glyphs = new BakedGlyph[n];
-        // MC デフォルトフォント ascent=7 に合わせる（8px スプライト基準）
+        // BakedGlyph(u0,u1,v0,v1, left, right, up, down)
+        // up   = 7 - ascent  (SheetGlyphInfo.getTop() と同じ計算)
+        // down = up + height  (グリフ下端)
+        // ascent=7 の場合: up=0, down=s.h (ベースラインからピクセル高さ分下へ)
         float ascent = 7f;
+        float up   = 7f - ascent;  // = 0
+        float down = up + s.h;     // = s.h
         for (int i = 0; i < n; i++) {
             glyphs[i] = new BakedGlyph(rt, 0f, 1f,
                     a.animator().frameV0(i), a.animator().frameV1(i),
-                    0f, s.w, ascent, ascent - 8f + s.h);
+                    0f, s.w, up, down);
         }
         return glyphs;
     }
@@ -375,9 +382,14 @@ public class ImageGlyphPool {
             u0 = src.u0(); v0 = src.v0(); u1 = src.u1(); v1 = src.v1();
         }
         GlyphRenderTypes rt = GlyphRenderTypes.createForColorTexture(src.texture());
-        // MC デフォルトフォント ascent=7 に合わせる（8px スプライト基準）
+        // BakedGlyph(u0,u1,v0,v1, left, right, up, down)
+        // up   = 7 - ascent  (SheetGlyphInfo.getTop() と同じ計算)
+        // down = up + height  (グリフ下端)
+        // ascent=7 の場合: up=0, down=s.h (ベースラインからピクセル高さ分下へ)
         float ascent = 7f;
-        return new BakedGlyph(rt, u0, u1, v0, v1, 0f, s.w, ascent, ascent - 8f + s.h);
+        float up   = 7f - ascent;  // = 0
+        float down = up + s.h;     // = s.h
+        return new BakedGlyph(rt, u0, u1, v0, v1, 0f, s.w, up, down);
     }
 
     /** 空きスロットを確保して返す。プールが満杯なら -1 を返す（LRU 退避は行わない）。 */
