@@ -10,19 +10,18 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 // 1.21.1 で BookViewScreen$WrittenBookAccess が削除され BookViewScreen$BookAccess (record) に変わった。
-// record クラスへの @Inject RETURN は Mixin 0.8.7 で動作しない場合があるため、
-// BookViewScreen 側から @Redirect で BookAccess.m_98310_() 呼び出しをインターセプトする。
+// 1.21.1 は Mojang マッピングを使用しているため、SRG 名ではなく Mojang 名（render / getPage）で指定する。
+// remap = false + Mojang 名で開発環境・リリース環境ともに動作する。
 @Mixin(BookViewScreen.class)
 public class MixinWrittenBookAccess {
 
-    // m_98302_ は BookViewScreen のページ更新メソッドで、内部で BookAccess.m_98310_(index) を呼ぶ。
+    // render(GuiGraphics, int, int, float) が内部で BookAccess.getPage(index) を呼ぶ。
     // その呼び出しを Redirect してリッチテキスト変換を挟む。
     @Redirect(
-        method = "m_98302_",
+        method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/screens/inventory/BookViewScreen$BookAccess;m_98310_(I)Lnet/minecraft/network/chat/FormattedText;",
-            remap = false
+            target = "Lnet/minecraft/client/gui/screens/inventory/BookViewScreen$BookAccess;getPage(I)Lnet/minecraft/network/chat/FormattedText;"
         ),
         remap = false,
         require = 0
