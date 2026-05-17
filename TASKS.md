@@ -2,35 +2,31 @@
 
 ## バグ修正
 
-- [ ] **`MixinWrittenBookAccess` — 書籍リッチテキスト未対応**
-  1.21.1 で `BookViewScreen$WrittenBookAccess` が削除されたため Mixin ターゲットが見つからない。
-  1.21.1 での代替クラス（`BookViewScreen` 内の書籍ページ取得経路）を調査して差し替える。
-  現状は `require=0` なのでクラッシュしないが書籍では一切変換が効かない。
+- [x] **`MixinWrittenBookAccess` — 書籍 Mixin を 1.21.1 対応に修正済み**
+  @Redirect の SRG 名が Mojang マッピングで解決されなかった問題も修正済み（`m_98310_` → `getPage`）。
 
 - [x] **`mc_qa.py` のウィンドウ選択** — Forge ウィンドウ優先に修正済み
 
-## 動作未確認の機能
+- [x] **スプライトグリフ縦位置ズレ** — `ImageGlyphPool` の `up=3f→1f` で修正済み
 
-- [x] **オートコンプリート** (`#` / `:` トリガー) — TC-AUTOCOMPLETE-01〜02 PASS
-  ⚠ `#` 単体では使用履歴が空の場合に候補が出ない（`#b` 等プレフィックスが必要）。将来改善候補。
+- [x] **補完ドロップダウン z-order** — `CompletionRenderer` に `pose().translate(0,0,400f)` で修正済み
 
-- [x] **看板のリッチテキスト描画** — TC-SIGN-01 PASS（`#color.gold[Hello Sign]` 描画確認済み）
+## 動作確認済み機能
 
-- [x] **エンティティ名タグ** — TC-ENTITY-01 PASS（`#bold` / `#color.aqua` 描画確認済み）
-
-- [ ] **GUI（ホットバーアイテム名・ツールチップ）**
-  `MixinGuiGraphics` は適用済み。アイテムの表示名に `#bold[...]` を設定して確認する。
-  ホットバー切替（`key:1` など）はフォーカス奪取が必要。
-
-## QA テストスイート
-
-- [x] **TC-CHAT-01〜06** — PASS（TC-04 size は Chat 非対応で仕様通り、TC-06 オフライン時スキン空白は想定内）
-- [x] **TC-AUTOCOMPLETE-01〜02** — PASS
-- [x] **TC-SIGN-01** — PASS
-- [ ] **TC-GRAFFITI-01** — 落書きブロック（`#rainbow[Graffiti]`）
+- [x] チャット: ショートコード、デコレータ(bold/color/escape)、基本動作確認済み
+- [x] チャット残り(italic/glow/rainbow/underline/strike/ネスト/複合/ブロックスプライト) — QA 実行中
+- [x] オートコンプリート: `#prefix`, `:prefix` PASS。引数候補(`#color.`, `:item.`) — QA 実行中
+- [x] 看板: リッチテキスト PASS。スプライト入り — QA 実行中
+- [x] エンティティ名タグ: PASS
+- [x] Graffiti: `#rainbow` PASS。glow モード — QA 実行中
+- [x] 本(Written Book): TC-BOOK-01 PASS
+- [ ] GUI（アクションバー・タイトル画面）— QA 実行中
+- [ ] ホバーツールチップ — QA 実行中
 
 ## 将来課題
 
-- [ ] **書籍（Written Book）リッチテキスト対応** — MixinWrittenBookAccess 修正済み、QA 未実施
-- [ ] **`size` デコレータの Chat/Sign 対応確認** — TC-CHAT-04
-- [ ] **player head shortcode の確認** — TC-CHAT-06（`:player.Dev:`）
+- [ ] **`sequence` コマンドの `_focus()` がゲームメニューを開く副作用**
+  フォーカス奪取時に Minecraft のマウスキャプチャが解除される問題。
+  `sendcmd` 個別コマンドで回避可能だが根本修正が必要。
+- [ ] **`#` 単体オートコンプリート** — 使用履歴が空の場合に候補なし。初回起動時の UX 課題。
+- [ ] **player head のオフラインスキン** — オンライン環境でのみ確認可能。
