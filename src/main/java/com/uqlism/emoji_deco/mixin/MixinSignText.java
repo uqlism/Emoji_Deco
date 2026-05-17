@@ -17,7 +17,7 @@ import java.util.function.Function;
 @Mixin(SignText.class)
 public class MixinSignText {
 
-    @Inject(method = "m_277130_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "getRenderMessages", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$parseRichText(boolean filtered,
             Function<Component, FormattedCharSequence> lineConverter,
             CallbackInfoReturnable<FormattedCharSequence[]> cir) {

@@ -29,3 +29,10 @@ forge*changelog.txt
 tools
 
 logs
+
+# Stray files accidentally created in project root during dev
+/META-INF/
+/config.json
+/module-info.java
+/net/
+/tmp/

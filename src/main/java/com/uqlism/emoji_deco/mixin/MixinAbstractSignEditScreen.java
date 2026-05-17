@@ -14,14 +14,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(AbstractSignEditScreen.class)
 public abstract class MixinAbstractSignEditScreen {
 
-    // SRG field names from joined.tsrg
-    @Shadow(remap = false) private String[] f_244359_;          // messages
-    @Shadow(remap = false) private int f_244562_;               // currentRow (line)
-    @Shadow(remap = false) @Nullable private TextFieldHelper f_243993_; // signField
+    @Shadow(remap = false) private String[] messages;
+    @Shadow(remap = false) private int line;
+    @Shadow(remap = false) @Nullable private TextFieldHelper signField;
 
-    // SRG: m_276998_ = setMessage(String)
     @Shadow(remap = false)
-    protected abstract void m_276998_(String message);
+    protected abstract void setMessage(String message);
 
     @Unique
     private SuggestionState runicink$ss() {
@@ -29,22 +27,20 @@ public abstract class MixinAbstractSignEditScreen {
     }
 
     // Width limit bypass — lambda$init$4(String)
-    @Inject(method = "m_279811_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "lambda$init$4", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$noWidthLimit(String text, CallbackInfoReturnable<Boolean> cir) {
         cir.setReturnValue(true);
     }
 
-    // SRG: m_5534_ = charTyped(char, int)
-    @Inject(method = "m_5534_", at = @At("RETURN"), remap = false)
+    @Inject(method = "charTyped", at = @At("RETURN"), remap = false)
     private void runicink$onCharTyped(char c, int modifiers, CallbackInfoReturnable<Boolean> cir) {
-        String msg = f_244359_[f_244562_];
-        int cursor = f_243993_ != null ? f_243993_.getCursorPos() : msg.length();
+        String msg = messages[line];
+        int cursor = signField != null ? signField.getCursorPos() : msg.length();
         runicink$ss().update(msg, cursor);
     }
 
-    // SRG: m_7933_ = keyPressed(int, int, int)
     // HEAD: intercept UP/DOWN/TAB to navigate/apply suggestions
-    @Inject(method = "m_7933_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$onKeyPressedHead(int keyCode, int scanCode, int modifiers,
                                             CallbackInfoReturnable<Boolean> cir) {
         SuggestionState ss = runicink$ss();
@@ -59,11 +55,11 @@ public abstract class MixinAbstractSignEditScreen {
         } else if (keyCode == 258) {    // TAB
             SuggestionState.Entry entry = ss.getSelected();
             if (entry != null) {
-                String completed = ss.applyTo(f_244359_[f_244562_], entry);
+                String completed = ss.applyTo(messages[line], entry);
                 int newCursor = ss.pendingCursor;
-                m_276998_(completed);
-                if (newCursor >= 0 && f_243993_ != null) {
-                    f_243993_.setCursorPos(newCursor, false);
+                setMessage(completed);
+                if (newCursor >= 0 && signField != null) {
+                    signField.setCursorPos(newCursor, false);
                 }
                 ss.clear();
             }
@@ -71,15 +67,14 @@ public abstract class MixinAbstractSignEditScreen {
         }
     }
 
-    // RETURN: refresh suggestions after key presses that change text (backspace, row change, etc.)
-    @Inject(method = "m_7933_", at = @At("RETURN"), remap = false)
+    // RETURN: refresh suggestions after key presses
+    @Inject(method = "keyPressed", at = @At("RETURN"), remap = false)
     private void runicink$onKeyPressedReturn(int keyCode, int scanCode, int modifiers,
                                               CallbackInfoReturnable<Boolean> cir) {
         SuggestionState ss = runicink$ss();
-        // Guard: don't reset selectedIndex if HEAD already handled suggestion navigation
         if (ss.hasSuggestions() && (keyCode == 265 || keyCode == 264 || keyCode == 258)) return;
-        String msg = f_244359_[f_244562_];
-        int cursor = f_243993_ != null ? f_243993_.getCursorPos() : msg.length();
+        String msg = messages[line];
+        int cursor = signField != null ? signField.getCursorPos() : msg.length();
         ss.update(msg, cursor);
     }
 }

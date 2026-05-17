@@ -1,0 +1,550 @@
+#!/usr/bin/env python3
+"""
+mc_qa.py — Minecraft dev-client QA automation utility for RunicInk.
+
+Working directory must be the project root (D:/repos/uqlism/RunicInk).
+Coordinates are absolute screen pixels.
+
+Usage:
+  python scripts/qa/mc_qa.py screenshot <output_path>
+  python scripts/qa/mc_qa.py bounds
+  python scripts/qa/mc_qa.py focus
+  python scripts/qa/mc_qa.py click <x> <y>
+  python scripts/qa/mc_qa.py double-click <x> <y>
+  python scripts/qa/mc_qa.py right-click <x> <y>
+  python scripts/qa/mc_qa.py move <x> <y>
+  python scripts/qa/mc_qa.py type <text>
+  python scripts/qa/mc_qa.py key <key> [<key> ...]
+  python scripts/qa/mc_qa.py scroll <x> <y> <amount>
+  python scripts/qa/mc_qa.py wait-log <pattern> [--timeout N]
+  python scripts/qa/mc_qa.py world-exists <name>
+  python scripts/qa/mc_qa.py sleep <seconds>
+"""
+
+import argparse
+import ctypes
+import ctypes.wintypes
+import json
+import os
+import re
+import struct
+import sys
+import time
+from pathlib import Path
+
+try:
+    import pyautogui
+    import pygetwindow as gw
+    import pyperclip
+except ImportError:
+    print(
+        "ERROR: Missing dependencies.\n"
+        "Run: pip install pyautogui pygetwindow pyperclip",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+pyautogui.FAILSAFE = True   # Move mouse to top-left corner to abort
+pyautogui.PAUSE = 0.05
+
+
+# ---------------------------------------------------------------------------
+# Window helpers
+# ---------------------------------------------------------------------------
+
+def find_mc_window():
+    # QA_WINDOW_TITLE が設定されている場合は VM の Enhanced Session ウィンドウを対象とする。
+    # 例: QA_WINDOW_TITLE=RunicInk-QA  → "RunicInk-QA" を含むウィンドウを検索
+    target = os.environ.get("QA_WINDOW_TITLE", "Minecraft")
+    wins = [w for w in gw.getAllWindows() if target in w.title and w.width > 0]
+    return wins[0] if wins else None
+
+
+def _save_focus_state():
+    """現在のフォアグラウンドウィンドウとマウス位置を記録して返す。"""
+    prev_hwnd = ctypes.windll.user32.GetForegroundWindow()
+    prev_mouse = pyautogui.position()
+    return prev_hwnd, prev_mouse
+
+
+def _restore_focus_state(prev_hwnd, prev_mouse):
+    """フォアグラウンドウィンドウとマウス位置を元に戻す。"""
+    try:
+        if prev_hwnd:
+            ctypes.windll.user32.SetForegroundWindow(prev_hwnd)
+    except Exception:
+        pass
+    try:
+        pyautogui.moveTo(prev_mouse.x, prev_mouse.y, duration=0.05)
+    except Exception:
+        pass
+
+
+def _focus():
+    win = find_mc_window()
+    if not win:
+        print("ERROR: Minecraft window not found", file=sys.stderr)
+        sys.exit(1)
+    hwnd = win._hWnd
+
+    # まず通常の activate を試みる
+    try:
+        win.activate()
+    except Exception:
+        pass
+    time.sleep(0.3)
+
+    # フォーカスが取れていなければ最小化→復元で強制取得
+    if ctypes.windll.user32.GetForegroundWindow() != hwnd:
+        SW_MINIMIZE, SW_RESTORE = 6, 9
+        ctypes.windll.user32.ShowWindow(hwnd, SW_MINIMIZE)
+        time.sleep(0.2)
+        ctypes.windll.user32.ShowWindow(hwnd, SW_RESTORE)
+        time.sleep(0.4)
+
+    return win
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+def cmd_screenshot(args):
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    # VM モード (QA_WINDOW_TITLE 設定時): ウィンドウ領域だけ切り取る。
+    # これでホスト側の他のウィンドウが映り込まず、vision 判定の精度が上がる。
+    if os.environ.get("QA_WINDOW_TITLE"):
+        win = find_mc_window()
+        if win:
+            from PIL import ImageGrab
+            img = ImageGrab.grab(bbox=(win.left, win.top, win.right, win.bottom))
+        else:
+            img = pyautogui.screenshot()
+    else:
+        img = pyautogui.screenshot()
+
+    img.save(str(out))
+    print(str(out.resolve()))
+
+
+def cmd_bounds(args):
+    win = find_mc_window()
+    if not win:
+        print("ERROR: Minecraft window not found", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps({"x": win.left, "y": win.top, "w": win.width, "h": win.height}))
+
+
+def cmd_focus(args):
+    win = _focus()
+    print(json.dumps({"x": win.left, "y": win.top, "w": win.width, "h": win.height}))
+
+
+def cmd_click(args):
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.click(args.x, args.y)
+    time.sleep(0.2)  # Minecraft がクリックを処理するまで待つ
+    _restore_focus_state(*prev)
+
+
+def cmd_double_click(args):
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.doubleClick(args.x, args.y)
+    time.sleep(0.2)
+    _restore_focus_state(*prev)
+
+
+def cmd_right_click(args):
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.rightClick(args.x, args.y)
+    _restore_focus_state(*prev)
+
+
+def cmd_move(args):
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+
+
+def cmd_type(args):
+    prev = _save_focus_state()
+    _focus()
+    pyperclip.copy(args.text)
+    time.sleep(0.1)
+    pyautogui.hotkey("ctrl", "v")
+    _restore_focus_state(*prev)
+
+
+def cmd_key(args):
+    prev = _save_focus_state()
+    _focus()
+    if len(args.keys) == 1:
+        pyautogui.press(args.keys[0])
+    else:
+        pyautogui.hotkey(*args.keys)
+    _restore_focus_state(*prev)
+
+
+def cmd_scroll(args):
+    prev = _save_focus_state()
+    _focus()
+    pyautogui.scroll(args.amount, x=args.x, y=args.y)
+    _restore_focus_state(*prev)
+
+
+def cmd_wait_log(args):
+    log_path = Path("run/logs/latest.log")
+    deadline = time.time() + args.timeout
+
+    # --fresh: ファイルが新規作成されるまで待ってから検索する（前セッションのログを拾わない）
+    if getattr(args, "fresh", False):
+        start_mtime = log_path.stat().st_mtime if log_path.exists() else 0
+        while time.time() < deadline:
+            if log_path.exists() and log_path.stat().st_mtime > start_mtime + 1:
+                break
+            time.sleep(0.5)
+        initial_size = 0  # 新しいファイルなので最初から読む
+    else:
+        # ファイルが縮小した場合（ローテーション）は先頭から読む
+        initial_size = log_path.stat().st_size if log_path.exists() else 0
+
+    while time.time() < deadline:
+        if log_path.exists():
+            try:
+                text = log_path.read_text(encoding="utf-8", errors="ignore")
+                offset = initial_size if len(text) >= initial_size else 0
+                if re.search(args.pattern, text[offset:]):
+                    print("FOUND")
+                    return
+            except Exception:
+                pass
+        time.sleep(1)
+
+    print(f"TIMEOUT: '{args.pattern}' not found within {args.timeout}s", file=sys.stderr)
+    sys.exit(1)
+
+
+def cmd_world_exists(args):
+    path = Path("run/saves") / args.name
+    print("true" if path.exists() else "false")
+
+
+def cmd_sleep(args):
+    time.sleep(args.seconds)
+    print(f"Slept {args.seconds}s")
+
+
+def cmd_sequence(args):
+    """複数のコマンドを1プロセス内で連続実行する。
+    Minecraft をフォーカスしたまま操作を続けられるため、
+    各コマンド間でフォーカスが外れる問題を回避できる。
+
+    書式: python mc_qa.py sequence <cmd1>:<arg1>,<arg2> <cmd2>:<arg> ...
+    例:   python mc_qa.py sequence focus key:t sleep:0.5 wscreenshot:out.png
+    """
+    import argparse as _ap
+
+    # フォーカスを取得して保持
+    _focus()
+
+    for step in args.steps:
+        parts = step.split(":", 1)
+        cmd_name = parts[0]
+        cmd_args_str = parts[1] if len(parts) > 1 else ""
+
+        print(f"[seq] {step}")
+
+        if cmd_name == "sleep":
+            time.sleep(float(cmd_args_str))
+        elif cmd_name == "key":
+            keys = cmd_args_str.split(",")
+            if len(keys) == 1:
+                pyautogui.press(keys[0])
+            else:
+                pyautogui.hotkey(*keys)
+        elif cmd_name == "type":
+            pyperclip.copy(cmd_args_str)
+            time.sleep(0.1)
+            pyautogui.hotkey("ctrl", "v")
+        elif cmd_name == "click":
+            x, y = map(int, cmd_args_str.split(","))
+            pyautogui.click(x, y)
+        elif cmd_name == "wclick":
+            x, y = map(int, cmd_args_str.split(","))
+            WM_LBUTTONDOWN, WM_LBUTTONUP = 0x0201, 0x0202
+            win = find_mc_window()
+            hwnd = win._hWnd
+            pt = ctypes.wintypes.POINT(x, y)
+            ctypes.windll.user32.ScreenToClient(hwnd, ctypes.byref(pt))
+            lp = (pt.y << 16) | (pt.x & 0xFFFF)
+            ctypes.windll.user32.PostMessageW(hwnd, WM_LBUTTONDOWN, 0x0001, lp)
+            time.sleep(0.05)
+            ctypes.windll.user32.PostMessageW(hwnd, WM_LBUTTONUP, 0, lp)
+        elif cmd_name == "wkey":
+            vk = _VK_MAP.get(cmd_args_str.lower())
+            if vk is None:
+                vk = int(cmd_args_str, 0)
+            WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
+            win = find_mc_window()
+            ctypes.windll.user32.PostMessageW(win._hWnd, WM_KEYDOWN, vk, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.PostMessageW(win._hWnd, WM_KEYUP, vk, 0)
+        elif cmd_name == "wtype":
+            WM_CHAR = 0x0102
+            win = find_mc_window()
+            for ch in cmd_args_str:
+                ctypes.windll.user32.PostMessageW(win._hWnd, WM_CHAR, ord(ch), 0)
+                time.sleep(0.02)
+        elif cmd_name == "wscreenshot":
+            # wscreenshot と同じロジック (フォーカスなし)
+            mock = type("A", (), {"output": cmd_args_str})()
+            cmd_wscreenshot(mock)
+        elif cmd_name == "refocus":
+            # Minecraft のフォーカスを再取得
+            _focus()
+        else:
+            print(f"[seq] WARN: unknown command '{cmd_name}', skipping")
+
+
+def cmd_rcon(args):
+    """RCON 経由でコマンドを送信 — フォーカス完全不要。
+    run/server.properties に enable-rcon=true が必要。
+    """
+    import socket
+
+    host     = getattr(args, "host", "localhost")
+    port     = getattr(args, "port", 25575)
+    password = getattr(args, "password", "qatest123")
+    command  = args.mc_command
+
+    def _pack(req_id: int, ptype: int, payload: str) -> bytes:
+        data = payload.encode("utf-8") + b"\x00\x00"
+        header = struct.pack("<iii", 4 + 4 + len(data), req_id, ptype)
+        return header + data
+
+    def _unpack(sock) -> tuple[int, int, str]:
+        raw_len = sock.recv(4)
+        length = struct.unpack("<i", raw_len)[0]
+        data = b""
+        while len(data) < length:
+            data += sock.recv(length - len(data))
+        req_id, ptype = struct.unpack("<ii", data[:8])
+        payload = data[8:-2].decode("utf-8", errors="replace")
+        return req_id, ptype, payload
+
+    with socket.create_connection((host, port), timeout=5) as sock:
+        # 認証
+        sock.sendall(_pack(1, 3, password))
+        rid, _, _ = _unpack(sock)
+        if rid == -1:
+            print("ERROR: RCON auth failed (wrong password?)", file=sys.stderr)
+            sys.exit(1)
+        # コマンド送信
+        sock.sendall(_pack(2, 2, command))
+        _, _, response = _unpack(sock)
+
+    print(response if response else "(no response)")
+
+
+# ---------------------------------------------------------------------------
+# Win32 フォーカスなし操作 (PostMessage / PrintWindow)
+# ---------------------------------------------------------------------------
+
+_VK_MAP = {
+    "t": 0x54, "return": 0x0D, "enter": 0x0D, "escape": 0x1B, "space": 0x20,
+    "e": 0x45, "f": 0x46, "f3": 0x72, "f5": 0x74,
+}
+
+def _hwnd():
+    """Minecraft ウィンドウの HWND を返す。find_mc_window() と同じウィンドウを使う。"""
+    win = find_mc_window()
+    if not win:
+        print("ERROR: Minecraft window not found", file=sys.stderr)
+        sys.exit(1)
+    return win._hWnd
+
+
+def cmd_wclick(args):
+    """PostMessage WM_LBUTTONDOWN/UP — フォーカスなしでメニューをクリック。
+    座標はスクリーン絶対座標で指定、内部でクライアント座標に変換する。
+    """
+    WM_LBUTTONDOWN = 0x0201
+    WM_LBUTTONUP   = 0x0202
+    MK_LBUTTON     = 0x0001
+
+    hwnd = _hwnd()
+    pt = ctypes.wintypes.POINT(args.x, args.y)
+    ctypes.windll.user32.ScreenToClient(hwnd, ctypes.byref(pt))
+    lparam = (pt.y << 16) | (pt.x & 0xFFFF)
+
+    ctypes.windll.user32.PostMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lparam)
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_LBUTTONUP, 0, lparam)
+    print(f"WM_LBUTTON sent: screen({args.x},{args.y}) → client({pt.x},{pt.y}) hwnd={hwnd}")
+
+
+def cmd_wkey(args):
+    """PostMessage WM_KEYDOWN/UP — フォーカスなしでキーを送る。"""
+    WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
+    hwnd = _hwnd()
+    vk = _VK_MAP.get(args.key.lower())
+    if vk is None:
+        try:
+            vk = int(args.key, 0)
+        except ValueError:
+            print(f"ERROR: unknown key '{args.key}'", file=sys.stderr)
+            sys.exit(1)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_KEYDOWN, vk, 0)
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_KEYUP, vk, 0)
+    print(f"WM_KEYDOWN/UP sent: {args.key} (0x{vk:02X}) → hwnd={hwnd}")
+
+
+def cmd_wtype(args):
+    """PostMessage WM_CHAR — フォーカスなしでテキストを送る。"""
+    WM_CHAR = 0x0102
+    hwnd = _hwnd()
+    for ch in args.text:
+        ctypes.windll.user32.PostMessageW(hwnd, WM_CHAR, ord(ch), 0)
+        time.sleep(0.02)
+    print(f"WM_CHAR sent: {len(args.text)} chars → hwnd={hwnd}")
+
+
+def cmd_wscreenshot(args):
+    """PrintWindow (PW_RENDERFULLCONTENT) — フォーカスなしで OpenGL ウィンドウをキャプチャ。"""
+    from PIL import Image
+    hwnd = _hwnd()
+    rect = ctypes.wintypes.RECT()
+    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    w = rect.right  - rect.left
+    h = rect.bottom - rect.top
+
+    hwnd_dc  = ctypes.windll.user32.GetWindowDC(hwnd)
+    mem_dc   = ctypes.windll.gdi32.CreateCompatibleDC(hwnd_dc)
+    bitmap   = ctypes.windll.gdi32.CreateCompatibleBitmap(hwnd_dc, w, h)
+    ctypes.windll.gdi32.SelectObject(mem_dc, bitmap)
+
+    PW_RENDERFULLCONTENT = 0x2
+    ctypes.windll.user32.PrintWindow(hwnd, mem_dc, PW_RENDERFULLCONTENT)
+
+    # BITMAPINFOHEADER + ピクセルデータ取得
+    bmi = struct.pack("IiiHHIIiiII", 40, w, -h, 1, 32, 0, w * h * 4, 0, 0, 0, 0)
+    buf = ctypes.create_string_buffer(w * h * 4)
+    ctypes.windll.gdi32.GetDIBits(mem_dc, bitmap, 0, h, buf, bmi, 0)
+
+    ctypes.windll.gdi32.DeleteObject(bitmap)
+    ctypes.windll.gdi32.DeleteDC(mem_dc)
+    ctypes.windll.user32.ReleaseDC(hwnd, hwnd_dc)
+
+    img = Image.frombytes("RGBA", (w, h), bytes(buf), "raw", "BGRA")
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out))
+    print(str(out.resolve()))
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Minecraft QA automation utility")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("screenshot")
+    p.add_argument("output")
+
+    sub.add_parser("bounds")
+    sub.add_parser("focus")
+
+    for name, help_ in [
+        ("click", "Click at coordinates"),
+        ("double-click", "Double-click at coordinates"),
+        ("right-click", "Right-click at coordinates"),
+        ("move", "Move mouse to coordinates"),
+    ]:
+        p = sub.add_parser(name, help=help_)
+        p.add_argument("x", type=int)
+        p.add_argument("y", type=int)
+
+    p = sub.add_parser("type", help="Paste text via clipboard")
+    p.add_argument("text")
+
+    p = sub.add_parser("key", help="Press key or key combination")
+    p.add_argument("keys", nargs="+")
+
+    p = sub.add_parser("scroll")
+    p.add_argument("x", type=int)
+    p.add_argument("y", type=int)
+    p.add_argument("amount", type=int, help="Positive=up, negative=down")
+
+    p = sub.add_parser("wait-log", help="Wait for regex in run/logs/latest.log")
+    p.add_argument("pattern")
+    p.add_argument("--timeout", type=int, default=120)
+    p.add_argument("--fresh", action="store_true", help="Wait for log file to be recreated first (prevents old session interference)")
+
+    p = sub.add_parser("world-exists", help="Check run/saves/<name>/ exists")
+    p.add_argument("name")
+
+    p = sub.add_parser("sleep")
+    p.add_argument("seconds", type=float)
+
+    p = sub.add_parser("wclick", help="PostMessage WM_LBUTTONDOWN (no focus needed, client coords auto-converted)")
+    p.add_argument("x", type=int)
+    p.add_argument("y", type=int)
+
+    p = sub.add_parser("wkey", help="PostMessage WM_KEYDOWN (no focus needed)")
+    p.add_argument("key", help="Key name (t/return/escape/space/...) or hex VK code")
+
+    p = sub.add_parser("wtype", help="PostMessage WM_CHAR (no focus needed)")
+    p.add_argument("text")
+
+    p = sub.add_parser("wscreenshot", help="PrintWindow screenshot (no focus, captures OpenGL)")
+    p.add_argument("output")
+
+    p = sub.add_parser("sequence", help="Run multiple commands in one process (Minecraft stays focused)")
+    p.add_argument("steps", nargs="+", help="cmd:arg1,arg2 ...")
+
+    p = sub.add_parser("rcon", help="Send command via RCON (no focus needed)")
+    p.add_argument("mc_command", help="Minecraft command (e.g. 'say hello')")
+    p.add_argument("--host",     default="localhost")
+    p.add_argument("--port",     type=int, default=25575)
+    p.add_argument("--password", default="qatest123")
+
+    args = parser.parse_args()
+
+    dispatch = {
+        "screenshot":   cmd_screenshot,
+        "bounds":       cmd_bounds,
+        "focus":        cmd_focus,
+        "click":        cmd_click,
+        "double-click": cmd_double_click,
+        "right-click":  cmd_right_click,
+        "move":         cmd_move,
+        "type":         cmd_type,
+        "key":          cmd_key,
+        "scroll":       cmd_scroll,
+        "wait-log":     cmd_wait_log,
+        "world-exists":  cmd_world_exists,
+        "sleep":         cmd_sleep,
+        "wclick":        cmd_wclick,
+        "wkey":          cmd_wkey,
+        "wtype":         cmd_wtype,
+        "wscreenshot":   cmd_wscreenshot,
+        "sequence":      cmd_sequence,
+        "rcon":          cmd_rcon,
+    }
+    dispatch[args.command](args)
+
+
+if __name__ == "__main__":
+    main()

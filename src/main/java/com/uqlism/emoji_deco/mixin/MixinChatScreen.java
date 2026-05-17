@@ -14,23 +14,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatScreen.class)
 public class MixinChatScreen {
 
-    // SRG: f_95573_ = f_95573_ (EditBox)
     @Shadow(remap = false)
-    private EditBox f_95573_;
+    private EditBox input;
 
     @Unique
     private SuggestionState runicink$ss() {
         return SuggestionState.of(this);
     }
 
-    // SRG: m_95610_ = onEdited(String)
-    @Inject(method = "m_95610_", at = @At("HEAD"), remap = false)
+    @Inject(method = "onEdited", at = @At("HEAD"), remap = false)
     private void runicink$onTyped(String text, CallbackInfo ci) {
-        runicink$ss().update(text, f_95573_.getCursorPosition());
+        runicink$ss().update(text, input.getCursorPosition());
     }
 
-    // SRG: m_7933_ = keyPressed(int, int, int)
-    @Inject(method = "m_7933_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$onKeyPressed(int keyCode, int scanCode, int modifiers,
                                        CallbackInfoReturnable<Boolean> cir) {
         SuggestionState ss = runicink$ss();
@@ -46,18 +43,12 @@ public class MixinChatScreen {
             SuggestionState.Entry entry = ss.getSelected();
             if (entry != null) {
                 String completed = ss.applyTo(ss.lastInput, entry);
-                try {
-                    // m_95612_ = setChatLine(String)
-                    java.lang.reflect.Method m =
-                            ChatScreen.class.getDeclaredMethod("m_95612_", String.class);
-                    m.setAccessible(true);
-                    m.invoke((ChatScreen) (Object) this, completed);
-                } catch (Exception ignored) {}
-
+                // insertText で入力全体を置換
+                input.setValue(completed);
                 int newCursor = ss.pendingCursor;
                 if (newCursor >= 0) {
-                    f_95573_.moveCursorTo(newCursor, false);
-                    f_95573_.setHighlightPos(newCursor);
+                    input.moveCursorTo(newCursor, false);
+                    input.setHighlightPos(newCursor);
                 }
                 ss.clear();
             }

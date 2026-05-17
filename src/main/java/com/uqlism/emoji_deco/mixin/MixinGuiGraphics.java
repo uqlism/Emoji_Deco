@@ -34,8 +34,8 @@ public abstract class MixinGuiGraphics {
     // Language.getVisualOrder() を経由して FCS に変換するため MixinFont catch-all は効かない。
     // Language は抽象クラスで inject 不可のため、ここで Component → FCS を直接処理する。
 
-    // m_280614_ = drawString(Font, Component, int, int, int, boolean) -> int
-    @Inject(method = "m_280614_", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    // drawString(Font, Component, int, int, int, boolean) -> int
+    @Inject(method = "drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
     private void runicink$drawStringComponent(
             Font font, Component text, int x, int y, int color, boolean dropShadow,
             CallbackInfoReturnable<Integer> cir) {
@@ -48,8 +48,8 @@ public abstract class MixinGuiGraphics {
         cir.setReturnValue(((GuiGraphics)(Object)this).drawString(font, fcs, x + adj, y, color, dropShadow));
     }
 
-    // m_280653_ = drawCenteredString(Font, Component, int, int, int) -> void
-    @Inject(method = "m_280653_", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    // drawCenteredString(Font, Component, int, int, int) -> void
+    @Inject(method = "drawCenteredString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
     private void runicink$drawCenteredStringComponent(
             Font font, Component text, int x, int y, int color,
             CallbackInfo ci) {
@@ -61,8 +61,8 @@ public abstract class MixinGuiGraphics {
     }
 
     // ── ホバーツールチップ ────────────────────────────────────────────────────
-    // SRG: m_280304_ → renderComponentHoverEffect(Font, Style, int, int)
-    @Inject(method = "m_280304_", at = @At("HEAD"), cancellable = true, remap = false)
+    // renderComponentHoverEffect(Font, Style, int, int)
+    @Inject(method = "renderComponentHoverEffect", at = @At("HEAD"), cancellable = true, remap = false)
     private void onRenderComponentHoverEffect(Font font, @Nullable Style style,
                                                int mouseX, int mouseY, CallbackInfo ci) {
         if (style == null) return;

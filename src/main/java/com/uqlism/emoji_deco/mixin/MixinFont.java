@@ -59,11 +59,11 @@ public class MixinFont {
 
     // ── drawInBatch(Component) → catch-all transform ──────────────────────────
 
-    // m_272077_ = drawInBatch(Component, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
+    // drawInBatch(Component, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
     // EntityRenderer.renderNameTag() が Font.drawInBatch(Component) を直接呼ぶ唯一の経路。
     // GuiGraphics 経由のコンテキストは Language.getVisualOrder() に入る前に MixinGuiGraphics が処理するため
     // ここには来ない。'#' / ':' を含まない Component は即リターン（性能上の高速パス）。
-    @Inject(method = "m_272077_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "drawInBatch(Lnet/minecraft/network/chat/Component;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)I", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$transformDrawBatchComponent(
             Component text, float x, float y,
             int color, boolean dropShadow,
@@ -82,8 +82,8 @@ public class MixinFont {
 
     // ── drawInBatch(FormattedCharSequence) ────────────────────────────────────
 
-    // m_272191_ = drawInBatch(FormattedCharSequence, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
-    @Inject(method = "m_272191_", at = @At("HEAD"), cancellable = true, remap = false)
+    // drawInBatch(FormattedCharSequence, float, float, int, boolean, Matrix4f, MultiBufferSource, DisplayMode, int, int)
+    @Inject(method = "drawInBatch(Lnet/minecraft/util/FormattedCharSequence;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)I", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$drawBatch_head(
             FormattedCharSequence text, float x, float y,
             int color, boolean dropShadow,
@@ -146,7 +146,7 @@ public class MixinFont {
         }
     }
 
-    @Inject(method = "m_272191_", at = @At("RETURN"), remap = false)
+    @Inject(method = "drawInBatch(Lnet/minecraft/util/FormattedCharSequence;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)I", at = @At("RETURN"), remap = false)
     private void runicink$drawBatch_tail(
             FormattedCharSequence text, float x, float y,
             int color, boolean dropShadow,
@@ -158,8 +158,8 @@ public class MixinFont {
 
     // ── drawInBatch8xOutline ──────────────────────────────────────────────────
 
-    // m_168645_ = drawInBatch8xOutline(FormattedCharSequence, float, float, int, int, Matrix4f, MultiBufferSource, int)
-    @Inject(method = "m_168645_", at = @At("HEAD"), cancellable = true, remap = false)
+    // drawInBatch8xOutline(FormattedCharSequence, float, float, int, int, Matrix4f, MultiBufferSource, int)
+    @Inject(method = "drawInBatch8xOutline", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$drawOutline_head(
             FormattedCharSequence text, float x, float y,
             int color, int outlineColor,
@@ -233,7 +233,7 @@ public class MixinFont {
         }
     }
 
-    @Inject(method = "m_168645_", at = @At("RETURN"), remap = false)
+    @Inject(method = "drawInBatch8xOutline", at = @At("RETURN"), remap = false)
     private void runicink$drawOutline_tail(
             FormattedCharSequence text, float x, float y,
             int color, int outlineColor,
@@ -246,8 +246,8 @@ public class MixinFont {
 
     // ── width ─────────────────────────────────────────────────────────────────
 
-    // m_92724_ = width(FormattedCharSequence)
-    @Inject(method = "m_92724_", at = @At("HEAD"), cancellable = true, remap = false)
+    // width(FormattedCharSequence)
+    @Inject(method = "width(Lnet/minecraft/util/FormattedCharSequence;)I", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$width(FormattedCharSequence text, CallbackInfoReturnable<Integer> cir) {
         Font self = (Font)(Object)this;
         if (text instanceof DynamicLineSequence dls) {

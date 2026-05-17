@@ -21,7 +21,8 @@ public class MixinWrittenBookAccess {
         method = "m_7303_",
         at = @At("RETURN"),
         cancellable = true,
-        remap = false
+        remap = false,
+        require = 0
     )
     private void runicink$parseBookPage(int index, CallbackInfoReturnable<FormattedText> cir) {
         if (!Config.enableBooks) return;

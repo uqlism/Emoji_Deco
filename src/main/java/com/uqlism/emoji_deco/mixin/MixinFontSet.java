@@ -15,22 +15,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinFontSet {
 
     @Shadow(remap = false)
-    private ResourceLocation f_95052_;
+    private ResourceLocation name;
 
-    // SRG: m_243128_ -> getGlyphInfo(int, boolean)
-    @Inject(method = "m_243128_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "getGlyphInfo", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$injectGlyphInfo(int codePoint, boolean filterFishyGlyphs,
                                           CallbackInfoReturnable<GlyphInfo> cir) {
-        if (!ImageGlyphPool.IMAGE_FONT.equals(this.f_95052_)) return;
+        if (!ImageGlyphPool.IMAGE_FONT.equals(this.name)) return;
         GlyphInfo info = ImageGlyphPool.getGlyphInfo(codePoint);
         if (info != null) cir.setReturnValue(info);
     }
 
-    // SRG: m_95078_ -> getGlyph(int)
-    @Inject(method = "m_95078_", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "getGlyph", at = @At("HEAD"), cancellable = true, remap = false)
     private void runicink$injectGlyph(int codePoint,
                                       CallbackInfoReturnable<BakedGlyph> cir) {
-        if (!ImageGlyphPool.IMAGE_FONT.equals(this.f_95052_)) return;
+        if (!ImageGlyphPool.IMAGE_FONT.equals(this.name)) return;
         BakedGlyph glyph = ImageGlyphPool.getGlyph(codePoint);
         if (glyph != null) cir.setReturnValue(glyph);
     }

@@ -1,6 +1,9 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[52,)"
 license="MIT"
+
+[[mixins]]
+    config="emoji_deco.mixins.json"
 
 [[mods]]
     modId="emoji_deco"
@@ -15,13 +18,13 @@ license="MIT"
 [[dependencies.emoji_deco]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.20.1,)"
+    versionRange="[1.21.1,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.emoji_deco]]
     modId="forge"
     mandatory=true
-    versionRange="[47,)"
+    versionRange="[52,)"
     ordering="NONE"
     side="BOTH"
