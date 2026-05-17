@@ -50,7 +50,7 @@ RichNode (IR)
 | Node | Meaning |
 |---|---|
 | `Text(literal, style, children)` | Text fragment with optional style delta and sub-nodes |
-| `Scaled(scaleX, scaleY, children)` | Scale multiplier. `toSequence()` → `AffineSequence` (matrix transform, fully honoured). `toComponent()` discards scale. **Chat is special**: it calls `toComponent()` first (scale dropped), then re-parses via `toSequence()` — but the decorator syntax is already gone, so scale is lost in chat. Hotbar/GUI/signs/graffiti preserve scale. |
+| `Scaled(scaleX, scaleY, children)` | Scale multiplier. `toSequence()` → `AffineSequence` (matrix transform, fully honoured). `toComponent()` discards scale. **Chat**: calls `toComponent()` first (scale dropped), scale lost. **Hover tooltip**: item name rendered via a different path that bypasses `DynamicFormattedCharSequence`, scale lost. Hotbar/GUI/signs/graffiti/entity name tags preserve scale. |
 | `Glowing(lightMode, children)` | Light override — `LightMode.GLOW`, `AMBIENT`, or `BYPASS` |
 | `Sprite(atlas, sprite)` | Sprite glyph via `SPRITE_FONT` |
 | `Head(username)` | Player head glyph pair via `HEAD_FONT` + `HEAD_OVERLAY_FONT` |
