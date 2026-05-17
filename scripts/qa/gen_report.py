@@ -182,7 +182,7 @@ def main():
         "",
         "## 備考",
         "",
-        "- **#size**: `toComponent()` 経路（チャット・本・GUI）では `Sized` ノードが無効。看板・Graffiti の `toSequence()` 経路のみ有効。",
+        "- **#size**: チャットのみ無効（`toComponent()` を先に呼ぶためデコレータ構文が失われる）。ホットバー・GUI・看板・Graffiti では有効（`toSequence()` 経路）。本は `font.split()` 経路のため非対応。",
         "- **本**: `Sized` / `Glowing` / 動的デコレータは `font.split()` 経路のため非対応（設計上）。",
         "- **player head オフライン**: グリフ確保は動作、スキンテクスチャはネット接続が必要。",
         "- **?**: 未テスト。次の QA 優先候補。",
