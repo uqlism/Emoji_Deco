@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 03:03 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 08:26 — `python scripts/qa/gen_report.py`
 
-**合計**: 97件 / ✅ PASS: 71件 / ⚠ CONDITIONAL: 22件 / — N/A: 4件
+**合計**: 97件 / ✅ PASS: 71件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 21件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -102,7 +102,7 @@
 | [TC-TOOLTIP-DECORATION](results/TC-TOOLTIP-DECORATION.md) | ホバーツールチップ #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-TOOLTIP-ESCAPE](results/TC-TOOLTIP-ESCAPE.md) | ホバーツールチップ エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-TOOLTIP-PLAYER-HEAD](results/TC-TOOLTIP-PLAYER-HEAD.md) | ホバーツールチップ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
-| [TC-TOOLTIP-SIZE](results/TC-TOOLTIP-SIZE.md) | ホバーツールチップ #size | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
+| [TC-TOOLTIP-SIZE](results/TC-TOOLTIP-SIZE.md) | ホバーツールチップ #size | ❌ FAIL | 2026-05-18 | `81b2e92` |
 
 ---
 
@@ -474,9 +474,23 @@ GuiGraphics.renderComponentHoverEffect → toComponent() 経路でも装飾ス�
 コマンドベースでのツールチップエスケープテストは実行不可（環境制限）。
 RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
 
-### ⚠ TC-TOOLTIP-SIZE — ホバーツールチップ #size
+### ❌ TC-TOOLTIP-SIZE — ホバーツールチップ #size
 ![TC-TOOLTIP-SIZE](screenshots/TC-TOOLTIP-SIZE.png)
-> `#size.2[BIG GEM]` をカスタム名に持つダイヤモンドのツールチップに "BIG GEM" が表示されている。
-ツールチップは toComponent() 経路のため Sized ノードが無視され、通常サイズで描画される（設計上）。
-テキスト自体の描画は正常。
+> `#size.2[BIG GEM]` をカスタム名に持つアイテムのツールチップに "BIG GEM" が通常サイズで表示される。
+
+**原因**: ツールチップは `GuiGraphics.renderTooltip()` → `Language.getVisualOrder()` → `font.drawInBatch(FormattedCharSequence)` の経路を通るため、`MixinGuiGraphics.runicink$drawStringComponent` をバイパスする。`DynamicFormattedCharSequence` でラップされないため `computeNow()` → `toSequence()` が呼ばれず `Scaled` ノードが無効。
+
+修正対象: `renderTooltip` の経路に `DynamicFormattedCharSequence` を通す仕組みを追加。
+
+---
+
+## FAIL 未解決
+
+### TC-TOOLTIP-SIZE
+
+`#size.2[BIG GEM]` をカスタム名に持つアイテムのツールチップに "BIG GEM" が通常サイズで表示される。
+
+**原因**: ツールチップは `GuiGraphics.renderTooltip()` → `Language.getVisualOrder()` → `font.drawInBatch(FormattedCharSequence)` の経路を通るため、`MixinGuiGraphics.runicink$drawStringComponent` をバイパスする。`DynamicFormattedCharSequence` でラップされないため `computeNow()` → `toSequence()` が呼ばれず `Scaled` ノードが無効。
+
+修正対象: `renderTooltip` の経路に `DynamicFormattedCharSequence` を通す仕組みを追加。
 
