@@ -7,8 +7,7 @@
   1.21.1 での代替クラス（`BookViewScreen` 内の書籍ページ取得経路）を調査して差し替える。
   現状は `require=0` なのでクラッシュしないが書籍では一切変換が効かない。
 
-- [ ] **`mc_qa.py` のウィンドウ選択** — `wscreenshot` が Minecraft Launcher を優先してしまう
-  `QA_WINDOW_TITLE` を毎回指定しなくても "Forge" ウィンドウを優先するようデフォルト挙動を修正する。
+- [x] **`mc_qa.py` のウィンドウ選択** — Forge ウィンドウ優先に修正済み
 
 ## 動作未確認の機能
 
@@ -16,12 +15,9 @@
   `MixinChatScreen` は適用済みだが、ドロップダウン表示の目視確認ができていない。
   チャット欄に `#` を入力して候補が出るか確認する。
 
-- [ ] **看板のリッチテキスト描画**
-  `MixinSignText` は適用済み。実際に `#bold[Hello]` を書いた看板を設置して確認する（TC-SIGN-01）。
+- [x] **看板のリッチテキスト描画** — TC-SIGN-01 PASS（`#color.gold[Hello Sign]` 描画確認済み）
 
-- [ ] **エンティティ名タグ**
-  `MixinFont.runicink$transformDrawBatchComponent` が 1.21.1 で正しく動くか未確認。
-  名前タグ付きのエンティティを召喚してリッチテキストが適用されるか確認する。
+- [x] **エンティティ名タグ** — TC-ENTITY-01 PASS（`#bold` / `#color.aqua` 描画確認済み）
 
 - [ ] **GUI（ホットバーアイテム名・ツールチップ）**
   `MixinGuiGraphics` は適用済み。アイテムの表示名に `#bold[...]` を設定して確認する。
