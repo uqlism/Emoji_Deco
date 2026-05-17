@@ -41,14 +41,6 @@ CONTENT_TYPES = [
     ("escape",      "エスケープ\n\\#"),
 ]
 
-# 設計上非対応の組み合わせ（テストが存在しなくても "—" と表示）
-NOT_SUPPORTED = {
-    ("chat",   "size"):  "toComponent() 経路では Sized 無効",
-    ("book",   "size"):  "font.split() 経路では Sized 無効",
-    ("book",   "glow"):  "font.split() 経路では Glowing 無効",
-    ("book",   "rainbow"): "font.split() 経路では動的デコレータ無効",
-}
-
 RESULT_PRIORITY = {"PASS": 3, "FAIL": 2, "CONDITIONAL": 1, "N/A": 0}
 
 
@@ -157,11 +149,6 @@ def main():
             key = (loc, content)
             cell[key] = merge_result(cell.get(key, "?"), result)
 
-    # 設計上非対応を上書き
-    for key, _ in NOT_SUPPORTED.items():
-        if cell.get(key, "?") == "?":
-            cell[key] = "N/A"
-
     content_keys = [c for c, _ in CONTENT_TYPES]
     header_row = "| 表示位置 | " + " | ".join(
         label.replace("\n", "<br>") for _, label in CONTENT_TYPES
@@ -205,7 +192,7 @@ def main():
     untested = [(loc, c) for (loc, c), v in cell.items() if v == "?" ]
     not_in_cell = [
         (loc, c) for loc, _ in LOCATIONS for c in content_keys
-        if cell.get((loc, c), "?") == "?" and (loc, c) not in NOT_SUPPORTED
+        if cell.get((loc, c), "?") == "?"
     ]
     if not_in_cell:
         mx_lines += ["", "## 優先確認候補 (?)", ""]

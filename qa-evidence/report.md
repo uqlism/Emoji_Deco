@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 01:13 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 01:18 — `python scripts/qa/gen_report.py`
 
-**合計**: 26件 / ✅ PASS: 23件 / ⚠ CONDITIONAL: 2件 / — N/A: 1件
+**合計**: 29件 / ✅ PASS: 23件 / ⚠ CONDITIONAL: 2件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -11,6 +11,9 @@
 | [TC-AUTO-03](results/TC-AUTO-03.md) | オートコンプリート デコレータ引数候補 | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-AUTO-04](results/TC-AUTO-04.md) | オートコンプリート ショートコード引数候補 | — N/A | 2026-05-18 | `bf2c5ed` |
 | [TC-BOOK-01](results/TC-BOOK-01.md) | Written Book リッチテキスト | ✅ PASS | 2026-05-18 | `d2e8510` |
+| [TC-BOOK-02](results/TC-BOOK-02.md) | 本 #size（非対応） | — N/A | 2026-05-18 | `25280fa` |
+| [TC-BOOK-03](results/TC-BOOK-03.md) | 本 #glow（非対応） | — N/A | 2026-05-18 | `25280fa` |
+| [TC-BOOK-04](results/TC-BOOK-04.md) | 本 #rainbow（非対応） | — N/A | 2026-05-18 | `25280fa` |
 | [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-03](results/TC-CHAT-03.md) | チャット ショートコード（プレイヤーヘッド） | ⚠ CONDITIONAL | 2026-05-17 | `f3f8074` |
