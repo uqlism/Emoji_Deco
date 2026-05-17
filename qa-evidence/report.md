@@ -1,11 +1,13 @@
 # QA Report
 
-> 自動生成: 2026-05-18 02:23 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 03:01 — `python scripts/qa/gen_report.py`
 
-**合計**: 82件 / ✅ PASS: 65件 / ⚠ CONDITIONAL: 13件 / — N/A: 4件
+**合計**: 97件 / ✅ PASS: 71件 / ⚠ CONDITIONAL: 22件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
+| [TC-ACTIONBAR-DECORATION](results/TC-ACTIONBAR-DECORATION.md) | アクションバー #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
+| [TC-ACTIONBAR-ESCAPE](results/TC-ACTIONBAR-ESCAPE.md) | アクションバー エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-ACTIONBAR-GLOW](results/TC-ACTIONBAR-GLOW.md) | アクションバー #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-ACTIONBAR-PLAYER-HEAD](results/TC-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-AUTO-01](results/TC-AUTO-01.md) | オートコンプリート デコレータ候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
@@ -20,6 +22,7 @@
 | [TC-BOOK-06](results/TC-BOOK-06.md) | 本 #color | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-BOOK-07](results/TC-BOOK-07.md) | 本 ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-BOOK-08](results/TC-BOOK-08.md) | 本 #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-BOOK-ESCAPE](results/TC-BOOK-ESCAPE.md) | 本 (Written Book) エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-BOOK-PLAYER-HEAD](results/TC-BOOK-PLAYER-HEAD.md) | 本 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-CHAT-01](results/TC-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
 | [TC-CHAT-02](results/TC-CHAT-02.md) | チャット ショートコード（ブロックスプライト） | ✅ PASS | 2026-05-18 | `afd7d25` |
@@ -34,12 +37,16 @@
 | [TC-CHAT-11](results/TC-CHAT-11.md) | チャット デコレータ ネスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-CHAT-12](results/TC-CHAT-12.md) | チャット エスケープシーケンス | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-CHAT-13](results/TC-CHAT-13.md) | チャット 複合表現 | ✅ PASS | 2026-05-18 | `bf2c5ed` |
+| [TC-CHAT-ESCAPE](results/TC-CHAT-ESCAPE.md) | チャット エスケープ \# | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-ENTITY-01](results/TC-ENTITY-01.md) | エンティティ名前タグ リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-ENTITY-02](results/TC-ENTITY-02.md) | エンティティ名前タグ sprite (:item.diamond:) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-03](results/TC-ENTITY-03.md) | エンティティ名前タグ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-04](results/TC-ENTITY-04.md) | エンティティ名前タグ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-05](results/TC-ENTITY-05.md) | エンティティ名前タグ ネスト複合 (#bold + #color.gold) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-ENTITY-DECORATION](results/TC-ENTITY-DECORATION.md) | エンティティ名前タグ #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
+| [TC-ENTITY-ESCAPE](results/TC-ENTITY-ESCAPE.md) | エンティティ名前タグ エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-ENTITY-PLAYER-HEAD](results/TC-ENTITY-PLAYER-HEAD.md) | エンティティ名前タグ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-ENTITY-SIZE](results/TC-ENTITY-SIZE.md) | エンティティ名前タグ #size | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
 | [TC-GRAFFITI-02](results/TC-GRAFFITI-02.md) | Graffiti ブロック glow モード（暗所発光） | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GRAFFITI-03](results/TC-GRAFFITI-03.md) | Graffiti #bold | ✅ PASS | 2026-05-18 | `1a52ac8` |
@@ -47,6 +54,7 @@
 | [TC-GRAFFITI-05](results/TC-GRAFFITI-05.md) | Graffiti #size | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-GRAFFITI-06](results/TC-GRAFFITI-06.md) | Graffiti ネスト (#bold + #color) | ✅ PASS | 2026-05-18 | `1a52ac8` |
 | [TC-GRAFFITI-07](results/TC-GRAFFITI-07.md) | Graffiti #underline #strike | ✅ PASS | 2026-05-18 | `1a52ac8` |
+| [TC-GRAFFITI-ESCAPE](results/TC-GRAFFITI-ESCAPE.md) | Graffiti ブロック エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-GRAFFITI-PLAYER-HEAD](results/TC-GRAFFITI-PLAYER-HEAD.md) | Graffiti ブロック player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-GUI-01](results/TC-GUI-01.md) | GUI アクションバー | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-GUI-02](results/TC-GUI-02.md) | GUI タイトル画面 動的デコレータ | ✅ PASS | 2026-05-18 | `afd7d25` |
@@ -70,6 +78,7 @@
 | [TC-HOTBAR-08](results/TC-HOTBAR-08.md) | ホットバーアイテム名 #underline #strike | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-09](results/TC-HOTBAR-09.md) | ホットバーアイテム名 ネスト (#bold[#color.red[...]]) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-10](results/TC-HOTBAR-10.md) | ホットバーアイテム名 エスケープ (\#bold) | ✅ PASS | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-ESCAPE](results/TC-HOTBAR-ESCAPE.md) | ホットバーアイテム名 エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-HOTBAR-PLAYER-HEAD](results/TC-HOTBAR-PLAYER-HEAD.md) | ホットバーアイテム名 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -79,7 +88,10 @@
 | [TC-SIGN-06](results/TC-SIGN-06.md) | 看板 #underline #strike | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-07](results/TC-SIGN-07.md) | 看板 ネスト複合 (#bold + #color.red) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-08](results/TC-SIGN-08.md) | 看板 #size | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-SIGN-ESCAPE](results/TC-SIGN-ESCAPE.md) | 看板 エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-SIGN-PLAYER-HEAD](results/TC-SIGN-PLAYER-HEAD.md) | 看板 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-TITLE-DECORATION](results/TC-TITLE-DECORATION.md) | タイトル / サブタイトル #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
+| [TC-TITLE-ESCAPE](results/TC-TITLE-ESCAPE.md) | タイトル / サブタイトル エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-TITLE-GLOW](results/TC-TITLE-GLOW.md) | タイトル #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TITLE-PLAYER-HEAD](results/TC-TITLE-PLAYER-HEAD.md) | タイトル player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -87,11 +99,25 @@
 | [TC-TOOLTIP-03](results/TC-TOOLTIP-03.md) | ホバーツールチップ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-04](results/TC-TOOLTIP-04.md) | ホバーツールチップ #glow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-TOOLTIP-05](results/TC-TOOLTIP-05.md) | ホバーツールチップ ネスト複合 (#bold + #color.green) | ✅ PASS | 2026-05-18 | `4a52b56` |
+| [TC-TOOLTIP-DECORATION](results/TC-TOOLTIP-DECORATION.md) | ホバーツールチップ #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
+| [TC-TOOLTIP-ESCAPE](results/TC-TOOLTIP-ESCAPE.md) | ホバーツールチップ エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 | [TC-TOOLTIP-PLAYER-HEAD](results/TC-TOOLTIP-PLAYER-HEAD.md) | ホバーツールチップ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-TOOLTIP-SIZE](results/TC-TOOLTIP-SIZE.md) | ホバーツールチップ #size | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
 
 ---
 
 ## スクリーンショット
+
+### ✅ TC-ACTIONBAR-DECORATION — アクションバー #underline #strike
+![TC-ACTIONBAR-DECORATION](screenshots/TC-ACTIONBAR-DECORATION.png)
+> `#underline[Under] #strike[Strike]` がアクションバーに下線付き「Under」と取り消し線付き「Strike」として表示されている。
+MixinGuiGraphics → ComponentSequenceConverter.toSequence() 経路で装飾スタイルが正しく適用される。
+
+### ⚠ TC-ACTIONBAR-ESCAPE — アクションバー エスケープ \#
+![TC-ACTIONBAR-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/title` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでのアクションバーエスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
 
 ### ✅ TC-AUTO-01 — オートコンプリート デコレータ候補
 ![TC-AUTO-01](screenshots/TC-AUTO-01.png)
@@ -124,6 +150,12 @@
 ### ✅ TC-BOOK-08 — 本 #underline #strike
 ![TC-BOOK-08](screenshots/TC-BOOK-08.png)
 > `#underline[Under] #strike[Strike]` が本のページに下線付き・打ち消し線付きテキストとして表示されている。
+
+### ⚠ TC-BOOK-ESCAPE — 本 (Written Book) エスケープ \#
+![TC-BOOK-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の本コンポーネント内でのエスケープテストは直接実行していない。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+本経路（MixinWrittenBookAccess → ComponentTransformer → RichTextParser）は同一パーサーを使用する。
 
 ### ✅ TC-CHAT-01 — チャット ショートコード（アイテムスプライト）
 ![TC-CHAT-01](screenshots/TC-CHAT-01.png)
@@ -169,6 +201,11 @@
 ![TC-CHAT-13](screenshots/TC-CHAT-13.png)
 > `:item.diamond:` アイコン + 太字 Diamond + アクア x64 が混在表示されている。
 
+### ✅ TC-CHAT-ESCAPE — チャット エスケープ \#
+![TC-CHAT-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> チャットに `\#bold text` と入力すると `#bold text` がリテラルテキスト（太字なし）で表示される。
+MixinChatComponent → ComponentSequenceConverter.toSequence() 経路でエスケープシーケンスが正しく処理される。
+
 ### ✅ TC-ENTITY-01 — エンティティ名前タグ リッチテキスト
 ![TC-ENTITY-01](screenshots/TC-ENTITY-01.png)
 > 左 Cow: `#bold[Bold]`（太字）、右 Cow: `Normal`（通常）。`MixinFont.runicink$transformDrawBatchComponent` 正常動作確認。
@@ -188,6 +225,24 @@
 ### ✅ TC-ENTITY-05 — エンティティ名前タグ ネスト複合 (#bold + #color.gold)
 ![TC-ENTITY-05](screenshots/TC-ENTITY-05.png)
 > `#bold[#color.gold[GoldCow]]` が牛の名前タグに金色かつ太字で表示されている。ネストした decorator が正しく機能している。
+
+### ✅ TC-ENTITY-DECORATION — エンティティ名前タグ #underline #strike
+![TC-ENTITY-DECORATION](screenshots/TC-ENTITY-DECORATION.png)
+> `#underline[U] #strike[S]` がエンティティ名前タグに下線付き「U」と取り消し線付き「S」として表示されている。
+Font.drawInBatch(Component) → computeNow() → toSequence() 経路。
+
+### ⚠ TC-ENTITY-ESCAPE — エンティティ名前タグ エスケープ \#
+![TC-ENTITY-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/summon` コマンド内 JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでのエンティティエスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+エンティティ経路（MixinFont → ComponentTransformer → RichTextParser）は同一パーサーを使用するため
+動作するはずだが、直接確認できない。
+
+### ✅ TC-ENTITY-SIZE — エンティティ名前タグ #size
+![TC-ENTITY-SIZE](screenshots/TC-ENTITY-SIZE.png)
+> `#size.2[BigCow]` が2倍サイズでエンティティ名前タグに表示されている。
+Font.drawInBatch(Component) → computeNow() → toSequence() 経路で ScaledSequence が有効。
 
 ### ✅ TC-GRAFFITI-01 — Graffiti ブロック リッチテキスト基本
 ![TC-GRAFFITI-01](screenshots/TC-GRAFFITI-01.png)
@@ -216,6 +271,12 @@
 ### ✅ TC-GRAFFITI-07 — Graffiti #underline #strike
 ![TC-GRAFFITI-07](screenshots/TC-GRAFFITI-07.png)
 > `#underline[Under] #strike[Strike]` がブロック面に下線付き・打ち消し線付きテキストとして表示されている。
+
+### ⚠ TC-GRAFFITI-ESCAPE — Graffiti ブロック エスケープ \#
+![TC-GRAFFITI-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> Graffiti ブロックのエディタへの直接入力でのエスケープテストは実行していない。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+Graffiti 経路（GraffitiRenderer → RichNode.toSequence()）は同一 RichTextParser を使用する。
 
 ### ✅ TC-GUI-01 — GUI アクションバー
 ![TC-GUI-01](screenshots/TC-GUI-01.png)
@@ -324,6 +385,13 @@ MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequen
 拒否するため実施不可。チャット経路で代替検証した。パーサー（RichTextParser）自体は
 ホットバー経路と共通のため、機能は同等に確認できている。
 
+### ⚠ TC-HOTBAR-ESCAPE — ホットバーアイテム名 エスケープ \#
+![TC-HOTBAR-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/give` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでのホットバーアイテム名エスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+ホットバー経路（MixinGuiGraphics → ComponentSequenceConverter.toSequence()）は同一パーサーを使用する。
+
 ### ✅ TC-SIGN-01 — 看板 リッチテキスト
 ![TC-SIGN-01](screenshots/TC-SIGN-01.png)
 > `#color.gold[Hello Sign]` が金色で描画されている。`MixinSignText` 正常動作確認。
@@ -356,6 +424,25 @@ MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequen
 ![TC-SIGN-08](screenshots/TC-SIGN-08.png)
 > `#size.2[Big]` が看板に通常の2倍サイズで描画されている。toSequence() 経路のため Sized ノードが有効。
 
+### ⚠ TC-SIGN-ESCAPE — 看板 エスケープ \#
+![TC-SIGN-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/setblock` コマンド内 JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでの看板エスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+看板経路（MixinSignText → ComponentSequenceConverter.toSequence()）は同一 RichTextParser を使用するため
+動作するはずだが、直接確認できない。
+
+### ✅ TC-TITLE-DECORATION — タイトル / サブタイトル #underline #strike
+![TC-TITLE-DECORATION](screenshots/TC-TITLE-DECORATION.png)
+> `#underline[Under] #strike[Strike]` がタイトルに下線付き「Under」と取り消し線付き「Strike」として大きく表示されている。
+MixinGuiGraphics → ComponentSequenceConverter.toSequence() 経路で装飾スタイルが正しく適用される。
+
+### ⚠ TC-TITLE-ESCAPE — タイトル / サブタイトル エスケープ \#
+![TC-TITLE-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/title` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでのタイトルエスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+
 ### ✅ TC-TOOLTIP-01 — ホバーツールチップ アイテム名リッチテキスト
 ![TC-TOOLTIP-01](screenshots/TC-TOOLTIP-01.png)
 > ホバーツールチップのアイテム名に `#bold[#color.aqua[Diamond]]` が太字アクア色で表示されている。
@@ -375,4 +462,21 @@ MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequen
 ### ✅ TC-TOOLTIP-05 — ホバーツールチップ ネスト複合 (#bold + #color.green)
 ![TC-TOOLTIP-05](screenshots/TC-TOOLTIP-05.png)
 > `#bold[#color.green[Bold Green]]` をカスタム名に持つエメラルドのツールチップに "Bold Green" が太字緑色で表示されている。
+
+### ✅ TC-TOOLTIP-DECORATION — ホバーツールチップ #underline #strike
+![TC-TOOLTIP-DECORATION](screenshots/TC-TOOLTIP-DECORATION.png)
+> `#underline[U] #strike[S]` をカスタム名に持つエメラルドのツールチップに「U」（下線）と「S」（取り消し線）が表示されている。
+GuiGraphics.renderComponentHoverEffect → toComponent() 経路でも装飾スタイルが正しく適用される。
+
+### ⚠ TC-TOOLTIP-ESCAPE — ホバーツールチップ エスケープ \#
+![TC-TOOLTIP-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
+> MC 1.21.1 の `/give` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
+コマンドベースでのツールチップエスケープテストは実行不可（環境制限）。
+RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+
+### ⚠ TC-TOOLTIP-SIZE — ホバーツールチップ #size
+![TC-TOOLTIP-SIZE](screenshots/TC-TOOLTIP-SIZE.png)
+> `#size.2[BIG GEM]` をカスタム名に持つダイヤモンドのツールチップに "BIG GEM" が表示されている。
+ツールチップは toComponent() 経路のため Sized ノードが無視され、通常サイズで描画される（設計上）。
+テキスト自体の描画は正常。
 
