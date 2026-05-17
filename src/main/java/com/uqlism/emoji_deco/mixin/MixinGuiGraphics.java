@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * GUI テキスト描画を乗っ取り、emoji_deco のリッチテキストを適用する。
@@ -72,6 +74,54 @@ public abstract class MixinGuiGraphics {
         int halfW = font.width(staticFcs) / 2;
         FormattedCharSequence fcs = new DynamicFormattedCharSequence(text);
         ((GuiGraphics)(Object)this).drawString(font, fcs, x - halfW, y, color);
+        ci.cancel();
+    }
+
+    // ── アイテムツールチップ（テキスト行）────────────────────────────────────────
+    // renderTooltip(Font, List<Component>, Optional<TooltipComponent>, int, int)
+    //
+    // 通常の描画経路:
+    //   renderTooltip(Font, ItemStack, x, y)
+    //     → renderTooltip(Font, List<Component>, Optional<TooltipComponent>, x, y)   ← ここをフック
+    //         → Component::getVisualOrderText()  ← 静的FCSに変換 → #size 等が無効になる
+    //
+    // フック後:
+    //   Component が '#' / ':' を含む行を ComponentConverter.toSequence() で変換し、
+    //   DynamicFormattedCharSequence → MixinFont.drawInBatch → computeNow() 経路に通すことで
+    //   AffineSequence (Scaled = #size) が正しく機能する。
+    //
+    // カスタム TooltipComponent (バンドル等) がある場合はバイパスして元の経路に任せる。
+    @Inject(
+        method = "renderTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/Optional;II)V",
+        at = @At("HEAD"), cancellable = true, require = 0, remap = false
+    )
+    private void runicink$renderTooltipComponents(
+            Font font, List<Component> components, Optional<TooltipComponent> tooltipComponent,
+            int mouseX, int mouseY, CallbackInfo ci) {
+        // カスタム TooltipComponent (バンドル等のウィジェット) がある場合はバイパスする。
+        if (tooltipComponent.isPresent()) return;
+
+        // いずれかの行にリッチテキスト記号が含まれるか確認する。
+        boolean hasRich = false;
+        for (Component c : components) {
+            String s = c.getString();
+            if (s.indexOf('#') >= 0 || s.indexOf(':') >= 0) { hasRich = true; break; }
+        }
+        if (!hasRich) return;
+
+        // 各 Component を DynamicFormattedCharSequence でラップして FCS リストを構築する。
+        // MixinFont.drawInBatch が毎フレーム computeNow() を呼び AffineSequence 等を処理する。
+        List<FormattedCharSequence> fcsLines = new ArrayList<>(components.size());
+        for (Component c : components) {
+            String s = c.getString();
+            if (s.indexOf('#') >= 0 || s.indexOf(':') >= 0) {
+                fcsLines.add(new DynamicFormattedCharSequence(c));
+            } else {
+                fcsLines.add(c.getVisualOrderText());
+            }
+        }
+
+        ((GuiGraphics)(Object)this).renderTooltip(font, fcsLines, mouseX, mouseY);
         ci.cancel();
     }
 
