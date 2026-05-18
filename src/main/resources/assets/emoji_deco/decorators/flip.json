@@ -1,8 +1,0 @@
-{
-    "enable": true,
-    "display": {
-        "type": "emoji_deco:scale",
-        "x": -1,
-        "contents": { "type": "emoji_deco:slot" }
-    }
-}
