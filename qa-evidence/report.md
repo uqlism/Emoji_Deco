@@ -1,14 +1,14 @@
 # QA Report
 
-> 自動生成: 2026-05-18 09:14 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 09:34 — `python scripts/qa/gen_report.py`
 
-**合計**: 97件 / ✅ PASS: 80件 / ⚠ CONDITIONAL: 13件 / — N/A: 4件
+**合計**: 97件 / ✅ PASS: 80件 / ⚠ CONDITIONAL: 10件 / — N/A: 7件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
 | [TC-ACTIONBAR-DECORATION](results/TC-ACTIONBAR-DECORATION.md) | アクションバー #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-ACTIONBAR-ESCAPE](results/TC-ACTIONBAR-ESCAPE.md) | アクションバー エスケープ \# | ✅ PASS | 2026-05-18 | `0662990` |
-| [TC-ACTIONBAR-GLOW](results/TC-ACTIONBAR-GLOW.md) | アクションバー #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-ACTIONBAR-GLOW](results/TC-ACTIONBAR-GLOW.md) | アクションバー #glow | — N/A | 2026-05-18 | `3caacce` |
 | [TC-ACTIONBAR-PLAYER-HEAD](results/TC-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-AUTO-01](results/TC-AUTO-01.md) | オートコンプリート デコレータ候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-AUTO-02](results/TC-AUTO-02.md) | オートコンプリート ショートコード候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
@@ -72,7 +72,7 @@
 | [TC-HOTBAR-02](results/TC-HOTBAR-02.md) | ホットバーアイテム名 #italic | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-03](results/TC-HOTBAR-03.md) | ホットバーアイテム名 #color | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-04](results/TC-HOTBAR-04.md) | ホットバーアイテム名 #rainbow (動的) | ✅ PASS | 2026-05-18 | `4a3aeab` |
-| [TC-HOTBAR-05](results/TC-HOTBAR-05.md) | ホットバーアイテム名 #glow | ⚠ CONDITIONAL | 2026-05-18 | `4a3aeab` |
+| [TC-HOTBAR-05](results/TC-HOTBAR-05.md) | ホットバーアイテム名 #glow | — N/A | 2026-05-18 | `3caacce` |
 | [TC-HOTBAR-06](results/TC-HOTBAR-06.md) | ホットバーアイテム名 スプライト (:item:) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-07](results/TC-HOTBAR-07.md) | ホットバーアイテム名 #size | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-08](results/TC-HOTBAR-08.md) | ホットバーアイテム名 #underline #strike | ✅ PASS | 2026-05-18 | `4a3aeab` |
@@ -92,7 +92,7 @@
 | [TC-SIGN-PLAYER-HEAD](results/TC-SIGN-PLAYER-HEAD.md) | 看板 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TITLE-DECORATION](results/TC-TITLE-DECORATION.md) | タイトル / サブタイトル #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-TITLE-ESCAPE](results/TC-TITLE-ESCAPE.md) | タイトル エスケープシーケンス | ✅ PASS | 2026-05-18 | `ce22356` |
-| [TC-TITLE-GLOW](results/TC-TITLE-GLOW.md) | タイトル #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
+| [TC-TITLE-GLOW](results/TC-TITLE-GLOW.md) | タイトル / サブタイトル #glow | — N/A | 2026-05-18 | `3caacce` |
 | [TC-TITLE-PLAYER-HEAD](results/TC-TITLE-PLAYER-HEAD.md) | タイトル player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TOOLTIP-01](results/TC-TOOLTIP-01.md) | ホバーツールチップ アイテム名リッチテキスト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-TOOLTIP-02](results/TC-TOOLTIP-02.md) | ホバーツールチップ sprite (:item.diamond:) | ✅ PASS | 2026-05-18 | `4a52b56` |
@@ -351,13 +351,6 @@ MixinGuiGraphics 経由で正しく変換・描画されることを確認。
 > ホットバーアイテム名に `#rainbow[Rainbow Star]` が動的カラーで表示されている。
 2フレーム間で色がアクア→オレンジに変化しており、アニメーション動作を確認。
 ホットバーは toComponent() 経由だが、DynamicFormattedCharSequence として毎フレーム再評価される。
-
-### ⚠ TC-HOTBAR-05 — ホットバーアイテム名 #glow
-![TC-HOTBAR-05](screenshots/TC-HOTBAR-05.png)
-> ホットバーアイテム名に `#glow[Glow Stone]` と表示されている（テキスト描画は正常）。
-ただし発光エフェクト（LightMode）はホットバー名経路（GuiGraphics.drawString -> toComponent()）では
-LightSequence が無視されるため、視覚的な発光差は確認できない。
-これはアーキテクチャ上の仕様であり、FCS 経路（看板・落書きブロック）では有効。
 
 ### ✅ TC-HOTBAR-06 — ホットバーアイテム名 スプライト (:item:)
 ![TC-HOTBAR-06](screenshots/TC-HOTBAR-06.png)

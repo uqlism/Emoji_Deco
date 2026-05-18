@@ -1,15 +1,11 @@
 ---
 test: TC-HOTBAR-05
 feature: ホットバーアイテム名 #glow
-result: CONDITIONAL
+result: N/A
 date: 2026-05-18
-commit: 4a3aeab
-screenshot: screenshots/TC-HOTBAR-05.png
+commit: 3caacce
 location: hotbar
 content: glow
 ---
 
-ホットバーアイテム名に `#glow[Glow Stone]` と表示されている（テキスト描画は正常）。
-ただし発光エフェクト（LightMode）はホットバー名経路（GuiGraphics.drawString -> toComponent()）では
-LightSequence が無視されるため、視覚的な発光差は確認できない。
-これはアーキテクチャ上の仕様であり、FCS 経路（看板・落書きブロック）では有効。
+2D GUI 描画では `packedLight` の概念がないため `LightMode.GLOW` による発光エフェクトは効かない（設計上）。テキスト自体は正常表示。3D ワールド描画（看板・エンティティ名前タグ・Graffiti）でのみ有効。
