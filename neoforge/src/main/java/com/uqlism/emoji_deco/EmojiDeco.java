@@ -10,7 +10,6 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.slf4j.Logger;
@@ -25,7 +24,6 @@ public class EmojiDeco {
     public EmojiDeco(IEventBus modEventBus, ModContainer container) {
         Services.register(new NeoForgeNetworkBridge());
         Registration.register(modEventBus);
-        NeoForge.EVENT_BUS.register(this);
         container.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         LOGGER.info("[EmojiDeco] Initialized (NeoForge)");
         writePidFileIfRequested();
