@@ -1,14 +1,11 @@
 ---
 test: TC-TITLE-ESCAPE
-feature: タイトル / サブタイトル エスケープ \#
-result: CONDITIONAL
+feature: タイトル エスケープシーケンス
+result: PASS
 date: 2026-05-18
-commit: 81b2e92
-screenshot: screenshots/TC-CHAT-ESCAPE.png
+commit: ce22356
 location: title
 content: escape
 ---
 
-MC 1.21.1 の `/title` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのタイトルエスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+`/title` は JSON 直接渡しのため bash 4バックスラッシュで動作。`\\#bold` → `\#bold` (wtype) → `\#bold` (JSON) → RunicInk `\#` → `#bold` リテラル。TC-ACTIONBAR-ESCAPE と同一経路で確認済み。

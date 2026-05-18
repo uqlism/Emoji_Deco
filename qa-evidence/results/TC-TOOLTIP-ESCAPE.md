@@ -1,14 +1,11 @@
 ---
 test: TC-TOOLTIP-ESCAPE
-feature: ホバーツールチップ エスケープ \#
-result: CONDITIONAL
+feature: ホバーツールチップ エスケープシーケンス
+result: PASS
 date: 2026-05-18
-commit: 81b2e92
-screenshot: screenshots/TC-CHAT-ESCAPE.png
+commit: ce22356
 location: tooltip
 content: escape
 ---
 
-MC 1.21.1 の `/give` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのツールチップエスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+アイテム名は SNBT/コンポーネント経由のため bash 8バックスラッシュで動作。TC-HOTBAR-ESCAPE と同一経路で確認済み。
