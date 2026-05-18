@@ -47,6 +47,10 @@ except ImportError:
 pyautogui.FAILSAFE = True   # Move mouse to top-left corner to abort
 pyautogui.PAUSE = 0.05
 
+# QA_RUN_DIR: Minecraft の run/ ディレクトリへのパス（デフォルト: "run"）
+# NeoForge 用: QA_RUN_DIR=neoforge/run
+_RUN_DIR = Path(os.environ.get("QA_RUN_DIR", "run"))
+
 
 # ---------------------------------------------------------------------------
 # Window helpers
@@ -240,7 +244,7 @@ def cmd_scroll(args):
 
 
 def cmd_wait_log(args):
-    log_path = Path("run/logs/latest.log")
+    log_path = _RUN_DIR / "logs/latest.log"
     deadline = time.time() + args.timeout
 
     # --fresh: ファイルが新規作成されるまで待ってから検索する（前セッションのログを拾わない）
@@ -272,15 +276,15 @@ def cmd_wait_log(args):
 
 
 def cmd_world_exists(args):
-    path = Path("run/saves") / args.name
+    path = _RUN_DIR / "saves" / args.name
     print("true" if path.exists() else "false")
 
 
 def cmd_copy_world(args):
     """run/saves/<src>/ を run/saves/<dst>/ にコピーする（session.lock を除外）。"""
     import shutil
-    src = Path("run/saves") / args.src
-    dst = Path("run/saves") / args.dst
+    src = _RUN_DIR / "saves" / args.src
+    dst = _RUN_DIR / "saves" / args.dst
     if not src.exists():
         print(f"ERROR: {src} not found", file=sys.stderr)
         sys.exit(1)

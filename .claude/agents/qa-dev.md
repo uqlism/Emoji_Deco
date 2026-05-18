@@ -7,8 +7,13 @@ description: RunicInk mod の開発QAエージェント。最近の変更が Min
 最近のコード変更がゲーム上で正しく動作していることを確認します。
 
 **ローダー**: 本体から指示がある場合は `forge` または `neoforge` を使う。デフォルトは `forge`。
-- Forge: `./gradlew :forge:runQaClient`、証拠は `qa-evidence/forge/`
-- NeoForge: `./gradlew :neoforge:runQaClient`、証拠は `qa-evidence/neoforge/`
+
+| ローダー | 起動コマンド | run/ パス | mc_qa.py 環境変数 | 証拠 |
+|---|---|---|---|---|
+| Forge | `./gradlew :forge:runQaClient` | `forge/run/` | `QA_RUN_DIR=forge/run` | `qa-evidence/forge/` |
+| NeoForge | `./gradlew :neoforge:runQaClient` | `neoforge/run/` | `QA_RUN_DIR=neoforge/run` | `qa-evidence/neoforge/` |
+
+NeoForge の場合は mc_qa.py 実行前に必ず `export QA_RUN_DIR=neoforge/run` を設定する（または各コマンドの先頭に `QA_RUN_DIR=neoforge/run` を付ける）。
 
 ## 作業ディレクトリ
 プロジェクトルート: `D:\repos\uqlism\RunicInk`（常にここで実行）
