@@ -1,16 +1,23 @@
 ---
 test: TC-ENTITY-ESCAPE
 feature: エンティティ名前タグ エスケープ \#
-result: CONDITIONAL
+result: PASS
 date: 2026-05-18
-commit: 81b2e92
-screenshot: screenshots/TC-CHAT-ESCAPE.png
+commit: 0662990
+screenshot: screenshots/TC-ENTITY-ESCAPE.png
 location: entity
 content: escape
 ---
 
-MC 1.21.1 の `/summon` コマンド内 JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのエンティティエスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
-エンティティ経路（MixinFont → ComponentTransformer → RichTextParser）は同一パーサーを使用するため
-動作するはずだが、直接確認できない。
+エンティティ（Cow）の名前タグに `#bold Cow` がリテラルテキスト（太字なし）で表示される。
+MixinFont → ComponentTransformer → RichTextParser 経路でエスケープシーケンスが正しく処理される。
+
+コマンド: `/summon minecraft:cow ... {CustomName:'{"text":"\\\\#bold Cow"}'}`
+bash sequence 引数内でのバックスラッシュ数: 8個
+wtype に渡る文字列: `\\\\#bold Cow` (4バックスラッシュ)
+MC SNBT パーサー変換後: `\\#bold Cow` (JSON文字列内 2バックスラッシュ)
+JSON パーサー変換後: `\#bold Cow` (実際の値)
+RunicInk エスケープ処理後: `#bold Cow` (表示値)
+
+注: `\#` を直接 SNBT の JSON 文字列に含めると MC 1.21.1 の GSON が MalformedJsonException を発生させる。
+SNBT レイヤーで1段余分にエスケープ (`\\\\` → `\\`) することで回避。

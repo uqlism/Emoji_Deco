@@ -1,13 +1,13 @@
 # QA Report
 
-> 自動生成: 2026-05-18 08:41 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 09:12 — `python scripts/qa/gen_report.py`
 
-**合計**: 97件 / ✅ PASS: 72件 / ⚠ CONDITIONAL: 21件 / — N/A: 4件
+**合計**: 97件 / ✅ PASS: 76件 / ⚠ CONDITIONAL: 17件 / — N/A: 4件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
 | [TC-ACTIONBAR-DECORATION](results/TC-ACTIONBAR-DECORATION.md) | アクションバー #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
-| [TC-ACTIONBAR-ESCAPE](results/TC-ACTIONBAR-ESCAPE.md) | アクションバー エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
+| [TC-ACTIONBAR-ESCAPE](results/TC-ACTIONBAR-ESCAPE.md) | アクションバー エスケープ \# | ✅ PASS | 2026-05-18 | `0662990` |
 | [TC-ACTIONBAR-GLOW](results/TC-ACTIONBAR-GLOW.md) | アクションバー #glow（2D GUI） | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-ACTIONBAR-PLAYER-HEAD](results/TC-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-AUTO-01](results/TC-AUTO-01.md) | オートコンプリート デコレータ候補 | ✅ PASS | 2026-05-17 | `f3f8074` |
@@ -44,7 +44,7 @@
 | [TC-ENTITY-04](results/TC-ENTITY-04.md) | エンティティ名前タグ #rainbow | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-05](results/TC-ENTITY-05.md) | エンティティ名前タグ ネスト複合 (#bold + #color.gold) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-ENTITY-DECORATION](results/TC-ENTITY-DECORATION.md) | エンティティ名前タグ #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
-| [TC-ENTITY-ESCAPE](results/TC-ENTITY-ESCAPE.md) | エンティティ名前タグ エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
+| [TC-ENTITY-ESCAPE](results/TC-ENTITY-ESCAPE.md) | エンティティ名前タグ エスケープ \# | ✅ PASS | 2026-05-18 | `0662990` |
 | [TC-ENTITY-PLAYER-HEAD](results/TC-ENTITY-PLAYER-HEAD.md) | エンティティ名前タグ player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-ENTITY-SIZE](results/TC-ENTITY-SIZE.md) | エンティティ名前タグ #size | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-GRAFFITI-01](results/TC-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト基本 | ✅ PASS | 2026-05-17 | `c3cc94f` |
@@ -78,7 +78,7 @@
 | [TC-HOTBAR-08](results/TC-HOTBAR-08.md) | ホットバーアイテム名 #underline #strike | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-09](results/TC-HOTBAR-09.md) | ホットバーアイテム名 ネスト (#bold[#color.red[...]]) | ✅ PASS | 2026-05-18 | `4a3aeab` |
 | [TC-HOTBAR-10](results/TC-HOTBAR-10.md) | ホットバーアイテム名 エスケープ (\#bold) | ✅ PASS | 2026-05-18 | `4a3aeab` |
-| [TC-HOTBAR-ESCAPE](results/TC-HOTBAR-ESCAPE.md) | ホットバーアイテム名 エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
+| [TC-HOTBAR-ESCAPE](results/TC-HOTBAR-ESCAPE.md) | ホットバーアイテム名 エスケープ \# | ✅ PASS | 2026-05-18 | `0662990` |
 | [TC-HOTBAR-PLAYER-HEAD](results/TC-HOTBAR-PLAYER-HEAD.md) | ホットバーアイテム名 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-SIGN-01](results/TC-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-17 | `836952c` |
 | [TC-SIGN-02](results/TC-SIGN-02.md) | 看板 スプライト | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -88,7 +88,7 @@
 | [TC-SIGN-06](results/TC-SIGN-06.md) | 看板 #underline #strike | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-07](results/TC-SIGN-07.md) | 看板 ネスト複合 (#bold + #color.red) | ✅ PASS | 2026-05-18 | `4a52b56` |
 | [TC-SIGN-08](results/TC-SIGN-08.md) | 看板 #size | ✅ PASS | 2026-05-18 | `4a52b56` |
-| [TC-SIGN-ESCAPE](results/TC-SIGN-ESCAPE.md) | 看板 エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
+| [TC-SIGN-ESCAPE](results/TC-SIGN-ESCAPE.md) | 看板 エスケープ \# | ✅ PASS | 2026-05-18 | `0662990` |
 | [TC-SIGN-PLAYER-HEAD](results/TC-SIGN-PLAYER-HEAD.md) | 看板 player head ショートコード | ⚠ CONDITIONAL | 2026-05-18 | `1a52ac8` |
 | [TC-TITLE-DECORATION](results/TC-TITLE-DECORATION.md) | タイトル / サブタイトル #underline #strike | ✅ PASS | 2026-05-18 | `81b2e92` |
 | [TC-TITLE-ESCAPE](results/TC-TITLE-ESCAPE.md) | タイトル / サブタイトル エスケープ \# | ⚠ CONDITIONAL | 2026-05-18 | `81b2e92` |
@@ -113,11 +113,20 @@
 > `#underline[Under] #strike[Strike]` がアクションバーに下線付き「Under」と取り消し線付き「Strike」として表示されている。
 MixinGuiGraphics → ComponentSequenceConverter.toSequence() 経路で装飾スタイルが正しく適用される。
 
-### ⚠ TC-ACTIONBAR-ESCAPE — アクションバー エスケープ \#
-![TC-ACTIONBAR-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
-> MC 1.21.1 の `/title` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのアクションバーエスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
+### ✅ TC-ACTIONBAR-ESCAPE — アクションバー エスケープ \#
+![TC-ACTIONBAR-ESCAPE](screenshots/TC-ACTIONBAR-ESCAPE.png)
+> アクションバーに `#bold Bar` がリテラルテキスト（太字なし）で表示される。
+MixinGuiGraphics → ComponentConverter.toSequence() 経路でエスケープシーケンスが正しく処理される。
+
+コマンド: `/title @s actionbar {"text":"\\#bold Bar"}`
+bash sequence 引数内でのバックスラッシュ数: 4個（SNBT レイヤーなしのため）
+wtype に渡る文字列: `\\#bold Bar` (2バックスラッシュ)
+MC JSON パーサー変換後: `\#bold Bar` (実際の値)
+RunicInk エスケープ処理後: `#bold Bar` (表示値)
+
+注: `/title` コマンドは SNBT なしの JSON コンポーネントを直接受け取るため、
+エスケープレイヤーが1段少なく（SNBT → JSON の変換がない）、4バックスラッシュで十分。
+エンティティ/ホットバーの 8バックスラッシュと異なる点に注意。
 
 ### ✅ TC-AUTO-01 — オートコンプリート デコレータ候補
 ![TC-AUTO-01](screenshots/TC-AUTO-01.png)
@@ -231,13 +240,20 @@ MixinChatComponent → ComponentSequenceConverter.toSequence() 経路でエス�
 > `#underline[U] #strike[S]` がエンティティ名前タグに下線付き「U」と取り消し線付き「S」として表示されている。
 Font.drawInBatch(Component) → computeNow() → toSequence() 経路。
 
-### ⚠ TC-ENTITY-ESCAPE — エンティティ名前タグ エスケープ \#
-![TC-ENTITY-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
-> MC 1.21.1 の `/summon` コマンド内 JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのエンティティエスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
-エンティティ経路（MixinFont → ComponentTransformer → RichTextParser）は同一パーサーを使用するため
-動作するはずだが、直接確認できない。
+### ✅ TC-ENTITY-ESCAPE — エンティティ名前タグ エスケープ \#
+![TC-ENTITY-ESCAPE](screenshots/TC-ENTITY-ESCAPE.png)
+> エンティティ（Cow）の名前タグに `#bold Cow` がリテラルテキスト（太字なし）で表示される。
+MixinFont → ComponentTransformer → RichTextParser 経路でエスケープシーケンスが正しく処理される。
+
+コマンド: `/summon minecraft:cow ... {CustomName:'{"text":"\\\\#bold Cow"}'}`
+bash sequence 引数内でのバックスラッシュ数: 8個
+wtype に渡る文字列: `\\\\#bold Cow` (4バックスラッシュ)
+MC SNBT パーサー変換後: `\\#bold Cow` (JSON文字列内 2バックスラッシュ)
+JSON パーサー変換後: `\#bold Cow` (実際の値)
+RunicInk エスケープ処理後: `#bold Cow` (表示値)
+
+注: `\#` を直接 SNBT の JSON 文字列に含めると MC 1.21.1 の GSON が MalformedJsonException を発生させる。
+SNBT レイヤーで1段余分にエスケープ (`\\\\` → `\\`) することで回避。
 
 ### ✅ TC-ENTITY-SIZE — エンティティ名前タグ #size
 ![TC-ENTITY-SIZE](screenshots/TC-ENTITY-SIZE.png)
@@ -385,12 +401,19 @@ MixinGuiGraphics 経由（toComponent() ではなく AffineSequence/ScaledSequen
 拒否するため実施不可。チャット経路で代替検証した。パーサー（RichTextParser）自体は
 ホットバー経路と共通のため、機能は同等に確認できている。
 
-### ⚠ TC-HOTBAR-ESCAPE — ホットバーアイテム名 エスケープ \#
-![TC-HOTBAR-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
-> MC 1.21.1 の `/give` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのホットバーアイテム名エスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
-ホットバー経路（MixinGuiGraphics → ComponentSequenceConverter.toSequence()）は同一パーサーを使用する。
+### ✅ TC-HOTBAR-ESCAPE — ホットバーアイテム名 エスケープ \#
+![TC-HOTBAR-ESCAPE](screenshots/TC-HOTBAR-ESCAPE.png)
+> ホットバーに `#bold Item` がリテラルテキスト（太字なし）で表示される。
+MixinGuiGraphics → ComponentConverter.toSequence() 経路でエスケープシーケンスが正しく処理される。
+
+コマンド: `/give @p minecraft:stick[custom_name='{"text":"\\\\#bold Item"}']`
+bash sequence 引数内でのバックスラッシュ数: 8個
+wtype に渡る文字列: `\\\\#bold Item` (4バックスラッシュ)
+MC コンポーネントパーサー変換後: `\#bold Item` (実際の値)
+RunicInk エスケープ処理後: `#bold Item` (表示値)
+
+注: MC 1.21.1 では `/give` の NBT 形式が `[custom_name='...']` のコンポーネント形式に変更されている。
+旧来の `{display:{Name:...}}` NBT 形式は構文エラーになる。
 
 ### ✅ TC-SIGN-01 — 看板 リッチテキスト
 ![TC-SIGN-01](screenshots/TC-SIGN-01.png)
@@ -424,13 +447,17 @@ RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESC
 ![TC-SIGN-08](screenshots/TC-SIGN-08.png)
 > `#size.2[Big]` が看板に通常の2倍サイズで描画されている。toSequence() 経路のため Sized ノードが有効。
 
-### ⚠ TC-SIGN-ESCAPE — 看板 エスケープ \#
-![TC-SIGN-ESCAPE](screenshots/TC-CHAT-ESCAPE.png)
-> MC 1.21.1 の `/setblock` コマンド内 JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでの看板エスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
-看板経路（MixinSignText → ComponentSequenceConverter.toSequence()）は同一 RichTextParser を使用するため
-動作するはずだが、直接確認できない。
+### ✅ TC-SIGN-ESCAPE — 看板 エスケープ \#
+![TC-SIGN-ESCAPE](screenshots/TC-SIGN-ESCAPE.png)
+> 看板エディタで `\#bold Sign` を入力すると、設置した看板に `#bold Sign` がリテラルテキスト（太字なし）で表示される。
+MixinSignText → ComponentConverter.toSequence() 経路でエスケープシーケンスが正しく処理される。
+
+入力方法: 看板エディタで直接 `\#bold Sign` と入力（`type` コマンドで `\\#bold Sign` を送信）。
+コマンド経由の setblock での直接設定は MC 1.21.1 の GSON が `\#` を不正エスケープとして拒否するため不可。
+看板エディタ経由では RunicInk パーサーが正しく `\#` → `#` リテラルに変換することを確認。
+
+エディタプレビュー確認: 入力中のプレビュー領域に `#bold Sign` が表示されることを確認。
+設置後の看板面に `#bold Sign` がリテラルテキストで表示されることを確認。
 
 ### ✅ TC-TITLE-DECORATION — タイトル / サブタイトル #underline #strike
 ![TC-TITLE-DECORATION](screenshots/TC-TITLE-DECORATION.png)

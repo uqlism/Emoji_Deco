@@ -1,15 +1,22 @@
 ---
 test: TC-HOTBAR-ESCAPE
 feature: ホットバーアイテム名 エスケープ \#
-result: CONDITIONAL
+result: PASS
 date: 2026-05-18
-commit: 81b2e92
-screenshot: screenshots/TC-CHAT-ESCAPE.png
+commit: 0662990
+screenshot: screenshots/TC-HOTBAR-ESCAPE.png
 location: hotbar
 content: escape
 ---
 
-MC 1.21.1 の `/give` コマンド内コンポーネント JSON パーサーが `\#` を不正エスケープとして拒否するため、
-コマンドベースでのホットバーアイテム名エスケープテストは実行不可（環境制限）。
-RunicInk のエスケープパーサー自体はチャット経路（TC-CHAT-ESCAPE）で PASS 確認済み。
-ホットバー経路（MixinGuiGraphics → ComponentSequenceConverter.toSequence()）は同一パーサーを使用する。
+ホットバーに `#bold Item` がリテラルテキスト（太字なし）で表示される。
+MixinGuiGraphics → ComponentConverter.toSequence() 経路でエスケープシーケンスが正しく処理される。
+
+コマンド: `/give @p minecraft:stick[custom_name='{"text":"\\\\#bold Item"}']`
+bash sequence 引数内でのバックスラッシュ数: 8個
+wtype に渡る文字列: `\\\\#bold Item` (4バックスラッシュ)
+MC コンポーネントパーサー変換後: `\#bold Item` (実際の値)
+RunicInk エスケープ処理後: `#bold Item` (表示値)
+
+注: MC 1.21.1 では `/give` の NBT 形式が `[custom_name='...']` のコンポーネント形式に変更されている。
+旧来の `{display:{Name:...}}` NBT 形式は構文エラーになる。
