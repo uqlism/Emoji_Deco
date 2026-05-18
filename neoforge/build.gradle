@@ -1,0 +1,111 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.gradle.userdev' version '7.0.142'
+}
+
+version = "${minecraft_version}-${mod_version}"
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-neoforge"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+runs {
+    configureEach {
+        workingDirectory project.file('run')
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
+
+    client { }
+
+    server {
+        programArgument '--nogui'
+    }
+}
+
+// common のソースを取り込む
+sourceSets.main.java.srcDirs += project(':common').sourceSets.main.java.srcDirs
+sourceSets.main.resources.srcDirs += project(':common').sourceSets.main.resources.srcDirs
+
+repositories {
+    maven { url = 'https://maven.neoforged.net/releases' }
+}
+
+jarJar.enable()
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neoforge_version}"
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // TwelveMonkeys WebP ImageIO — jarJar でモッド jar に同梱する
+    def twelvemonkeys = '3.10.1'
+    ['imageio-webp', 'imageio-core'].each { mod ->
+        implementation("com.twelvemonkeys.imageio:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.imageio', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
+    ['common-lang', 'common-io', 'common-image'].each { mod ->
+        implementation("com.twelvemonkeys.common:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.common', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
+            mod_authors: mod_authors, mod_description: mod_description,
+            neoforge_version: neoforge_version,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    exclude 'META-INF/MANIFEST.MF'
+    archiveClassifier = 'dev'
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'emoji_deco.mixins.json'
+        ])
+    }
+}
+
+tasks.named('jarJar').configure {
+    archiveClassifier = ''
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

@@ -1,0 +1,11 @@
+{
+  "enable": true,
+  "args": [
+    { "value_type": "boolean", "default": true, "hidden": true }
+  ],
+  "display": {
+    "type": "emoji_deco:style",
+    "italic": { "type": "emoji_deco:arg", "index": 0 },
+    "contents": { "type": "emoji_deco:slot" }
+  }
+}
