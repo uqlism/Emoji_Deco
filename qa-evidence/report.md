@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-18 09:34 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-18 09:39 — `python scripts/qa/gen_report.py`
 
-**合計**: 97件 / ✅ PASS: 80件 / ⚠ CONDITIONAL: 10件 / — N/A: 7件
+**合計**: 97件 / ✅ PASS: 80件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 9件 / — N/A: 7件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -30,7 +30,7 @@
 | [TC-CHAT-04](results/TC-CHAT-04.md) | チャット デコレータ #bold | ✅ PASS | 2026-05-17 | `f3f8074` |
 | [TC-CHAT-05](results/TC-CHAT-05.md) | チャット デコレータ #italic | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-CHAT-06](results/TC-CHAT-06.md) | チャット デコレータ #color | ✅ PASS | 2026-05-17 | `f3f8074` |
-| [TC-CHAT-07](results/TC-CHAT-07.md) | チャット デコレータ #size | ⚠ CONDITIONAL | 2026-05-17 | `f3f8074` |
+| [TC-CHAT-07](results/TC-CHAT-07.md) | チャット デコレータ #size | ❌ FAIL | 2026-05-18 | `daffbb2` |
 | [TC-CHAT-08](results/TC-CHAT-08.md) | チャット デコレータ #glow | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-CHAT-09](results/TC-CHAT-09.md) | チャット デコレータ #rainbow | ✅ PASS | 2026-05-18 | `bf2c5ed` |
 | [TC-CHAT-10](results/TC-CHAT-10.md) | チャット デコレータ #underline #strike | ✅ PASS | 2026-05-18 | `bf2c5ed` |
@@ -477,4 +477,18 @@ GuiGraphics.renderComponentHoverEffect → toComponent() 経路でも装飾ス�
 `MixinGuiGraphics.runicink$renderTooltipComponents` の追加により `renderTooltip(Font, List<Component>, Optional<TooltipComponent>, int, int)` の経路で `DynamicFormattedCharSequence` が有効化された。これにより `Sized` ノードが `ScaledSequence` に変換され、`MixinFont` が正しくスケールを適用する。
 
 通常ツールチップ（`/give @p minecraft:stick`）のリグレッションなし。
+
+---
+
+## FAIL 未解決
+
+### TC-CHAT-07
+
+`#size.2[Hi]` がチャットで通常サイズで描画される（スケール無効）。
+
+**1.20.1 では動作していた**。1.21.1 でのリグレッション。
+
+**原因**: `MixinChatComponent` が `toComponent()` を先に呼ぶため、`Scaled` ノードのスケール値がここで破棄される。その後 `computeNow()` → `toSequence()` を通るが、元の `#size.2[...]` 構文は Component に変換済みで失われているためスケールが復元されない。
+
+**修正方針**: `MixinChatComponent` の変換経路を変更し、チャットでも `toComponent()` を経由せずに `toSequence()` / `DynamicFormattedCharSequence` 経路を使えるようにする。
 
