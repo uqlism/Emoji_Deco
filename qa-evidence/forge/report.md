@@ -1,6 +1,6 @@
 # QA Report
 
-> 自動生成: 2026-05-18 09:39 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-19 08:01 — `python scripts/qa/gen_report.py`
 
 **合計**: 97件 / ✅ PASS: 80件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 9件 / — N/A: 7件
 

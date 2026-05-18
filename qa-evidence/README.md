@@ -1,8 +1,29 @@
 # QA Evidence
 
-テストケースの PASS 証拠スクリーンショットを日付ごとに保管するディレクトリ。
+ローダー別にテスト証拠を管理するディレクトリ。
 
-| 日付 | PASS | FAIL | レポート |
-|---|---|---|---|
-| [2026-05-17](2026-05-17/report.md) | 9 | 0 | TC-SIGN-01, TC-ENTITY-01, TC-CHAT-01〜05, TC-AUTOCOMPLETE-01〜02, TC-GRAFFITI-01 (+2 conditional) |
-| [2026-05-18](2026-05-18/report.md) | 13 | 1 | TC-BOOK-01, TC-CHAT 残り全種, TC-GUI, TC-TOOLTIP, TC-SIGN-sprite, TC-GRAFFITI-glow (+1 N/A, FAIL: TC-GUI-title) |
+## 構成
+
+```
+qa-evidence/
+├── forge/           ← Forge ビルドの QA 結果
+│   ├── results/     ← TC-*.md 個別テスト結果
+│   ├── screenshots/ ← 最新スクリーンショット
+│   └── report.md    ← 自動生成サマリー
+├── neoforge/        ← NeoForge ビルドの QA 結果
+│   ├── results/
+│   ├── screenshots/
+│   └── report.md
+└── coverage-matrix.md ← 表示位置×機能 カバレッジマトリックス（Forge 基準）
+```
+
+## report.md の生成
+
+```bash
+python scripts/qa/gen_report.py --loader forge
+python scripts/qa/gen_report.py --loader neoforge
+```
+
+## Forge 実績（2026-05-17〜18）
+
+PASS=80 / FAIL=1 / CONDITIONAL=9 / N/A=7 — 詳細: [forge/report.md](forge/report.md)

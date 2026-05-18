@@ -27,6 +27,51 @@ runs {
     server {
         programArgument '--nogui'
     }
+
+    // QA 専用: メインメニューをスキップして直接 "QA Test World" を開く
+    qaClient {
+        configure client
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+    }
+
+    // 並列 QA 用
+    qaClientA {
+        configure client
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World A'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-a.txt'
+    }
+
+    qaClientB {
+        configure client
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World B'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-b.txt'
+    }
+
+    qaClientC {
+        configure client
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World C'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-c.txt'
+    }
 }
 
 // common のソースを取り込む

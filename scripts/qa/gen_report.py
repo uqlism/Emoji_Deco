@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 """
-gen_report.py — qa-evidence/results/TC-*.md から report.md と coverage-matrix.md を自動生成する。
+gen_report.py — qa-evidence/{loader}/results/TC-*.md から report.md と coverage-matrix.md を自動生成する。
 
-Usage: python scripts/qa/gen_report.py
+Usage:
+  python scripts/qa/gen_report.py                  # デフォルト: forge
+  python scripts/qa/gen_report.py --loader forge
+  python scripts/qa/gen_report.py --loader neoforge
 """
 
+import argparse
 import re
 import sys
 from pathlib import Path
 from datetime import datetime
 
-RESULTS_DIR    = Path("qa-evidence/results")
-REPORT_PATH    = Path("qa-evidence/report.md")
-MATRIX_PATH    = Path("qa-evidence/coverage-matrix.md")
+_parser = argparse.ArgumentParser()
+_parser.add_argument("--loader", default="forge", choices=["forge", "neoforge"])
+_args, _ = _parser.parse_known_args()
+
+LOADER         = _args.loader
+RESULTS_DIR    = Path(f"qa-evidence/{LOADER}/results")
+REPORT_PATH    = Path(f"qa-evidence/{LOADER}/report.md")
+MATRIX_PATH    = Path("qa-evidence/coverage-matrix.md")  # 共有
 
 ICONS = {"PASS": "✅", "FAIL": "❌", "CONDITIONAL": "⚠", "N/A": "—"}
 
