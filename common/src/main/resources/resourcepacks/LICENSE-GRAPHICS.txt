@@ -1,0 +1,8 @@
+Graphics in this resource pack (pack.png and emoji sprite images) use
+Twemoji artwork by Twitter, Inc. and other contributors.
+
+  Copyright 2020 Twitter, Inc and other contributors
+  License: Creative Commons Attribution 4.0 International (CC-BY 4.0)
+  https://creativecommons.org/licenses/by/4.0/
+
+Source: https://github.com/twitter/twemoji
