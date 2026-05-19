@@ -76,6 +76,32 @@ def _find_window_by_pid(pid):
     return result[0] if result else None
 
 
+def find_cf_window():
+    """Find CurseForge Electron window."""
+    wins = [w for w in gw.getAllWindows() if "CurseForge" in w.title and w.width > 200]
+    return wins[0] if wins else None
+
+
+def _focus_cf():
+    win = find_cf_window()
+    if not win:
+        print("ERROR: CurseForge window not found", file=sys.stderr)
+        sys.exit(1)
+    hwnd = win._hWnd
+    try:
+        win.activate()
+    except Exception:
+        pass
+    time.sleep(0.3)
+    if ctypes.windll.user32.GetForegroundWindow() != hwnd:
+        SW_MINIMIZE, SW_RESTORE = 6, 9
+        ctypes.windll.user32.ShowWindow(hwnd, SW_MINIMIZE)
+        time.sleep(0.2)
+        ctypes.windll.user32.ShowWindow(hwnd, SW_RESTORE)
+        time.sleep(0.4)
+    return win
+
+
 def find_mc_window():
     # PID ファイルが指定されている場合はそれを使う
     pid_file = os.environ.get("QA_PID_FILE")
@@ -391,8 +417,146 @@ def cmd_sequence(args):
         elif cmd_name == "rclick":
             x, y = map(int, cmd_args_str.split(","))
             pyautogui.rightClick(x, y)
+        # ── CurseForge 操作 ────────────────────────────────────────────────
+        elif cmd_name == "cfscreenshot":
+            mock = type("A", (), {"output": cmd_args_str})()
+            cmd_cf_wscreenshot(mock)
+        elif cmd_name == "cfclick":
+            x, y = map(int, cmd_args_str.split(","))
+            _focus_cf()
+            pyautogui.moveTo(x, y, duration=0.1)
+            time.sleep(0.05)
+            pyautogui.click(x, y)
+            time.sleep(0.3)
+        elif cmd_name == "cfdblclick":
+            x, y = map(int, cmd_args_str.split(","))
+            _focus_cf()
+            pyautogui.moveTo(x, y, duration=0.1)
+            time.sleep(0.05)
+            pyautogui.doubleClick(x, y)
+            time.sleep(0.3)
+        elif cmd_name == "cfrclick":
+            x, y = map(int, cmd_args_str.split(","))
+            _focus_cf()
+            pyautogui.moveTo(x, y, duration=0.1)
+            time.sleep(0.05)
+            pyautogui.rightClick(x, y)
+            time.sleep(0.2)
+        elif cmd_name == "cftype":
+            _focus_cf()
+            pyperclip.copy(cmd_args_str)
+            time.sleep(0.1)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(0.1)
+        elif cmd_name == "cfkey":
+            keys = cmd_args_str.split(",")
+            _focus_cf()
+            if len(keys) == 1:
+                pyautogui.press(keys[0])
+            else:
+                pyautogui.hotkey(*keys)
+            time.sleep(0.1)
         else:
             print(f"[seq] WARN: unknown command '{cmd_name}', skipping")
+
+
+# ---------------------------------------------------------------------------
+# CurseForge 操作コマンド (focus 取得 + pyautogui)
+# ---------------------------------------------------------------------------
+
+def cmd_cf_screenshot(args):
+    """CurseForge ウィンドウ領域を ImageGrab でキャプチャ（フォーカス不要だが遮蔽に注意）。"""
+    win = find_cf_window()
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if win:
+        from PIL import ImageGrab
+        img = ImageGrab.grab(bbox=(win.left, win.top, win.right, win.bottom))
+    else:
+        img = pyautogui.screenshot()
+    img.save(str(out))
+    print(str(out.resolve()))
+
+
+def cmd_cf_wscreenshot(args):
+    """PrintWindow で CurseForge をキャプチャ（遮蔽しても取れる）。"""
+    from PIL import Image
+    win = find_cf_window()
+    if not win:
+        print("ERROR: CurseForge window not found", file=sys.stderr)
+        sys.exit(1)
+    hwnd = win._hWnd
+    rect = ctypes.wintypes.RECT()
+    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    w = rect.right  - rect.left
+    h = rect.bottom - rect.top
+    hwnd_dc = ctypes.windll.user32.GetWindowDC(hwnd)
+    mem_dc  = ctypes.windll.gdi32.CreateCompatibleDC(hwnd_dc)
+    bitmap  = ctypes.windll.gdi32.CreateCompatibleBitmap(hwnd_dc, w, h)
+    ctypes.windll.gdi32.SelectObject(mem_dc, bitmap)
+    ctypes.windll.user32.PrintWindow(hwnd, mem_dc, 0x2)  # PW_RENDERFULLCONTENT
+    bmi = struct.pack("IiiHHIIiiII", 40, w, -h, 1, 32, 0, w * h * 4, 0, 0, 0, 0)
+    buf = ctypes.create_string_buffer(w * h * 4)
+    ctypes.windll.gdi32.GetDIBits(mem_dc, bitmap, 0, h, buf, bmi, 0)
+    ctypes.windll.gdi32.DeleteObject(bitmap)
+    ctypes.windll.gdi32.DeleteDC(mem_dc)
+    ctypes.windll.user32.ReleaseDC(hwnd, hwnd_dc)
+    img = Image.frombytes("RGBA", (w, h), bytes(buf), "raw", "BGRA")
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out))
+    print(str(out.resolve()))
+
+
+def cmd_cf_click(args):
+    prev = _save_focus_state()
+    _focus_cf()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.click(args.x, args.y)
+    time.sleep(0.3)
+    _restore_focus_state(*prev)
+
+
+def cmd_cf_double_click(args):
+    prev = _save_focus_state()
+    _focus_cf()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.doubleClick(args.x, args.y)
+    time.sleep(0.3)
+    _restore_focus_state(*prev)
+
+
+def cmd_cf_right_click(args):
+    prev = _save_focus_state()
+    _focus_cf()
+    pyautogui.moveTo(args.x, args.y, duration=0.1)
+    time.sleep(0.05)
+    pyautogui.rightClick(args.x, args.y)
+    time.sleep(0.2)
+    _restore_focus_state(*prev)
+
+
+def cmd_cf_type(args):
+    prev = _save_focus_state()
+    _focus_cf()
+    pyperclip.copy(args.text)
+    time.sleep(0.1)
+    pyautogui.hotkey("ctrl", "v")
+    time.sleep(0.1)
+    _restore_focus_state(*prev)
+
+
+def cmd_cf_key(args):
+    prev = _save_focus_state()
+    _focus_cf()
+    if len(args.keys) == 1:
+        pyautogui.press(args.keys[0])
+    else:
+        pyautogui.hotkey(*args.keys)
+    time.sleep(0.1)
+    _restore_focus_state(*prev)
 
 
 def cmd_rcon(args):
@@ -659,6 +823,23 @@ def main():
     p = sub.add_parser("sequence", help="Run multiple commands in one process (Minecraft stays focused)")
     p.add_argument("steps", nargs="+", help="cmd:arg1,arg2 ...")
 
+    p = sub.add_parser("cf-screenshot",   help="Capture CurseForge window (PrintWindow, no focus needed)")
+    p.add_argument("output")
+    p = sub.add_parser("cf-wscreenshot",  help="Alias for cf-screenshot")
+    p.add_argument("output")
+    for name, help_ in [
+        ("cf-click",        "Click in CurseForge (focus + pyautogui)"),
+        ("cf-double-click", "Double-click in CurseForge"),
+        ("cf-right-click",  "Right-click in CurseForge"),
+    ]:
+        p = sub.add_parser(name, help=help_)
+        p.add_argument("x", type=int)
+        p.add_argument("y", type=int)
+    p = sub.add_parser("cf-type", help="Type text in CurseForge (focus + clipboard paste)")
+    p.add_argument("text")
+    p = sub.add_parser("cf-key", help="Press key in CurseForge (focus + pyautogui)")
+    p.add_argument("keys", nargs="+")
+
     p = sub.add_parser("rcon", help="Send command via RCON (no focus needed)")
     p.add_argument("mc_command", help="Minecraft command (e.g. 'say hello')")
     p.add_argument("--host",     default="localhost")
@@ -689,7 +870,14 @@ def main():
         "openchat":      cmd_openchat,
         "sendcmd":       cmd_sendcmd,
         "sequence":      cmd_sequence,
-        "rcon":          cmd_rcon,
+        "rcon":           cmd_rcon,
+        "cf-screenshot":  cmd_cf_wscreenshot,
+        "cf-wscreenshot": cmd_cf_wscreenshot,
+        "cf-click":       cmd_cf_click,
+        "cf-double-click":cmd_cf_double_click,
+        "cf-right-click": cmd_cf_right_click,
+        "cf-type":        cmd_cf_type,
+        "cf-key":         cmd_cf_key,
     }
     dispatch[args.command](args)
 
