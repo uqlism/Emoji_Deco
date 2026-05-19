@@ -94,11 +94,12 @@ def find_mc_window():
         wins = [w for w in gw.getAllWindows() if target in w.title and w.width > 0]
         return wins[0] if wins else None
     all_wins = [w for w in gw.getAllWindows() if w.width > 0]
-    # Prefer Forge window (game) over Minecraft Launcher
-    forge_wins = [w for w in all_wins if "Forge" in w.title]
-    if forge_wins:
-        return forge_wins[0]
-    mc_wins = [w for w in all_wins if "Minecraft" in w.title and "Launcher" not in w.title]
+    # Prefer Minecraft game window — must contain "Minecraft" to exclude "CurseForge"
+    mc_forge = [w for w in all_wins if "Minecraft" in w.title and "Forge" in w.title]
+    if mc_forge:
+        return mc_forge[0]
+    mc_wins = [w for w in all_wins if "Minecraft" in w.title
+               and "Launcher" not in w.title and "CurseForge" not in w.title]
     return mc_wins[0] if mc_wins else None
 
 
