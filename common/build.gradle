@@ -1,0 +1,6 @@
+// IDE が common のコードに型チェックを効かせるための最小設定
+// 実際のコンパイルは forge / neoforge サブプロジェクトが担当する
+plugins {
+    id 'java'
+}
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)

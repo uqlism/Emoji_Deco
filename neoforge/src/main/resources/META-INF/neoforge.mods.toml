@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mixins]]
+    config="emoji_deco.mixins.json"
+
+[[mods]]
+    modId="emoji_deco"
+    version="${mod_version}"
+    displayName="Emoji & Deco"
+    credits="uqlism"
+    authors="uqlism"
+    description='''use emojis and richtexts in minecraft!!!'''
+
+[[dependencies.emoji_deco]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.emoji_deco]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1,)"
+    ordering="NONE"
+    side="BOTH"

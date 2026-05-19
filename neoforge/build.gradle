@@ -1,0 +1,168 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.gradle.userdev' version '7.0.142'
+}
+
+version = "${minecraft_version}-${mod_version}"
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-neoforge"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+runs {
+    configureEach {
+        workingDirectory project.file('run')
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
+
+    client { }
+
+    server {
+        programArgument '--nogui'
+    }
+
+    // QA 専用: メインメニューをスキップして直接 "QA Test World" を開く
+    qaClient {
+        configure 'client'
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+    }
+
+    // 並列 QA 用
+    qaClientA {
+        configure 'client'
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World A'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-a.txt'
+    }
+
+    qaClientB {
+        configure 'client'
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World B'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-b.txt'
+    }
+
+    qaClientC {
+        configure 'client'
+        programArgument '--quickPlaySingleplayer'
+        programArgument 'QA Test World C'
+        programArgument '--width'
+        programArgument '1280'
+        programArgument '--height'
+        programArgument '720'
+        systemProperty 'runicink.qa.pid.file', 'run/qa-pid-c.txt'
+    }
+}
+
+// common のソースを取り込む
+sourceSets.main.java.srcDirs += project(':common').sourceSets.main.java.srcDirs
+sourceSets.main.resources.srcDirs += project(':common').sourceSets.main.resources.srcDirs
+
+// NeoForge Gradle 7.0.142 のクラスパス生成で ASM の古いバージョンと新バージョンが
+// 重複して BootstrapLauncher のモジュールパス競合を引き起こすため、
+// 全設定で ASM 9.8 に強制解決する。
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.ow2.asm') {
+            details.useVersion '9.8'
+            details.because 'Force ASM 9.8 to avoid module path conflict in BootstrapLauncher'
+        }
+    }
+}
+
+repositories {
+    maven { url = 'https://maven.neoforged.net/releases' }
+}
+
+jarJar.enable()
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neoforge_version}"
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // TwelveMonkeys WebP ImageIO — jarJar でモッド jar に同梱する
+    def twelvemonkeys = '3.10.1'
+    ['imageio-webp', 'imageio-core'].each { mod ->
+        implementation("com.twelvemonkeys.imageio:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.imageio', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
+    ['common-lang', 'common-io', 'common-image'].each { mod ->
+        implementation("com.twelvemonkeys.common:${mod}:${twelvemonkeys}")
+        jarJar(group: 'com.twelvemonkeys.common', name: mod, version: "[${twelvemonkeys},4.0)") {
+            jarJar.pin(it, twelvemonkeys)
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
+            mod_authors: mod_authors, mod_description: mod_description,
+            neoforge_version: neoforge_version,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    exclude 'META-INF/MANIFEST.MF'
+    archiveClassifier = 'dev'
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'emoji_deco.mixins.json'
+        ])
+    }
+}
+
+tasks.named('jarJar').configure {
+    archiveClassifier = ''
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

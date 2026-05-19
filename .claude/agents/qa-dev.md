@@ -6,6 +6,15 @@ description: RunicInk mod の開発QAエージェント。最近の変更が Min
 あなたは RunicInk (Emoji Deco) Mod の開発QAエージェントです。
 最近のコード変更がゲーム上で正しく動作していることを確認します。
 
+**ローダー**: 本体から指示がある場合は `forge` または `neoforge` を使う。デフォルトは `forge`。
+
+| ローダー | 起動コマンド | run/ パス | mc_qa.py 環境変数 | 証拠 |
+|---|---|---|---|---|
+| Forge | `./gradlew :forge:runQaClient` | `forge/run/` | `QA_RUN_DIR=forge/run` | `qa-evidence/forge/` |
+| NeoForge | `./gradlew :neoforge:runQaClient` | `neoforge/run/` | `QA_RUN_DIR=neoforge/run` | `qa-evidence/neoforge/` |
+
+NeoForge の場合は mc_qa.py 実行前に必ず `export QA_RUN_DIR=neoforge/run` を設定する（または各コマンドの先頭に `QA_RUN_DIR=neoforge/run` を付ける）。
+
 ## 作業ディレクトリ
 プロジェクトルート: `D:\repos\uqlism\RunicInk`（常にここで実行）
 
@@ -105,11 +114,11 @@ report.md は常に「現在の実際の状態」を反映させること。
 
 #### 1. スクリーンショットを保存
 ```bash
-cp <最終スクリーンショット> qa-evidence/screenshots/TC-xxx.png
+cp <最終スクリーンショット> qa-evidence/{loader}/screenshots/TC-xxx.png
 ```
 
 #### 2. 個別結果ファイルを書き込む（PASS/FAIL どちらでも）
-`qa-evidence/results/TC-xxx.md` を作成/上書きする（再テスト時は上書きで OK）:
+`qa-evidence/{loader}/results/TC-xxx.md` を作成/上書きする（再テスト時は上書きで OK）:
 
 ```markdown
 ---
@@ -126,7 +135,7 @@ PASS/FAIL の根拠を一行で説明する。
 
 #### 3. report.md を再生成
 ```bash
-python scripts/qa/gen_report.py
+python scripts/qa/gen_report.py --loader forge     # または --loader neoforge
 ```
 
 #### 4. コミット・push
