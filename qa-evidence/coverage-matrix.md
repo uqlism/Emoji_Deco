@@ -1,6 +1,6 @@
 # RunicInk QA カバレッジマトリックス
 
-> 自動生成: 2026-05-19 08:57 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-19 09:50 — `python scripts/qa/gen_report.py`
 
 **凡例**: ✅ PASS / ❌ FAIL / ⚠ CONDITIONAL / — 非対応（設計上） / ? 未確認
 
@@ -10,7 +10,7 @@
 | **看板** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **エンティティ名タグ** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **本 (Written Book)** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| **Graffiti ブロック** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| **Graffiti ブロック** | ✅ | ? | ? | ? | ? | ? | ✅ | ? | ? | ? |
 | **アクションバー** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **タイトル / サブタイトル** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | **ホットバーアイテム名** | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -65,13 +65,11 @@
 - 本 (Written Book) × #underline #strike
 - 本 (Written Book) × ネスト 複合
 - 本 (Written Book) × エスケープ \#
-- Graffiti ブロック × sprite :item: :block:
 - Graffiti ブロック × player head
 - Graffiti ブロック × #bold #italic
 - Graffiti ブロック × #color
 - Graffiti ブロック × #size
 - Graffiti ブロック × #glow
-- Graffiti ブロック × #rainbow （動的）
 - Graffiti ブロック × #underline #strike
 - Graffiti ブロック × ネスト 複合
 - Graffiti ブロック × エスケープ \#
