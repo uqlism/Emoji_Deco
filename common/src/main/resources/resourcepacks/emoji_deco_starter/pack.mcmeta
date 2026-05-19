@@ -3,6 +3,7 @@
     "description": {
       "text": "Twemoji shortcodes for Emoji & Deco  (:smile: :heart: :thumbsup: ...)"
     },
-    "pack_format": 18
+    "pack_format": 34,
+    "supported_formats": [15, 34]
   }
 }

@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-19 12:42 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-19 15:59 — `python scripts/qa/gen_report.py`
 
-**合計**: 89件 / ✅ PASS: 71件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 11件 / — N/A: 6件
+**合計**: 89件 / ✅ PASS: 72件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@
 | [TC-NEO-ACTIONBAR-PLAYER-HEAD](results/TC-NEO-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
 | [TC-NEO-ACTIONBAR-SIZE](results/TC-NEO-ACTIONBAR-SIZE.md) | アクションバー #size | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ACTIONBAR-SPRITE](results/TC-NEO-ACTIONBAR-SPRITE.md) | アクションバー スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
-| [TC-NEO-AUTOCOMPLETE-SHORTCODE-FAIL](results/TC-NEO-AUTOCOMPLETE-SHORTCODE-FAIL.md) | ショートコード補完 | ⚠ CONDITIONAL | 2026-05-19 | `acaef5d` |
+| [TC-NEO-AUTOCOMPLETE-SHORTCODE](results/TC-NEO-AUTOCOMPLETE-SHORTCODE.md) | ショートコード補完 | ✅ PASS | 2026-05-19 | `bf4c476` |
 | [TC-NEO-BOOK-BOLD_ITALIC](results/TC-NEO-BOOK-BOLD_ITALIC.md) | Written Book #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-BOOK-COLOR](results/TC-NEO-BOOK-COLOR.md) | Written Book #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-BOOK-DECORATION](results/TC-NEO-BOOK-DECORATION.md) | Written Book #underline #strike | ✅ PASS | 2026-05-19 | `e8c0e51` |
