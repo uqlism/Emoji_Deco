@@ -79,6 +79,10 @@ def _find_window_by_pid(pid):
 def find_cf_window():
     """Find CurseForge Electron window."""
     wins = [w for w in gw.getAllWindows() if "CurseForge" in w.title and w.width > 200]
+    # タイトルが完全一致する（Electron アプリ本体）を優先
+    exact = [w for w in wins if w.title.strip() == "CurseForge"]
+    if exact:
+        return exact[0]
     return wins[0] if wins else None
 
 
