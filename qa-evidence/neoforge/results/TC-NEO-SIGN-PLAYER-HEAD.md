@@ -1,0 +1,11 @@
+---
+test: TC-NEO-SIGN-PLAYER-HEAD
+feature: 看板 player head（オフライン）
+result: CONDITIONAL
+date: 2026-05-19
+commit: 65c495c
+location: sign
+content: player_head
+---
+
+グリフのスペースが確保される。オフライン環境ではスキンテクスチャが空白。common/ コードが共有のため Forge 版と同一動作。

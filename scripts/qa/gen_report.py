@@ -21,7 +21,7 @@ _args, _ = _parser.parse_known_args()
 LOADER         = _args.loader
 RESULTS_DIR    = Path(f"qa-evidence/{LOADER}/results")
 REPORT_PATH    = Path(f"qa-evidence/{LOADER}/report.md")
-MATRIX_PATH    = Path("qa-evidence/coverage-matrix.md")  # 共有
+MATRIX_PATH    = Path(f"qa-evidence/{LOADER}/coverage-matrix.md")  # ローダー別
 
 ICONS = {"PASS": "✅", "FAIL": "❌", "CONDITIONAL": "⚠", "N/A": "—"}
 
