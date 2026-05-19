@@ -1,13 +1,18 @@
 # QA Report
 
-> 自動生成: 2026-05-19 09:58 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-19 11:49 — `python scripts/qa/gen_report.py`
 
-**合計**: 24件 / ✅ PASS: 9件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 8件 / — N/A: 6件
+**合計**: 48件 / ✅ PASS: 31件 / ❌ FAIL: 2件 / ⚠ CONDITIONAL: 9件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
+| [TC-NEO-ACTIONBAR-BOLD](results/TC-NEO-ACTIONBAR-BOLD.md) | アクションバー #bold | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-ACTIONBAR-COLOR](results/TC-NEO-ACTIONBAR-COLOR.md) | アクションバー #color | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ACTIONBAR-GLOW-NA](results/TC-NEO-ACTIONBAR-GLOW-NA.md) | アクションバー #glow（非対応） | — N/A | 2026-05-19 | `65c495c` |
 | [TC-NEO-ACTIONBAR-PLAYER-HEAD](results/TC-NEO-ACTIONBAR-PLAYER-HEAD.md) | アクションバー player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-ACTIONBAR-SIZE](results/TC-NEO-ACTIONBAR-SIZE.md) | アクションバー #size | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-ACTIONBAR-SPRITE](results/TC-NEO-ACTIONBAR-SPRITE.md) | アクションバー スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-AUTOCOMPLETE-SHORTCODE-FAIL](results/TC-NEO-AUTOCOMPLETE-SHORTCODE-FAIL.md) | ショートコード補完 | ❌ FAIL | 2026-05-19 | `acaef5d` |
 | [TC-NEO-BOOK-GLOW-NA](results/TC-NEO-BOOK-GLOW-NA.md) | 本 #glow（非対応） | — N/A | 2026-05-19 | `65c495c` |
 | [TC-NEO-BOOK-PLAYER-HEAD](results/TC-NEO-BOOK-PLAYER-HEAD.md) | 本 player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
 | [TC-NEO-BOOK-RAINBOW-NA](results/TC-NEO-BOOK-RAINBOW-NA.md) | 本 #rainbow（非対応） | — N/A | 2026-05-19 | `65c495c` |
@@ -15,21 +20,40 @@
 | [TC-NEO-CHAT-01](results/TC-NEO-CHAT-01.md) | チャット ショートコード（アイテムスプライト） | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-CHAT-02](results/TC-NEO-CHAT-02.md) | チャット デコレータ #bold | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-CHAT-03](results/TC-NEO-CHAT-03.md) | チャット デコレータ #rainbow | ✅ PASS | 2026-05-19 | `11e4c0e` |
+| [TC-NEO-CHAT-COLOR](results/TC-NEO-CHAT-COLOR.md) | チャット #color | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-CHAT-DECORATION](results/TC-NEO-CHAT-DECORATION.md) | チャット #underline #strike | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-CHAT-ESCAPE](results/TC-NEO-CHAT-ESCAPE.md) | チャット エスケープ \# | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-CHAT-GLOW](results/TC-NEO-CHAT-GLOW.md) | チャット #glow | ⚠ CONDITIONAL | 2026-05-19 | `acaef5d` |
+| [TC-NEO-CHAT-NEST](results/TC-NEO-CHAT-NEST.md) | チャット ネスト複合 | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-CHAT-SIZE](results/TC-NEO-CHAT-SIZE.md) | チャット #size（リグレッション） | ❌ FAIL | 2026-05-19 | `65c495c` |
 | [TC-NEO-ENTITY-01](results/TC-NEO-ENTITY-01.md) | エンティティ名前タグ | ✅ PASS | 2026-05-19 | `11e4c0e` |
+| [TC-NEO-ENTITY-DECORATION](results/TC-NEO-ENTITY-DECORATION.md) | エンティティ名タグ #underline | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-PLAYER-HEAD](results/TC-NEO-ENTITY-PLAYER-HEAD.md) | エンティティ名タグ player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-ENTITY-RAINBOW](results/TC-NEO-ENTITY-RAINBOW.md) | エンティティ名タグ #rainbow | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-ENTITY-SIZE](results/TC-NEO-ENTITY-SIZE.md) | エンティティ名タグ #size | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
 | [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen（エディタ）表示確認（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
 | [TC-NEO-GRAFFITI-PLAYER-HEAD](results/TC-NEO-GRAFFITI-PLAYER-HEAD.md) | Graffiti ブロック player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
 | [TC-NEO-GUI-01](results/TC-NEO-GUI-01.md) | アクションバー GUI テキスト | ✅ PASS | 2026-05-19 | `11e4c0e` |
+| [TC-NEO-HOTBAR-COLOR](results/TC-NEO-HOTBAR-COLOR.md) | ホットバー #color | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-HOTBAR-DECORATION](results/TC-NEO-HOTBAR-DECORATION.md) | ホットバー #underline #strike | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-HOTBAR-GLOW-NA](results/TC-NEO-HOTBAR-GLOW-NA.md) | ホットバー #glow（非対応） | — N/A | 2026-05-19 | `65c495c` |
 | [TC-NEO-HOTBAR-PLAYER-HEAD](results/TC-NEO-HOTBAR-PLAYER-HEAD.md) | ホットバーアイテム名 player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-HOTBAR-RAINBOW](results/TC-NEO-HOTBAR-RAINBOW.md) | ホットバー #rainbow | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-HOTBAR-SIZE](results/TC-NEO-HOTBAR-SIZE.md) | ホットバー #size | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-HOTBAR-SPRITE](results/TC-NEO-HOTBAR-SPRITE.md) | ホットバー スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-SIGN-01](results/TC-NEO-SIGN-01.md) | 看板 リッチテキスト | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-SIGN-PLAYER-HEAD](results/TC-NEO-SIGN-PLAYER-HEAD.md) | 看板 player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-TITLE-BOLD](results/TC-NEO-TITLE-BOLD.md) | タイトル #bold | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-TITLE-COLOR](results/TC-NEO-TITLE-COLOR.md) | タイトル #color | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-TITLE-GLOW-NA](results/TC-NEO-TITLE-GLOW-NA.md) | タイトル #glow（非対応） | — N/A | 2026-05-19 | `65c495c` |
 | [TC-NEO-TITLE-PLAYER-HEAD](results/TC-NEO-TITLE-PLAYER-HEAD.md) | タイトル player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-TITLE-SIZE](results/TC-NEO-TITLE-SIZE.md) | タイトル #size | ✅ PASS | 2026-05-19 | `acaef5d` |
+| [TC-NEO-TITLE-SPRITE](results/TC-NEO-TITLE-SPRITE.md) | タイトル スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-TOOLTIP-01](results/TC-NEO-TOOLTIP-01.md) | アイテム名表示（ホットバー GUI） | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-TOOLTIP-PLAYER-HEAD](results/TC-NEO-TOOLTIP-PLAYER-HEAD.md) | ホバーツールチップ player head（オフライン） | ⚠ CONDITIONAL | 2026-05-19 | `65c495c` |
+| [TC-NEO-TOOLTIP-RAINBOW](results/TC-NEO-TOOLTIP-RAINBOW.md) | ツールチップ #rainbow | ✅ PASS | 2026-05-19 | `acaef5d` |
 
 ---
 
@@ -91,6 +115,10 @@ Done ボタンのクリックでエディタが閉じること（save() メソ�
 ---
 
 ## FAIL 未解決
+
+### TC-NEO-AUTOCOMPLETE-SHORTCODE-FAIL
+
+`:` や `:di` 入力時にショートコード補完ドロップダウンが表示されない。`:item.` 引数補完も非動作。デコレータ補完（`#b` → bold）は正常。NeoForge-specific の問題と思われる。
 
 ### TC-NEO-CHAT-SIZE
 
