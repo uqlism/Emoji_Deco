@@ -3,12 +3,10 @@ package com.uqlism.emoji_deco.mixin;
 import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.render.sequence.DynamicLineSequence;
 import com.uqlism.emoji_deco.text.ComponentConverter;
-import net.minecraft.client.GuiMessageTag;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.MessageSignature;
 import net.minecraft.util.FormattedCharSequence;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -42,12 +40,9 @@ public class MixinChatComponent {
         index = 0, remap = false, require = 0
     )
     private net.minecraft.client.GuiMessage runicink$modifyGuiMessage(net.minecraft.client.GuiMessage message) {
-        if (!Config.enableChat) return message;
-        Component transformed = ComponentConverter.toComponent(message.content());
-        if (transformed == message.content()) return message;
-        return new net.minecraft.client.GuiMessage(
-            message.addedTime(), transformed, message.signature(), message.tag()
-        );
+        // toComponent() は Scaled ノードを破棄するためここでは呼ばない。
+        // scale/glow を含む変換は runicink$wrapDynamicAdd の DynamicLineSequence パスで行う。
+        return message;
     }
 
     /**

@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-19 16:01 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-19 17:01 — `python scripts/qa/gen_report.py`
 
-**合計**: 89件 / ✅ PASS: 72件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
+**合計**: 89件 / ✅ PASS: 73件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -35,7 +35,7 @@
 | [TC-NEO-CHAT-GLOW](results/TC-NEO-CHAT-GLOW.md) | チャット #glow | ⚠ CONDITIONAL | 2026-05-19 | `acaef5d` |
 | [TC-NEO-CHAT-NEST](results/TC-NEO-CHAT-NEST.md) | チャット ネスト複合 | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-CHAT-PLAYER-HEAD](results/TC-NEO-CHAT-PLAYER-HEAD.md) | チャット プレイヤーヘッド | ⚠ CONDITIONAL | 2026-05-19 | `e8c0e51` |
-| [TC-NEO-CHAT-SIZE](results/TC-NEO-CHAT-SIZE.md) | チャット #size（リグレッション） | ❌ FAIL | 2026-05-19 | `65c495c` |
+| [TC-NEO-CHAT-SIZE](results/TC-NEO-CHAT-SIZE.md) | チャット #size（リグレッション） | ✅ PASS | 2026-05-19 | `52e7bc3` |
 | [TC-NEO-ENTITY-01](results/TC-NEO-ENTITY-01.md) | エンティティ名前タグ | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-ENTITY-DECORATION](results/TC-NEO-ENTITY-DECORATION.md) | エンティティ名タグ #underline | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-ESCAPE](results/TC-NEO-ENTITY-ESCAPE.md) | エンティティ名タグ エスケープ | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -152,12 +152,4 @@ Done ボタンのクリックでエディタが閉じること（save() メソ�
 ### ✅ TC-NEO-TOOLTIP-01 — アイテム名表示（ホットバー GUI）
 ![TC-NEO-TOOLTIP-01](screenshots/TC-NEO-TOOLTIP-01.png)
 > NeoForge 版で `#bold[NeoGem]` がホットバーのアイテム名として太字で表示されている。custom_name コンポーネントで名前を付けたダイヤモンドをホットバーで選択すると、"NeoGen" が太字テキストとして画面中央下部に表示されている。
-
----
-
-## FAIL 未解決
-
-### TC-NEO-CHAT-SIZE
-
-1.21.1 で MixinChatComponent が toComponent() を先に呼ぶためスケール情報が失われる。Forge 版と同一の既知バグ。
 
