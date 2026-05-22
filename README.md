@@ -1,19 +1,24 @@
 # Emoji & Deco
 
-**Minecraft のチャット・看板・本・名前タグをリッチテキストで彩る Forge MOD**
+**チャット・看板・エンティティ名タグ・本など、あらゆる場所のテキストをリッチテキストで装飾する Minecraft Mod**
 
-> Minecraft 1.20.1 / Forge 47.4.10
+[![Modrinth](https://img.shields.io/modrinth/v/Ukxc5O8g?label=Modrinth&logo=modrinth)](https://modrinth.com/mod/emoji-deco)
+[![CurseForge](https://img.shields.io/curseforge/v/1527446?label=CurseForge&logo=curseforge)](https://www.curseforge.com/minecraft/mc-mods/emoji-deco)
+[![GitHub Release](https://img.shields.io/github/v/release/uqlism/Emoji_Deco?label=GitHub)](https://github.com/uqlism/Emoji_Deco/releases)
 
-[ここにゲーム内でデコレーションされたチャット・看板・落書きブロックが並んだスクリーンショットを挿入]
+**Minecraft 1.21.1 / Forge 52.1.0 · NeoForge 21.1.x**
 
 ---
 
 ## ✨ できること
 
-`#bold[太字]`、`#color.red[赤い文字]`、`:heart:` — 専用の記法を使うだけで、
+`#bold[太字]`、`#color.red[赤い文字]`、`:heart:` など専用の記法を入力するだけで、
 チャットや看板などあらゆる場所のテキストを自由に装飾できます。
 
-[ここに各種デコレーションの適用例を並べたスクリーンショットを挿入]
+- `#` から始まる**デコレーター**でスタイル・色・サイズを変更
+- `:` で囲む**ショートコード**で絵文字やアイテムアイコンを挿入
+- チャット・看板・エンティティ名タグ・本・タイトル・ホットバー・ツールチップなど幅広く対応
+- `#` や `:` 入力時に**オートコンプリート**が表示される
 
 ---
 
@@ -29,32 +34,33 @@
 | `#italic[テキスト]` | *斜体* |
 | `#underline[テキスト]` | 下線 |
 | `#strike[テキスト]` | 取り消し線 |
-| `#glow[テキスト]` | 周囲の明るさに関わらず常に明るく光る |
+| `#glow[テキスト]` | 周囲の明るさに関わらず常に明るく光る（3Dワールド描画のみ） |
+| `#rainbow[テキスト]` | 時間とともに色が変化するレインボーアニメーション |
 
 ### 色
 
-`#color.色名[テキスト]` または `#color.#RRGGBB[テキスト]` で任意の色を指定できます。
+`#color.色名[テキスト]` または `#color.#RRGGBB[テキスト]` で色を指定します。
 
 ```
 #color.red[赤い文字]
 #color.#00ffcc[カスタムカラー]
+#bold[#color.gold[ゴールドの太字]]
 ```
 
 使える色名: `aqua` `black` `blue` `dark_aqua` `dark_blue` `dark_gray` `dark_green`
 `dark_purple` `dark_red` `gold` `gray` `green` `light_purple` `red` `white` `yellow`
 
-[ここに色見本が看板やチャットに表示されているスクリーンショットを挿入]
-
 ### サイズ変更
 
-`#size.倍率[テキスト]` で文字を拡大・縮小できます（看板・落書きブロックで有効）。
+`#size.倍率[テキスト]` で文字を拡大・縮小できます。
 
 ```
 #size.2[2倍の大きさ]
 #size.0.5[半分の大きさ]
 ```
 
-[ここにサイズ違いのテキストが看板に書かれているスクリーンショットを挿入]
+> **注意**: サイズ変更はホットバー・看板・落書きブロック・エンティティ名タグなどで有効です。
+> チャットとホバーツールチップでは現在無効です。
 
 ### デコレーターのネスト
 
@@ -62,53 +68,60 @@
 
 ```
 #bold[#color.gold[ゴールドの太字]]
-#size.2[#glow[大きく光る文字]]
+#size.2[#rainbow[大きくレインボー]]
 ```
 
 ---
 
 ## 😊 ショートコード記法
 
-`:ショートコード名:` の形で絵文字や特殊グリフを挿入できます。
+`:ショートコード名:` の形で絵文字やアイコンを挿入できます。
 
-| 記法 | 表示 |
-|---|---|
-| `:heart:` | ❤（赤いハート） |
-| `:mc.block/stone:` | 石ブロックのアイコン |
-| `:mc.block/grass_block:` | 草ブロックのアイコン |
+### 絵文字
 
-[ここにショートコードがチャットや看板に表示されているスクリーンショットを挿入]
+emoji_deco_starter リソースパックを有効にすると、1800 種類以上の Twemoji 絵文字が使えます。
 
-### プレイヤー頭アイコン
+```
+:heart:
+:smile:
+:thumbsup:
+:fire:
+```
 
-`:player.プレイヤー名:` でオンライン中のプレイヤーの頭アイコンを表示できます。
+`#` または `:` を入力するとオートコンプリートで候補が表示されます。
+
+### アイテム・ブロックアイコン
+
+```
+:item.diamond:
+:item.diamond_sword:
+:block.stone:
+:block.grass_block:
+```
+
+### プレイヤーヘッドアイコン
 
 ```
 :player.Steve:
+:player.プレイヤー名:
 ```
 
-[ここにプレイヤー頭アイコンが表示されたチャットのスクリーンショットを挿入]
-
-### オンラインプレイヤー一覧
-
-`:players:` でワールドにいる全プレイヤーの名前一覧を表示できます。
+> スキンテクスチャの取得にはネット接続が必要です。
 
 ---
 
 ## ⌨️ オートコンプリート
 
-`#` や `:` を入力すると候補が自動表示されます。
+チャット・看板・本の編集中に `#` や `:` を入力すると候補が自動表示されます。
 
 - **↑ / ↓** で候補を選択
 - **Tab** で確定
 
-[ここにオートコンプリートのドロップダウンが表示されているスクリーンショットを挿入]
-
 引数ありのデコレーター・ショートコードも、`.` の後に候補が表示されます。
 
 ```
-#color.   ←  この状態で色名の候補が出る
-:player.  ←  オンラインプレイヤー名の候補が出る
+#color.   →  色名の候補が出る
+:player.  →  オンラインプレイヤー名の候補が出る
 ```
 
 ---
@@ -127,47 +140,63 @@
 
 ---
 
-## 🖊️ 落書きブロック
+## 🖊️ 落書きブロック (Graffiti)
 
-**落書きインク**アイテムを使うと、壁・床・天井に落書きブロックを設置できます。
+**落書きインク**アイテムで壁・床・天井に落書きブロックを設置できます。
 右クリックで編集画面が開き、最大10行のリッチテキストを書き込めます。
-サイズ変更やグロー効果も完全に反映されます。
-
-[ここに落書きブロックが壁に設置されてテキストが表示されているスクリーンショットを挿入]
-
-[ここに落書き編集画面のスクリーンショットを挿入]
+サイズ変更・グロー効果・レインボーアニメーションが完全に反映されます。
 
 - 耐久値 8（修繕・耐久力エンチャント対応）
-- 破壊時にインクを拭き取るような音がします
 - 創造モードでは耐久値を消費しません
 
 ---
 
 ## 📍 対応箇所
 
-| 場所 | 対応 |
-|---|---|
-| チャット | ✅ |
-| 看板 | ✅ |
-| アイテム名（ホットバー表示） | ✅ |
-| エンティティ名タグ | ✅ |
-| 本・羊皮紙 | ✅ |
-| タイトル・サブタイトル・アクションバー | ✅ |
-| 落書きブロック | ✅ |
+| 場所 | ✅ | #size | #glow |
+|---|---|---|---|
+| チャット | ✅ | ❌ | ⚠️ 限定的 |
+| 看板 | ✅ | ✅ | ✅ |
+| エンティティ名タグ | ✅ | ✅ | ✅ |
+| 本・羊皮紙 | ✅ | ❌ | ❌ |
+| タイトル・アクションバー | ✅ | ✅ | ❌ |
+| ホットバー・ツールチップ | ✅ | ✅ | ❌ |
+| 落書きブロック | ✅ | ✅ | ✅ |
+
+---
+
+## 📦 インストール
+
+### Forge (1.21.1)
+
+1. [Forge 52.x](https://files.minecraftforge.net/) をインストール
+2. `emoji_deco-forge-1.21.1-x.x.x.jar` を `.minecraft/mods/` に配置
+3. Minecraft を起動
+
+### NeoForge (1.21.1)
+
+1. [NeoForge 21.1.x](https://neoforged.net/) をインストール
+2. `emoji_deco-neoforge-1.21.1-x.x.x.jar` を `.minecraft/mods/` に配置
+3. Minecraft を起動
+
+### 絵文字ショートコードを使う場合
+
+初回起動後、リソースパック画面で **emoji_deco_starter** を有効にしてください。
+1800 種類以上の Twemoji 絵文字ショートコード（`:smile:` `:heart:` など）が使えるようになります。
 
 ---
 
 ## ⚙️ 設定
 
-設定ファイル（`config/emoji_deco-common.toml`）で各場所の機能を個別に ON/OFF できます。
+`config/emoji_deco-common.toml` で各場所の機能を個別に ON/OFF できます。
 
 | キー | 説明 | デフォルト |
 |---|---|---|
 | `enableChat` | チャット | `true` |
 | `enableSigns` | 看板 | `true` |
-| `enableItemNames` | アイテム名 | `true` |
+| `enableItemNames` | アイテム名（ホットバー・ツールチップ） | `true` |
 | `enableEntityNames` | エンティティ名タグ | `true` |
-| `enableBooks` | 本 | `true` |
+| `enableBooks` | 本・羊皮紙 | `true` |
 | `enableGui` | タイトル・アクションバー | `true` |
 
 ---
@@ -181,19 +210,29 @@
 
 ---
 
-## 📦 インストール
+## ⚠️ 既知の制限・互換性
 
-1. [Forge 1.20.1](https://files.minecraftforge.net/) をインストール
-2. `.minecraft/mods/` フォルダに MOD の `.jar` ファイルを置く
-3. Minecraft を起動
+- **Supplementaries 道標 (Sign Post)**: ショートコード・デコレーターが適用されません（次バージョンで対応予定）
+- **チャット × #size**: チャットでのサイズ変更は現在未対応です
+- **#glow**: 看板・エンティティ名タグ・落書きブロックなど3D描画コンテキストのみ有効です
 
 ---
 
 ## 🛠️ ビルド方法
 
 ```bash
-git clone <このリポジトリ>
-cd RunicInk
-./gradlew build
-# 生成物: build/libs/emoji_deco-<version>.jar
+git clone https://github.com/uqlism/Emoji_Deco.git
+cd Emoji_Deco
+
+# Forge
+./gradlew :forge:jarJar
+
+# NeoForge
+./gradlew :neoforge:build
 ```
+
+---
+
+## 📄 ライセンス
+
+MIT License — 詳細は [LICENSE](LICENSE) を参照してください。
