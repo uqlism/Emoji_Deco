@@ -34,7 +34,13 @@ jobs:
 
       - name: Extract version
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="$GITHUB_REF_NAME"
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       # ── Forge ────────────────────────────────────────────────────────────
       - name: Publish Forge
