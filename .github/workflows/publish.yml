@@ -28,7 +28,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build
-        run: ./gradlew :forge:build :neoforge:build
+        run: ./gradlew :forge:jarJar :neoforge:build
 
       - name: Extract version
         id: ver
