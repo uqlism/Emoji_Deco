@@ -25,6 +25,12 @@
 
 ## 将来課題
 
+- [ ] **Supplementaries 道標（Sign Post）対応** — 次バージョンで対応予定
+  `TextHolder.getRenderMessages()` が `Font.split(Component, int)` を呼ぶためすべてのフックをバイパス。
+  修正方針: `Font.split(Component, int)` に `@Inject HEAD` を追加し、Component の場合は
+  `ComponentConverter.toLines()` 経由でスケール・グロー含む変換を行う。
+  同じパスを持つ他 mod への副作用を要検証。
+
 - [ ] **`sequence` コマンドの `_focus()` がゲームメニューを開く副作用**
   フォーカス奪取時に Minecraft のマウスキャプチャが解除される問題。
   `sendcmd` 個別コマンドで回避可能だが根本修正が必要。
