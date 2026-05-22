@@ -42,6 +42,13 @@ minecraft {
             args '--nogui'
         }
 
+        // QA 専用: メインメニューをスキップして直接 "QA Test World" を開く
+        qaClient {
+            parent runs.client
+            args '--quickPlaySingleplayer', 'QA Test World',
+                 '--width', '1280', '--height', '720'
+        }
+
         gameTestServer {
             property 'forge.enabledGameTestNamespaces', mod_id
         }

@@ -365,6 +365,25 @@ def cmd_sequence(args):
         elif cmd_name == "click":
             x, y = map(int, cmd_args_str.split(","))
             pyautogui.click(x, y)
+        elif cmd_name == "rclick":
+            # 右クリック (SendInput でボタンのみ、座標移動なし)
+            # ゲームがマウスキャプチャ中でも動作する
+            class _MI(ctypes.Structure):
+                _fields_ = [('dx',ctypes.c_long),('dy',ctypes.c_long),('mouseData',ctypes.c_ulong),
+                             ('dwFlags',ctypes.c_ulong),('time',ctypes.c_ulong),
+                             ('dwExtraInfo',ctypes.POINTER(ctypes.c_ulong))]
+            class _INP(ctypes.Structure):
+                class _U(ctypes.Union):
+                    _fields_ = [('mi',_MI)]
+                _anonymous_=('_u',)
+                _fields_=[('type',ctypes.c_ulong),('_u',_U)]
+            def _sr(flags):
+                i=_INP(); i.type=0; i.mi.dx=i.mi.dy=i.mi.mouseData=i.mi.time=0
+                i.mi.dwFlags=flags; i.mi.dwExtraInfo=None
+                ctypes.windll.user32.SendInput(1,ctypes.byref(i),ctypes.sizeof(_INP))
+            _sr(0x0008)  # MOUSEEVENTF_RIGHTDOWN
+            time.sleep(0.08)
+            _sr(0x0010)  # MOUSEEVENTF_RIGHTUP
         elif cmd_name == "wclick":
             x, y = map(int, cmd_args_str.split(","))
             WM_LBUTTONDOWN, WM_LBUTTONUP = 0x0201, 0x0202
