@@ -118,9 +118,9 @@ public class ClientEvents {
         if (!holdingInk) return;
 
         Vec3 camPos = event.getCamera().getPosition();
+        // renderLevel の poseStack は単位行列。GPU の ModelViewMat ユニフォームがカメラ変換を担う。
+        // ここで ModelViewMatrix を掛けると二重適用になり座標が壊れる。
         PoseStack poseStack = new PoseStack();
-        // NeoForge: getPoseStack() returns PoseStack; use getModelViewMatrix() for the Matrix4f
-        poseStack.last().pose().mul(event.getModelViewMatrix());
         VertexConsumer consumer = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
 
         BlockPos center = mc.player.blockPosition();
