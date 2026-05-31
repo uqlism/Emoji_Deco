@@ -235,13 +235,36 @@ def cmd_double_click(args):
     _restore_focus_state(*prev)
 
 
+def _send_mouse_button(flags):
+    """SendInput でマウスボタンイベントを送信する（フォーカス不要、マウスキャプチャ対応）。"""
+    class _MI(ctypes.Structure):
+        _fields_ = [('dx', ctypes.c_long), ('dy', ctypes.c_long),
+                    ('mouseData', ctypes.c_ulong), ('dwFlags', ctypes.c_ulong),
+                    ('time', ctypes.c_ulong), ('dwExtraInfo', ctypes.POINTER(ctypes.c_ulong))]
+    class _INP(ctypes.Structure):
+        class _U(ctypes.Union):
+            _fields_ = [('mi', _MI)]
+        _anonymous_ = ('_u',)
+        _fields_ = [('type', ctypes.c_ulong), ('_u', _U)]
+    i = _INP()
+    i.type = 0
+    i.mi.dx = i.mi.dy = i.mi.mouseData = i.mi.time = 0
+    i.mi.dwFlags = flags
+    i.mi.dwExtraInfo = None
+    ctypes.windll.user32.SendInput(1, ctypes.byref(i), ctypes.sizeof(_INP))
+
+
 def cmd_right_click(args):
-    prev = _save_focus_state()
+    """右クリック: SendInput を使用。Minecraft のマウスキャプチャ中でも確実に動作する。
+    in-game での使用（クロスヘア対象にブロック配置・インタラクション）に適している。
+    """
     _focus()
-    pyautogui.moveTo(args.x, args.y, duration=0.1)
-    time.sleep(0.05)
-    pyautogui.rightClick(args.x, args.y)
-    _restore_focus_state(*prev)
+    time.sleep(0.15)
+    _send_mouse_button(0x0008)  # MOUSEEVENTF_RIGHTDOWN
+    time.sleep(0.1)
+    _send_mouse_button(0x0010)  # MOUSEEVENTF_RIGHTUP
+    time.sleep(0.2)
+    print("Right-click sent (SendInput)")
 
 
 def cmd_move(args):
@@ -366,24 +389,10 @@ def cmd_sequence(args):
             x, y = map(int, cmd_args_str.split(","))
             pyautogui.click(x, y)
         elif cmd_name == "rclick":
-            # 右クリック (SendInput でボタンのみ、座標移動なし)
-            # ゲームがマウスキャプチャ中でも動作する
-            class _MI(ctypes.Structure):
-                _fields_ = [('dx',ctypes.c_long),('dy',ctypes.c_long),('mouseData',ctypes.c_ulong),
-                             ('dwFlags',ctypes.c_ulong),('time',ctypes.c_ulong),
-                             ('dwExtraInfo',ctypes.POINTER(ctypes.c_ulong))]
-            class _INP(ctypes.Structure):
-                class _U(ctypes.Union):
-                    _fields_ = [('mi',_MI)]
-                _anonymous_=('_u',)
-                _fields_=[('type',ctypes.c_ulong),('_u',_U)]
-            def _sr(flags):
-                i=_INP(); i.type=0; i.mi.dx=i.mi.dy=i.mi.mouseData=i.mi.time=0
-                i.mi.dwFlags=flags; i.mi.dwExtraInfo=None
-                ctypes.windll.user32.SendInput(1,ctypes.byref(i),ctypes.sizeof(_INP))
-            _sr(0x0008)  # MOUSEEVENTF_RIGHTDOWN
-            time.sleep(0.08)
-            _sr(0x0010)  # MOUSEEVENTF_RIGHTUP
+            # in-game 右クリック: SendInput でボタンのみ送信（クロスヘア対象に作用）
+            _send_mouse_button(0x0008)  # MOUSEEVENTF_RIGHTDOWN
+            time.sleep(0.1)
+            _send_mouse_button(0x0010)  # MOUSEEVENTF_RIGHTUP
         elif cmd_name == "wclick":
             x, y = map(int, cmd_args_str.split(","))
             WM_LBUTTONDOWN, WM_LBUTTONUP = 0x0201, 0x0202
@@ -437,9 +446,18 @@ def cmd_sequence(args):
             time.sleep(0.05)
             _chat_send(_hwnd_c, cmd_args_str)
             time.sleep(0.3)
-        elif cmd_name == "rclick":
+        elif cmd_name == "wrclick":
+            # GUI 右クリック: PostMessage WM_RBUTTONDOWN/UP（座標指定、フォーカス不要）
             x, y = map(int, cmd_args_str.split(","))
-            pyautogui.rightClick(x, y)
+            WM_RBUTTONDOWN, WM_RBUTTONUP = 0x0204, 0x0205
+            win = find_mc_window()
+            hwnd = win._hWnd
+            pt = ctypes.wintypes.POINT(x, y)
+            ctypes.windll.user32.ScreenToClient(hwnd, ctypes.byref(pt))
+            lp = (pt.y << 16) | (pt.x & 0xFFFF)
+            ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONDOWN, 0x0002, lp)
+            time.sleep(0.05)
+            ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONUP, 0, lp)
         # ── CurseForge 操作 ────────────────────────────────────────────────
         elif cmd_name == "cfscreenshot":
             mock = type("A", (), {"output": cmd_args_str})()
@@ -662,6 +680,26 @@ def cmd_wclick(args):
     print(f"WM_LBUTTON sent: screen({args.x},{args.y}) → client({pt.x},{pt.y}) hwnd={hwnd}")
 
 
+def cmd_wrclick(args):
+    """PostMessage WM_RBUTTONDOWN/UP — フォーカスなしで GUI 右クリック。
+    座標はスクリーン絶対座標で指定、内部でクライアント座標に変換する。
+    GUI ボタン右クリックに使用。in-game インタラクションには right-click を使うこと。
+    """
+    WM_RBUTTONDOWN = 0x0204
+    WM_RBUTTONUP   = 0x0205
+    MK_RBUTTON     = 0x0002
+
+    hwnd = _hwnd()
+    pt = ctypes.wintypes.POINT(args.x, args.y)
+    ctypes.windll.user32.ScreenToClient(hwnd, ctypes.byref(pt))
+    lparam = (pt.y << 16) | (pt.x & 0xFFFF)
+
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, lparam)
+    time.sleep(0.05)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONUP, 0, lparam)
+    print(f"WM_RBUTTON sent: screen({args.x},{args.y}) → client({pt.x},{pt.y}) hwnd={hwnd}")
+
+
 def cmd_wkey(args):
     """PostMessage WM_KEYDOWN/UP — フォーカスなしでキーを送る。"""
     WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
@@ -790,12 +828,14 @@ def main():
     for name, help_ in [
         ("click", "Click at coordinates"),
         ("double-click", "Double-click at coordinates"),
-        ("right-click", "Right-click at coordinates"),
         ("move", "Move mouse to coordinates"),
     ]:
         p = sub.add_parser(name, help=help_)
         p.add_argument("x", type=int)
         p.add_argument("y", type=int)
+
+    sub.add_parser("right-click",
+        help="In-game right-click via SendInput (works with mouse capture; no coordinates needed)")
 
     p = sub.add_parser("type", help="Paste text via clipboard")
     p.add_argument("text")
@@ -824,6 +864,10 @@ def main():
     p.add_argument("seconds", type=float)
 
     p = sub.add_parser("wclick", help="PostMessage WM_LBUTTONDOWN (no focus needed, client coords auto-converted)")
+    p.add_argument("x", type=int)
+    p.add_argument("y", type=int)
+
+    p = sub.add_parser("wrclick", help="PostMessage WM_RBUTTONDOWN (no focus, GUI right-click with coordinates)")
     p.add_argument("x", type=int)
     p.add_argument("y", type=int)
 
@@ -887,6 +931,7 @@ def main():
         "copy-world":    cmd_copy_world,
         "sleep":         cmd_sleep,
         "wclick":        cmd_wclick,
+        "wrclick":       cmd_wrclick,
         "wkey":          cmd_wkey,
         "wtype":         cmd_wtype,
         "wscreenshot":   cmd_wscreenshot,

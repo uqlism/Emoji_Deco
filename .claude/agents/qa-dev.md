@@ -40,7 +40,19 @@ python scripts/qa/mc_qa.py sequence "cmd:/tp @p 0 64 -1 0 0" "sleep:0.5" "wscree
 # ── フォーカス奪取が必要（in-game キーバインド） ─────────────────────
 python scripts/qa/mc_qa.py key <key> [<key> ...]         # ホットバー切替など
 python scripts/qa/mc_qa.py click <x> <y>                 # クリック
+python scripts/qa/mc_qa.py right-click                   # in-game 右クリック（SendInput、座標不要、クロスヘア対象に作用）
+python scripts/qa/mc_qa.py wrclick <x> <y>               # GUI 右クリック（PostMessage、座標指定）
 ```
+
+**右クリックの使い分け**:
+- `right-click` → in-game（ブロック設置・インタラクション）。座標不要、クロスヘアが向いている対象に作用する
+- `wrclick x y` → GUI 内（メニューボタン等）。スクリーン絶対座標で右クリック
+- sequence 内では `rclick`（SendInput、座標不要）または `wrclick:x,y`（PostMessage）を使う
+
+**ブロック設置のベストプラクティス**:
+- 絶対座標より `~` 相対座標を使う方が簡単: `/setblock ~ ~ ~-1 minecraft:stone`
+- プレイヤー配置も相対的に: `/tp @p ~ ~ ~ 0 0` でピッチをリセット
+- in-game でブロックを置く場合: sendcmd でアイテム取得 → right-click でクロスヘア対象に配置
 
 スクリーンショットの保存先: `run/qa-screenshots/` (gitignore 済み)
 
