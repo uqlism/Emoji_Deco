@@ -5,7 +5,7 @@
     { "tag": "c:dyes" }
   ],
   "result": {
-    "item": "emoji_deco:graffiti_ink",
+    "id": "emoji_deco:graffiti_ink",
     "count": 1
   }
 }
