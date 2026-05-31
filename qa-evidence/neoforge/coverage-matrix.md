@@ -1,6 +1,6 @@
 # RunicInk QA カバレッジマトリックス
 
-> 自動生成: 2026-05-31 11:34 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 12:05 — `python scripts/qa/gen_report.py`
 
 **凡例**: ✅ PASS / ❌ FAIL / ⚠ CONDITIONAL / — 非対応（設計上） / ? 未確認
 

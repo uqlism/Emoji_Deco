@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-31 11:34 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 12:05 — `python scripts/qa/gen_report.py`
 
-**合計**: 93件 / ✅ PASS: 75件 / ❌ FAIL: 2件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
+**合計**: 93件 / ✅ PASS: 76件 / ❌ FAIL: 1件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -48,7 +48,7 @@
 | [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
 | [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ✅ PASS | 2026-05-31 | `8d805b9` |
-| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `8d805b9` |
+| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ✅ PASS | 2026-05-31 | `1fe0015` |
 | [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ✅ PASS | 2026-05-31 | `7061b8b` |
 | [TC-NEO-GRAFFITI-BOLD_ITALIC](results/TC-NEO-GRAFFITI-BOLD_ITALIC.md) | Graffiti ブロック #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-COLOR](results/TC-NEO-GRAFFITI-COLOR.md) | Graffiti ブロック #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -132,9 +132,9 @@ GraffitiRenderer が NeoForge 版でも正常に動作している。
 ![TC-NEO-GRAFFITI-02](screenshots/TC-NEO-GRAFFITI-02.png)
 > right-click コマンド（lParam=0 修正後、WM_RBUTTONDOWN/UP）が NeoForge 1.21.1 で正常に機能し、GraffitiEditScreen が開いた。入力枠（黒いパネル内）に "Hello World" を入力したところ、テキストがシャープに表示され枠外へのはみ出しなし。カーソル（_）も正しい位置に描画。入力枠の境界線は 1px のシャープな線として描画されており、ぼやけ・にじみなし。PASS 条件をすべて満たす。
 
-### ❌ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
+### ✅ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
 ![TC-NEO-GRAFFITI-03](screenshots/TC-NEO-GRAFFITI-03.png)
-> graffiti_ink を手に持ったまま face=wall,facing=south の graffiti ブロック（石の南面に設置）を正面（南）から見たとき、黄色い選択ハイライト枠がブロックの実際の視覚面（石の z=1.0 側に貼り付いた薄いスラブ）と大きくずれて空中に浮いて表示された。ハイライト枠は "NeoGraffiti" ラベルの周囲（ブロック本体より明らかに上かつ遠い位置）に表示されており、FAIL 条件「ハイライトがブロックの反対側に表示される」に該当する。VoxelShape の定義（SHAPE_WALL_S = Block.box(0,0,0,16,16,0.5)）自体はコード上正しいが、実際のレンダリングでは選択判定と描画が一致していない。
+> face=wall,facing=north の graffiti ブロック (0,-62,-4) をプレイヤーが北側 (z=-1) から南向きに見た状態で、黄色い選択ハイライト枠がブロックのプレイヤー向き面（北面 Z=0~0.5）に正確に重なって表示された。ハイライトは石支持ブロック (z=-5) より手前（プレイヤー側）に位置しており、壁側（南面）ではなくプレイヤー向き面にあることを確認。SHAPE_WALL_N = Block.box(0,0,0,16,16,0.5) の修正が正しく反映されている。
 
 ### ✅ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
 ![TC-NEO-GRAFFITI-04](screenshots/TC-NEO-GRAFFITI-04.png)
@@ -160,8 +160,4 @@ GraffitiRenderer が NeoForge 版でも正常に動作している。
 
 Supplementaries Sign Post にショートコード・デコレータを入力しても変換されず、リテラル文字列がそのまま表示される。
 MixinSignText は vanilla SignText.getRenderMessages() をフックするが、Supplementaries の Sign Post は独自 BlockEntityRenderer を持つため未対応。
-
-### TC-NEO-GRAFFITI-03
-
-graffiti_ink を手に持ったまま face=wall,facing=south の graffiti ブロック（石の南面に設置）を正面（南）から見たとき、黄色い選択ハイライト枠がブロックの実際の視覚面（石の z=1.0 側に貼り付いた薄いスラブ）と大きくずれて空中に浮いて表示された。ハイライト枠は "NeoGraffiti" ラベルの周囲（ブロック本体より明らかに上かつ遠い位置）に表示されており、FAIL 条件「ハイライトがブロックの反対側に表示される」に該当する。VoxelShape の定義（SHAPE_WALL_S = Block.box(0,0,0,16,16,0.5)）自体はコード上正しいが、実際のレンダリングでは選択判定と描画が一致していない。
 
