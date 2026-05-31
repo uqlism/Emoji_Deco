@@ -1,13 +1,13 @@
 {
   "criteria": {
-    "has_paper": {
+    "has_glass_bottle": {
       "trigger": "minecraft:inventory_changed",
       "conditions": {
-        "items": [{ "items": ["minecraft:paper"] }]
+        "items": [{ "items": ["minecraft:glass_bottle"] }]
       }
     }
   },
-  "requirements": [["has_paper"]],
+  "requirements": [["has_glass_bottle"]],
   "rewards": {
     "recipes": ["emoji_deco:graffiti_ink"]
   }
