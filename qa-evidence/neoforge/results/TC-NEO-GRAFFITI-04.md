@@ -3,8 +3,8 @@ test: TC-NEO-GRAFFITI-04
 feature: Graffiti Ink クラフトレシピ（NeoForge）
 result: FAIL
 date: 2026-05-31
-commit: 85906d1
+commit: 8e18fcf
 screenshot: screenshots/TC-NEO-GRAFFITI-04.png
 ---
 
-サバイバルモードのレシピブックで "graffiti" と検索しても結果が 0 件。graffiti_ink.json のレシピは材料に `minecraft:potion{nbt}` + `forge:dyes` タグを使用しているが、NeoForge 1.21.1 では `forge:dyes` タグが存在せず（`c:dyes` が正しい）、またポーションの NBT マッチングも 1.21.1 の Components 形式に未対応のため、レシピが認識されない。材料を揃えてもクラフトできないことを確認。
+修正後（c:dyes + paper）も依然 FAIL。`/recipe give @p emoji_deco:graffiti_ink` で "Unknown recipe: emoji_deco:graffiti_ink" エラーが表示される。jar には `data/emoji_deco/recipes/graffiti_ink.json` が含まれているが、MC 1.21.1 では レシピパスが `data/<namespace>/recipe/`（単数形）に変更されており、`recipes/`（複数形）は認識されない。また result フィールドも `{"id": "...", "count": N}` 形式が必要だが `{"item": "...", "count": N}` のままである。2つの互換性問題が残存している。

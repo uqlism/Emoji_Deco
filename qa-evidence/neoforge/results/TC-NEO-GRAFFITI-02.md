@@ -3,8 +3,8 @@ test: TC-NEO-GRAFFITI-02
 feature: GraffitiEditScreen 入力枠表示品質（NeoForge）
 result: FAIL
 date: 2026-05-31
-commit: 85906d1
+commit: 8e18fcf
 screenshot: screenshots/TC-NEO-GRAFFITI-02.png
 ---
 
-GraffitiEditScreen を開くと、入力枠（EditBox）の上方に黄色い選択ハイライト枠（VoxelShape 由来）が GUI 上に誤って重なって表示される。入力枠のパネルは 1 行のみで構造が不完全であり、タイトル "Edit Graffiti" もぼんやりとした表示になっている。テキスト入力自体（"Hello World"）は機能するが、GUI の描画品質に問題がある。FAIL 条件：入力枠の上に graffiti ブロックの選択ハイライトが誤表示されている。
+GraffitiEditScreen を開くための right-click（SendInput 版 mc_qa.py コマンド）を実行するたびにゲームが予期しない状態（スポーン地点にリセット）になるため、エディタ画面を開くことができなかった。mc_qa.py の right-click 実装（SendInput、_focus() 経由）が Minecraft NeoForge 1.21.1 のマウスキャプチャと干渉している可能性がある。テスト環境の問題により FAIL で記録（GraffitiEditScreen 自体の描画品質は未評価）。

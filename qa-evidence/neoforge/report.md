@@ -1,6 +1,6 @@
 # QA Report
 
-> 自動生成: 2026-05-31 10:01 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 10:51 — `python scripts/qa/gen_report.py`
 
 **合計**: 93件 / ✅ PASS: 73件 / ❌ FAIL: 4件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
@@ -47,9 +47,9 @@
 | [TC-NEO-ENTITY-SIZE](results/TC-NEO-ENTITY-SIZE.md) | エンティティ名タグ #size | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
-| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
-| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
-| [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
+| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
+| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
+| [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
 | [TC-NEO-GRAFFITI-BOLD_ITALIC](results/TC-NEO-GRAFFITI-BOLD_ITALIC.md) | Graffiti ブロック #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-COLOR](results/TC-NEO-GRAFFITI-COLOR.md) | Graffiti ブロック #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-DECORATION](results/TC-NEO-GRAFFITI-DECORATION.md) | Graffiti ブロック #underline #strike | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -130,15 +130,15 @@ GraffitiRenderer が NeoForge 版でも正常に動作している。
 
 ### ❌ TC-NEO-GRAFFITI-02 — GraffitiEditScreen 入力枠表示品質（NeoForge）
 ![TC-NEO-GRAFFITI-02](screenshots/TC-NEO-GRAFFITI-02.png)
-> GraffitiEditScreen を開くと、入力枠（EditBox）の上方に黄色い選択ハイライト枠（VoxelShape 由来）が GUI 上に誤って重なって表示される。入力枠のパネルは 1 行のみで構造が不完全であり、タイトル "Edit Graffiti" もぼんやりとした表示になっている。テキスト入力自体（"Hello World"）は機能するが、GUI の描画品質に問題がある。FAIL 条件：入力枠の上に graffiti ブロックの選択ハイライトが誤表示されている。
+> GraffitiEditScreen を開くための right-click（SendInput 版 mc_qa.py コマンド）を実行するたびにゲームが予期しない状態（スポーン地点にリセット）になるため、エディタ画面を開くことができなかった。mc_qa.py の right-click 実装（SendInput、_focus() 経由）が Minecraft NeoForge 1.21.1 のマウスキャプチャと干渉している可能性がある。テスト環境の問題により FAIL で記録（GraffitiEditScreen 自体の描画品質は未評価）。
 
 ### ❌ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
 ![TC-NEO-GRAFFITI-03](screenshots/TC-NEO-GRAFFITI-03.png)
-> graffiti ブロックを正面から見ると、黄色い選択ハイライト枠がブロック本体の上半分より上に空中に浮いた状態で表示される。ブロックの描画面（薄いスラブ状の南面）とハイライト位置が大きくずれており、VoxelShape の定義が実際の描画形状と一致していないことが確認された。FAIL 条件：ハイライトがブロックの描画面（0.5px 厚の薄い面）ではなく、ブロック上部の空中に表示されている。
+> SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正（f005a08）は適用済み。setblock で east/west 向き以外（north 向き）のブロックを設置して確認したところ、ブロックの薄い面は正常にレンダリングされた。ただし graffiti_ink を持った状態でのハイライト確認は、right-click コマンドによる予期しないゲーム状態リセットにより実施できず、PASS/FAIL を確定できない。テスト環境の問題により結論不確定のまま FAIL で記録。east/west 向きの VoxelShape 修正自体はコード変更（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）として正しい内容であることをコード審査で確認。
 
 ### ❌ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
 ![TC-NEO-GRAFFITI-04](screenshots/TC-NEO-GRAFFITI-04.png)
-> サバイバルモードのレシピブックで "graffiti" と検索しても結果が 0 件。graffiti_ink.json のレシピは材料に `minecraft:potion{nbt}` + `forge:dyes` タグを使用しているが、NeoForge 1.21.1 では `forge:dyes` タグが存在せず（`c:dyes` が正しい）、またポーションの NBT マッチングも 1.21.1 の Components 形式に未対応のため、レシピが認識されない。材料を揃えてもクラフトできないことを確認。
+> 修正後（c:dyes + paper）も依然 FAIL。`/recipe give @p emoji_deco:graffiti_ink` で "Unknown recipe: emoji_deco:graffiti_ink" エラーが表示される。jar には `data/emoji_deco/recipes/graffiti_ink.json` が含まれているが、MC 1.21.1 では レシピパスが `data/<namespace>/recipe/`（単数形）に変更されており、`recipes/`（複数形）は認識されない。また result フィールドも `{"id": "...", "count": N}` 形式が必要だが `{"item": "...", "count": N}` のままである。2つの互換性問題が残存している。
 
 ### ✅ TC-NEO-GUI-01 — アクションバー GUI テキスト
 ![TC-NEO-GUI-01](screenshots/TC-NEO-GUI-01.png)
@@ -163,13 +163,13 @@ MixinSignText は vanilla SignText.getRenderMessages() をフックするが、S
 
 ### TC-NEO-GRAFFITI-02
 
-GraffitiEditScreen を開くと、入力枠（EditBox）の上方に黄色い選択ハイライト枠（VoxelShape 由来）が GUI 上に誤って重なって表示される。入力枠のパネルは 1 行のみで構造が不完全であり、タイトル "Edit Graffiti" もぼんやりとした表示になっている。テキスト入力自体（"Hello World"）は機能するが、GUI の描画品質に問題がある。FAIL 条件：入力枠の上に graffiti ブロックの選択ハイライトが誤表示されている。
+GraffitiEditScreen を開くための right-click（SendInput 版 mc_qa.py コマンド）を実行するたびにゲームが予期しない状態（スポーン地点にリセット）になるため、エディタ画面を開くことができなかった。mc_qa.py の right-click 実装（SendInput、_focus() 経由）が Minecraft NeoForge 1.21.1 のマウスキャプチャと干渉している可能性がある。テスト環境の問題により FAIL で記録（GraffitiEditScreen 自体の描画品質は未評価）。
 
 ### TC-NEO-GRAFFITI-03
 
-graffiti ブロックを正面から見ると、黄色い選択ハイライト枠がブロック本体の上半分より上に空中に浮いた状態で表示される。ブロックの描画面（薄いスラブ状の南面）とハイライト位置が大きくずれており、VoxelShape の定義が実際の描画形状と一致していないことが確認された。FAIL 条件：ハイライトがブロックの描画面（0.5px 厚の薄い面）ではなく、ブロック上部の空中に表示されている。
+SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正（f005a08）は適用済み。setblock で east/west 向き以外（north 向き）のブロックを設置して確認したところ、ブロックの薄い面は正常にレンダリングされた。ただし graffiti_ink を持った状態でのハイライト確認は、right-click コマンドによる予期しないゲーム状態リセットにより実施できず、PASS/FAIL を確定できない。テスト環境の問題により結論不確定のまま FAIL で記録。east/west 向きの VoxelShape 修正自体はコード変更（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）として正しい内容であることをコード審査で確認。
 
 ### TC-NEO-GRAFFITI-04
 
-サバイバルモードのレシピブックで "graffiti" と検索しても結果が 0 件。graffiti_ink.json のレシピは材料に `minecraft:potion{nbt}` + `forge:dyes` タグを使用しているが、NeoForge 1.21.1 では `forge:dyes` タグが存在せず（`c:dyes` が正しい）、またポーションの NBT マッチングも 1.21.1 の Components 形式に未対応のため、レシピが認識されない。材料を揃えてもクラフトできないことを確認。
+修正後（c:dyes + paper）も依然 FAIL。`/recipe give @p emoji_deco:graffiti_ink` で "Unknown recipe: emoji_deco:graffiti_ink" エラーが表示される。jar には `data/emoji_deco/recipes/graffiti_ink.json` が含まれているが、MC 1.21.1 では レシピパスが `data/<namespace>/recipe/`（単数形）に変更されており、`recipes/`（複数形）は認識されない。また result フィールドも `{"id": "...", "count": N}` 形式が必要だが `{"item": "...", "count": N}` のままである。2つの互換性問題が残存している。
 
