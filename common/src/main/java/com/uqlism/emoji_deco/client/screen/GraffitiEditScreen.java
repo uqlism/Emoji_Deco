@@ -73,11 +73,10 @@ public class GraffitiEditScreen extends Screen {
 
         for (int i = 0; i < activeLines; i++) {
             final int idx = i;
-            int boxY = linesTop + i * LINE_HEIGHT + 2;
-            EditBox box = new EditBox(font, left, boxY, BOX_WIDTH, font.lineHeight,
+            int boxY = linesTop + i * LINE_HEIGHT + 1;
+            EditBox box = new EditBox(font, left, boxY, BOX_WIDTH, LINE_HEIGHT - 2,
                     Component.literal("line " + (i + 1)));
             box.setMaxLength(GraffitiBlockEntity.MAX_LINE_LENGTH);
-            box.setBordered(false);
             box.setValue(lineValues[i]);
             box.setResponder(text -> {
                 if (boxes[idx] != null && boxes[idx].isFocused()) {
@@ -305,5 +304,5 @@ public class GraffitiEditScreen extends Screen {
     }
 
     @Override
-    public boolean isPauseScreen() { return false; }
+    public boolean isPauseScreen() { return true; }
 }
