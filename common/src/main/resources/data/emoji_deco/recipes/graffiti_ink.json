@@ -1,13 +1,8 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {
-      "item": "minecraft:potion",
-      "nbt": "{Potion:\"minecraft:water\"}"
-    },
-    {
-      "tag": "forge:dyes"
-    }
+    { "item": "minecraft:paper" },
+    { "tag": "c:dyes" }
   ],
   "result": {
     "item": "emoji_deco:graffiti_ink",
