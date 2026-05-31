@@ -255,16 +255,25 @@ def _send_mouse_button(flags):
 
 
 def cmd_right_click(args):
-    """右クリック: SendInput を使用。Minecraft のマウスキャプチャ中でも確実に動作する。
-    in-game での使用（クロスヘア対象にブロック配置・インタラクション）に適している。
+    """in-game 右クリック: PostMessage WM_RBUTTONDOWN/UP をウィンドウ中央に送信。
+    フォーカス不要。クロスヘアが向いているブロックに作用する。
     """
-    _focus()
-    time.sleep(0.15)
-    _send_mouse_button(0x0008)  # MOUSEEVENTF_RIGHTDOWN
+    WM_RBUTTONDOWN = 0x0204
+    WM_RBUTTONUP   = 0x0205
+    MK_RBUTTON     = 0x0002
+
+    hwnd = _hwnd()
+    rect = ctypes.wintypes.RECT()
+    ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(rect))
+    cx = (rect.right - rect.left) // 2
+    cy = (rect.bottom - rect.top) // 2
+    lparam = (cy << 16) | (cx & 0xFFFF)
+
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, lparam)
     time.sleep(0.1)
-    _send_mouse_button(0x0010)  # MOUSEEVENTF_RIGHTUP
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONUP, 0, lparam)
     time.sleep(0.2)
-    print("Right-click sent (SendInput)")
+    print(f"Right-click sent (PostMessage WM_RBUTTON center={cx},{cy})")
 
 
 def cmd_move(args):
