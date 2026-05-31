@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-31 11:16 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 11:34 — `python scripts/qa/gen_report.py`
 
-**合計**: 93件 / ✅ PASS: 74件 / ❌ FAIL: 3件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
+**合計**: 93件 / ✅ PASS: 75件 / ❌ FAIL: 2件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -47,8 +47,8 @@
 | [TC-NEO-ENTITY-SIZE](results/TC-NEO-ENTITY-SIZE.md) | エンティティ名タグ #size | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
-| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `7061b8b` |
-| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `7061b8b` |
+| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ✅ PASS | 2026-05-31 | `8d805b9` |
+| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `8d805b9` |
 | [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ✅ PASS | 2026-05-31 | `7061b8b` |
 | [TC-NEO-GRAFFITI-BOLD_ITALIC](results/TC-NEO-GRAFFITI-BOLD_ITALIC.md) | Graffiti ブロック #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-COLOR](results/TC-NEO-GRAFFITI-COLOR.md) | Graffiti ブロック #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -128,13 +128,13 @@
 
 GraffitiRenderer が NeoForge 版でも正常に動作している。
 
-### ❌ TC-NEO-GRAFFITI-02 — GraffitiEditScreen 入力枠表示品質（NeoForge）
+### ✅ TC-NEO-GRAFFITI-02 — GraffitiEditScreen 入力枠表示品質（NeoForge）
 ![TC-NEO-GRAFFITI-02](screenshots/TC-NEO-GRAFFITI-02.png)
-> PostMessage ベース right-click（WM_RBUTTONDOWN/UP、commit 7061b8b の新実装）も SendInput ベース実装と同様に、NeoForge 1.21.1 のインゲーム Raw Input マウスキャプチャと干渉する。right-click コマンド実行のたびにプレイヤー視点が地面方向にリセットされ、GraffitiEditScreen を開けない。PostMessage による WM_RBUTTONDOWN はゲームのマウスキャプチャ中にインタラクションではなく視点変動として処理される。エディタ画面自体の描画品質は未評価のため FAIL で継続記録。setblock + data merge で graffiti ブロックに直接テキストを設定すると block data は正常に保存されるが（/data get で確認済み）、テキストの描画が視認できなかった（レンダラーは正常登録されていることをコード審査で確認）。
+> right-click コマンド（lParam=0 修正後、WM_RBUTTONDOWN/UP）が NeoForge 1.21.1 で正常に機能し、GraffitiEditScreen が開いた。入力枠（黒いパネル内）に "Hello World" を入力したところ、テキストがシャープに表示され枠外へのはみ出しなし。カーソル（_）も正しい位置に描画。入力枠の境界線は 1px のシャープな線として描画されており、ぼやけ・にじみなし。PASS 条件をすべて満たす。
 
 ### ❌ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
 ![TC-NEO-GRAFFITI-03](screenshots/TC-NEO-GRAFFITI-03.png)
-> SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正は適用済み。PostMessage ベース right-click（commit 7061b8b の新実装）も依然として NeoForge 1.21.1 のマウスキャプチャと干渉し、graffiti_ink を手に持った状態でのハイライト選択確認が実施できない。right-click コマンドは視点リセットを引き起こすだけでインタラクションとして機能しない。VoxelShape 修正（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）はコード審査で正しい内容を確認済み。テスト環境の right-click 問題が解決するまで FAIL を継続。
+> graffiti_ink を手に持ったまま face=wall,facing=south の graffiti ブロック（石の南面に設置）を正面（南）から見たとき、黄色い選択ハイライト枠がブロックの実際の視覚面（石の z=1.0 側に貼り付いた薄いスラブ）と大きくずれて空中に浮いて表示された。ハイライト枠は "NeoGraffiti" ラベルの周囲（ブロック本体より明らかに上かつ遠い位置）に表示されており、FAIL 条件「ハイライトがブロックの反対側に表示される」に該当する。VoxelShape の定義（SHAPE_WALL_S = Block.box(0,0,0,16,16,0.5)）自体はコード上正しいが、実際のレンダリングでは選択判定と描画が一致していない。
 
 ### ✅ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
 ![TC-NEO-GRAFFITI-04](screenshots/TC-NEO-GRAFFITI-04.png)
@@ -161,11 +161,7 @@ GraffitiRenderer が NeoForge 版でも正常に動作している。
 Supplementaries Sign Post にショートコード・デコレータを入力しても変換されず、リテラル文字列がそのまま表示される。
 MixinSignText は vanilla SignText.getRenderMessages() をフックするが、Supplementaries の Sign Post は独自 BlockEntityRenderer を持つため未対応。
 
-### TC-NEO-GRAFFITI-02
-
-PostMessage ベース right-click（WM_RBUTTONDOWN/UP、commit 7061b8b の新実装）も SendInput ベース実装と同様に、NeoForge 1.21.1 のインゲーム Raw Input マウスキャプチャと干渉する。right-click コマンド実行のたびにプレイヤー視点が地面方向にリセットされ、GraffitiEditScreen を開けない。PostMessage による WM_RBUTTONDOWN はゲームのマウスキャプチャ中にインタラクションではなく視点変動として処理される。エディタ画面自体の描画品質は未評価のため FAIL で継続記録。setblock + data merge で graffiti ブロックに直接テキストを設定すると block data は正常に保存されるが（/data get で確認済み）、テキストの描画が視認できなかった（レンダラーは正常登録されていることをコード審査で確認）。
-
 ### TC-NEO-GRAFFITI-03
 
-SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正は適用済み。PostMessage ベース right-click（commit 7061b8b の新実装）も依然として NeoForge 1.21.1 のマウスキャプチャと干渉し、graffiti_ink を手に持った状態でのハイライト選択確認が実施できない。right-click コマンドは視点リセットを引き起こすだけでインタラクションとして機能しない。VoxelShape 修正（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）はコード審査で正しい内容を確認済み。テスト環境の right-click 問題が解決するまで FAIL を継続。
+graffiti_ink を手に持ったまま face=wall,facing=south の graffiti ブロック（石の南面に設置）を正面（南）から見たとき、黄色い選択ハイライト枠がブロックの実際の視覚面（石の z=1.0 側に貼り付いた薄いスラブ）と大きくずれて空中に浮いて表示された。ハイライト枠は "NeoGraffiti" ラベルの周囲（ブロック本体より明らかに上かつ遠い位置）に表示されており、FAIL 条件「ハイライトがブロックの反対側に表示される」に該当する。VoxelShape の定義（SHAPE_WALL_S = Block.box(0,0,0,16,16,0.5)）自体はコード上正しいが、実際のレンダリングでは選択判定と描画が一致していない。
 
