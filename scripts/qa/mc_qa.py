@@ -255,7 +255,8 @@ def _send_mouse_button(flags):
 
 
 def cmd_right_click(args):
-    """in-game 右クリック: PostMessage WM_RBUTTONDOWN/UP をウィンドウ中央に送信。
+    """in-game 右クリック: PostMessage WM_RBUTTONDOWN/UP を lParam=0 で送信。
+    lParam に座標を入れると GLFW がカーソル位置変化と誤認して視点が動くため 0 を使用。
     フォーカス不要。クロスヘアが向いているブロックに作用する。
     """
     WM_RBUTTONDOWN = 0x0204
@@ -263,17 +264,11 @@ def cmd_right_click(args):
     MK_RBUTTON     = 0x0002
 
     hwnd = _hwnd()
-    rect = ctypes.wintypes.RECT()
-    ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(rect))
-    cx = (rect.right - rect.left) // 2
-    cy = (rect.bottom - rect.top) // 2
-    lparam = (cy << 16) | (cx & 0xFFFF)
-
-    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, lparam)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONDOWN, MK_RBUTTON, 0)
     time.sleep(0.1)
-    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONUP, 0, lparam)
+    ctypes.windll.user32.PostMessageW(hwnd, WM_RBUTTONUP, 0, 0)
     time.sleep(0.2)
-    print(f"Right-click sent (PostMessage WM_RBUTTON center={cx},{cy})")
+    print("Right-click sent (PostMessage WM_RBUTTON lParam=0)")
 
 
 def cmd_move(args):
