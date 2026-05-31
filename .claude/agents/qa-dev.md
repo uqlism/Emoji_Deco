@@ -266,23 +266,99 @@ python scripts/qa/mc_qa.py sendcmd "/setblock 0 64 2 minecraft:oak_wall_sign[fac
 **PASS 条件**: 座標 (0, 64, 2) の看板に金色の "Hello Sign" が表示されている。
 `#color.gold[Hello Sign]` という文字列がそのまま表示されていれば FAIL。
 
-### TC-GRAFFITI-01: 落書きブロック
+### TC-GRAFFITI-01: 落書きブロックの描画
 ```
-python scripts/qa/mc_qa.py key t
-python scripts/qa/mc_qa.py type "/give @p emoji_deco:graffiti_ink"
-python scripts/qa/mc_qa.py key return
+python scripts/qa/mc_qa.py sendcmd "/give @p emoji_deco:graffiti_ink"
 python scripts/qa/mc_qa.py sleep 0.5
 ```
-ブロックを設置し右クリックでエディタを開く。
+プレイヤー前方の壁面（北向き）にブロックを設置し右クリックでエディタを開く。
 エディタでリッチテキストを入力して Done:
 ```
-python scripts/qa/mc_qa.py type "#rainbow[Graffiti]"
 python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-01-editor.png
-# Done ボタンクリック
+# エディタに "#rainbow[Graffiti]" と入力
 python scripts/qa/mc_qa.py sleep 1
 python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-01-result.png
 ```
 **PASS 条件**: ブロック面にレインボーカラーの "Graffiti" が描画されている。
+
+### TC-GRAFFITI-02: GraffitiEditScreen の入力枠表示品質
+目的: 入力枠（EditBox）がぼやけずシャープに表示されるかを確認する。
+
+```
+python scripts/qa/mc_qa.py sendcmd "/give @p emoji_deco:graffiti_ink"
+python scripts/qa/mc_qa.py sleep 0.5
+```
+前方の壁にブロックを設置し右クリックでエディタを開く。
+```
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-02-gui-empty.png
+```
+Read ツールで画像を確認する:
+- 入力枠（黒いパネル内の行）がくっきりしているか
+- テキストカーソルが正しい位置に表示されているか
+- 行の境界線が 1px のシャープな線として描画されているか
+- パネルの枠線がぼやけていないか
+
+テキストを 1 行入力してからスクリーンショット:
+```
+# wtype でテキストを入力
+python scripts/qa/mc_qa.py wtype "Hello World"
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-02-gui-text.png
+```
+**PASS 条件**: 入力テキストと入力枠がシャープ（くっきり）に表示されている。ぼやけ・にじみ・枠外へのはみ出しがない。
+**FAIL 条件**: テキストが入力枠からはみ出す、枠がぼやける、カーソルが枠外に描画される。
+
+### TC-GRAFFITI-03: GraffitiBlock の選択ハイライト位置
+目的: 設置した graffiti ブロックを手に graffiti ink を持ちながら見たとき、
+      黄色い選択ハイライト枠がブロックの視覚面（グラフィティが描かれた薄い面）に
+      正確に重なっているかを確認する。
+
+北向き壁面にブロックを設置し、エディタで "Test" と入力して Done。
+その後ブロックから少し離れて graffiti ink を手に持ったまま正面から見る:
+```
+python scripts/qa/mc_qa.py sendcmd "/tp @p ~ ~ ~2 180 0"
+python scripts/qa/mc_qa.py sleep 0.5
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-03-north.png
+```
+Read ツールで画像を確認:
+- 黄色いハイライト枠がブロックの「テキスト面（0.5px 厚の薄い面）」を囲んでいるか
+- ハイライトがブロックの反対側（背面）や隣接する別の面を囲んでいないか
+
+視点を上下左右に少し動かして追加スクリーンショット:
+```
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-03-north-angle.png
+```
+**PASS 条件**: ハイライトがグラフィティ面（0.5px 厚の薄いスラブ状）に一致し、視点を変えてもハイライト位置がグネグネ動かない。
+**FAIL 条件**: ハイライトがブロックの反対側に表示される、視点回転でハイライト位置が非線形に動く（グネグネする）。
+
+### TC-GRAFFITI-04: Graffiti Ink クラフトレシピ
+目的: graffiti_ink がクラフトできることを確認する。
+
+```
+python scripts/qa/mc_qa.py sendcmd "/gamemode creative"
+```
+インベントリを開いてレシピブックを確認する:
+```
+python scripts/qa/mc_qa.py key e
+python scripts/qa/mc_qa.py sleep 0.5
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-04-inventory.png
+```
+レシピブック（本のアイコン）をクリックして "graffiti" で検索し、
+`emoji_deco:graffiti_ink` のレシピが表示されるか確認:
+```
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-04-recipe.png
+```
+さらに、Survival モードに切り替えて実際にクラフトできるか確認:
+```
+python scripts/qa/mc_qa.py sendcmd "/gamemode survival"
+python scripts/qa/mc_qa.py sendcmd "/give @p minecraft:paper 64"
+python scripts/qa/mc_qa.py sendcmd "/give @p minecraft:red_dye 16"
+python scripts/qa/mc_qa.py sleep 0.5
+python scripts/qa/mc_qa.py key e
+python scripts/qa/mc_qa.py sleep 0.5
+python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-04-craft.png
+```
+**PASS 条件**: レシピブックに graffiti_ink のレシピが表示され、材料から実際にクラフトできる。
+**FAIL 条件**: レシピが表示されない、または材料を揃えてもクラフトできない。
 
 ---
 
@@ -298,4 +374,7 @@ python scripts/qa/mc_qa.py wscreenshot run/qa-screenshots/tc-graffiti-01-result.
 | `render/sequence/` | TC-CHAT-04（size）、TC-GRAFFITI-01 |
 | `client/SuggestionState` | TC-AUTOCOMPLETE-01, TC-AUTOCOMPLETE-02 |
 | `mixin/` | 変更された Mixin に応じて関連テスト |
-| `block/`, `item/GraffitiInkItem` | TC-GRAFFITI-01 |
+| `block/`, `item/GraffitiInkItem` | TC-GRAFFITI-01〜04 |
+| `block/GraffitiBlock.java`（VoxelShape） | TC-GRAFFITI-03 |
+| `client/screen/GraffitiEditScreen.java` | TC-GRAFFITI-02 |
+| `data/recipes/graffiti_ink.json` | TC-GRAFFITI-04 |
