@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-19 17:01 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 10:01 — `python scripts/qa/gen_report.py`
 
-**合計**: 89件 / ✅ PASS: 73件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
+**合計**: 93件 / ✅ PASS: 73件 / ❌ FAIL: 4件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -36,6 +36,8 @@
 | [TC-NEO-CHAT-NEST](results/TC-NEO-CHAT-NEST.md) | チャット ネスト複合 | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-CHAT-PLAYER-HEAD](results/TC-NEO-CHAT-PLAYER-HEAD.md) | チャット プレイヤーヘッド | ⚠ CONDITIONAL | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-CHAT-SIZE](results/TC-NEO-CHAT-SIZE.md) | チャット #size（リグレッション） | ✅ PASS | 2026-05-19 | `52e7bc3` |
+| [TC-NEO-COMPAT-SUPP-PEDESTAL](results/TC-NEO-COMPAT-SUPP-PEDESTAL.md) | Supplementaries 台座（Pedestal）互換性 | ✅ PASS | 2026-05-23 | `45df155` |
+| [TC-NEO-COMPAT-SUPP-SIGNPOST](results/TC-NEO-COMPAT-SUPP-SIGNPOST.md) | Supplementaries 道標（Sign Post）互換性 | ❌ FAIL | 2026-05-23 | `45df155` |
 | [TC-NEO-ENTITY-01](results/TC-NEO-ENTITY-01.md) | エンティティ名前タグ | ✅ PASS | 2026-05-19 | `11e4c0e` |
 | [TC-NEO-ENTITY-DECORATION](results/TC-NEO-ENTITY-DECORATION.md) | エンティティ名タグ #underline | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-ESCAPE](results/TC-NEO-ENTITY-ESCAPE.md) | エンティティ名タグ エスケープ | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -45,7 +47,9 @@
 | [TC-NEO-ENTITY-SIZE](results/TC-NEO-ENTITY-SIZE.md) | エンティティ名タグ #size | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
-| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen（エディタ）表示確認（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
+| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
+| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
+| [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ❌ FAIL | 2026-05-31 | `85906d1` |
 | [TC-NEO-GRAFFITI-BOLD_ITALIC](results/TC-NEO-GRAFFITI-BOLD_ITALIC.md) | Graffiti ブロック #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-COLOR](results/TC-NEO-GRAFFITI-COLOR.md) | Graffiti ブロック #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-DECORATION](results/TC-NEO-GRAFFITI-DECORATION.md) | Graffiti ブロック #underline #strike | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -124,22 +128,17 @@
 
 GraffitiRenderer が NeoForge 版でも正常に動作している。
 
-### ✅ TC-NEO-GRAFFITI-02 — GraffitiEditScreen（エディタ）表示確認（NeoForge）
+### ❌ TC-NEO-GRAFFITI-02 — GraffitiEditScreen 入力枠表示品質（NeoForge）
 ![TC-NEO-GRAFFITI-02](screenshots/TC-NEO-GRAFFITI-02.png)
-> NeoForge 版で既存 Graffiti ブロックを右クリックすると GraffitiEditScreen が正常に開く。
-エディタには "Edit Graffiti" タイトル、テキストフィールド（#rainbow[NeoGraffiti] / #bold[:item.diamond:]）、
-"Align: Left" と "Done" ボタンが表示されている。
+> GraffitiEditScreen を開くと、入力枠（EditBox）の上方に黄色い選択ハイライト枠（VoxelShape 由来）が GUI 上に誤って重なって表示される。入力枠のパネルは 1 行のみで構造が不完全であり、タイトル "Edit Graffiti" もぼんやりとした表示になっている。テキスト入力自体（"Hello World"）は機能するが、GUI の描画品質に問題がある。FAIL 条件：入力枠の上に graffiti ブロックの選択ハイライトが誤表示されている。
 
-GraffitiUpdatePacket の NeoForge 実装コードレビュー:
-- neoforge/src/main/java/com/uqlism/emoji_deco/EmojiDeco.java:
-  RegisterPayloadHandlersEvent で GraffitiUpdatePacket.TYPE が playToServer として登録されている
-- neoforge/src/main/java/com/uqlism/emoji_deco/platform/NeoForgeNetworkBridge.java:
-  PacketDistributor.sendToServer(packet) でクライアント→サーバー送信が実装されている
-- neoforge/src/main/java/com/uqlism/emoji_deco/network/GraffitiUpdatePacket.java:
-  handle() でプレイヤー距離チェック（64ブロック以内）と applyUpdate() 呼び出しが実装されている
+### ❌ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
+![TC-NEO-GRAFFITI-03](screenshots/TC-NEO-GRAFFITI-03.png)
+> graffiti ブロックを正面から見ると、黄色い選択ハイライト枠がブロック本体の上半分より上に空中に浮いた状態で表示される。ブロックの描画面（薄いスラブ状の南面）とハイライト位置が大きくずれており、VoxelShape の定義が実際の描画形状と一致していないことが確認された。FAIL 条件：ハイライトがブロックの描画面（0.5px 厚の薄い面）ではなく、ブロック上部の空中に表示されている。
 
-Done ボタンのクリックでエディタが閉じること（save() メソッド呼び出し）も確認済み。
-クラッシュは発生していない。
+### ❌ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
+![TC-NEO-GRAFFITI-04](screenshots/TC-NEO-GRAFFITI-04.png)
+> サバイバルモードのレシピブックで "graffiti" と検索しても結果が 0 件。graffiti_ink.json のレシピは材料に `minecraft:potion{nbt}` + `forge:dyes` タグを使用しているが、NeoForge 1.21.1 では `forge:dyes` タグが存在せず（`c:dyes` が正しい）、またポーションの NBT マッチングも 1.21.1 の Components 形式に未対応のため、レシピが認識されない。材料を揃えてもクラフトできないことを確認。
 
 ### ✅ TC-NEO-GUI-01 — アクションバー GUI テキスト
 ![TC-NEO-GUI-01](screenshots/TC-NEO-GUI-01.png)
@@ -152,4 +151,25 @@ Done ボタンのクリックでエディタが閉じること（save() メソ�
 ### ✅ TC-NEO-TOOLTIP-01 — アイテム名表示（ホットバー GUI）
 ![TC-NEO-TOOLTIP-01](screenshots/TC-NEO-TOOLTIP-01.png)
 > NeoForge 版で `#bold[NeoGem]` がホットバーのアイテム名として太字で表示されている。custom_name コンポーネントで名前を付けたダイヤモンドをホットバーで選択すると、"NeoGen" が太字テキストとして画面中央下部に表示されている。
+
+---
+
+## FAIL 未解決
+
+### TC-NEO-COMPAT-SUPP-SIGNPOST
+
+Supplementaries Sign Post にショートコード・デコレータを入力しても変換されず、リテラル文字列がそのまま表示される。
+MixinSignText は vanilla SignText.getRenderMessages() をフックするが、Supplementaries の Sign Post は独自 BlockEntityRenderer を持つため未対応。
+
+### TC-NEO-GRAFFITI-02
+
+GraffitiEditScreen を開くと、入力枠（EditBox）の上方に黄色い選択ハイライト枠（VoxelShape 由来）が GUI 上に誤って重なって表示される。入力枠のパネルは 1 行のみで構造が不完全であり、タイトル "Edit Graffiti" もぼんやりとした表示になっている。テキスト入力自体（"Hello World"）は機能するが、GUI の描画品質に問題がある。FAIL 条件：入力枠の上に graffiti ブロックの選択ハイライトが誤表示されている。
+
+### TC-NEO-GRAFFITI-03
+
+graffiti ブロックを正面から見ると、黄色い選択ハイライト枠がブロック本体の上半分より上に空中に浮いた状態で表示される。ブロックの描画面（薄いスラブ状の南面）とハイライト位置が大きくずれており、VoxelShape の定義が実際の描画形状と一致していないことが確認された。FAIL 条件：ハイライトがブロックの描画面（0.5px 厚の薄い面）ではなく、ブロック上部の空中に表示されている。
+
+### TC-NEO-GRAFFITI-04
+
+サバイバルモードのレシピブックで "graffiti" と検索しても結果が 0 件。graffiti_ink.json のレシピは材料に `minecraft:potion{nbt}` + `forge:dyes` タグを使用しているが、NeoForge 1.21.1 では `forge:dyes` タグが存在せず（`c:dyes` が正しい）、またポーションの NBT マッチングも 1.21.1 の Components 形式に未対応のため、レシピが認識されない。材料を揃えてもクラフトできないことを確認。
 
