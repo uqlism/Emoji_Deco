@@ -1,8 +1,8 @@
 # QA Report
 
-> 自動生成: 2026-05-31 10:51 — `python scripts/qa/gen_report.py`
+> 自動生成: 2026-05-31 11:16 — `python scripts/qa/gen_report.py`
 
-**合計**: 93件 / ✅ PASS: 73件 / ❌ FAIL: 4件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
+**合計**: 93件 / ✅ PASS: 74件 / ❌ FAIL: 3件 / ⚠ CONDITIONAL: 10件 / — N/A: 6件
 
 | テストケース | 機能 | 結果 | 最終実行 | コミット |
 |---|---|---|---|---|
@@ -47,9 +47,9 @@
 | [TC-NEO-ENTITY-SIZE](results/TC-NEO-ENTITY-SIZE.md) | エンティティ名タグ #size | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-ENTITY-SPRITE](results/TC-NEO-ENTITY-SPRITE.md) | エンティティ名タグ スプライト | ✅ PASS | 2026-05-19 | `acaef5d` |
 | [TC-NEO-GRAFFITI-01](results/TC-NEO-GRAFFITI-01.md) | Graffiti ブロック リッチテキスト描画（NeoForge） | ✅ PASS | 2026-05-19 | `6cb9c51` |
-| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
-| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
-| [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ❌ FAIL | 2026-05-31 | `8e18fcf` |
+| [TC-NEO-GRAFFITI-02](results/TC-NEO-GRAFFITI-02.md) | GraffitiEditScreen 入力枠表示品質（NeoForge） | ❌ FAIL | 2026-05-31 | `7061b8b` |
+| [TC-NEO-GRAFFITI-03](results/TC-NEO-GRAFFITI-03.md) | GraffitiBlock 選択ハイライト位置（NeoForge） | ❌ FAIL | 2026-05-31 | `7061b8b` |
+| [TC-NEO-GRAFFITI-04](results/TC-NEO-GRAFFITI-04.md) | Graffiti Ink クラフトレシピ（NeoForge） | ✅ PASS | 2026-05-31 | `7061b8b` |
 | [TC-NEO-GRAFFITI-BOLD_ITALIC](results/TC-NEO-GRAFFITI-BOLD_ITALIC.md) | Graffiti ブロック #bold #italic | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-COLOR](results/TC-NEO-GRAFFITI-COLOR.md) | Graffiti ブロック #color | ✅ PASS | 2026-05-19 | `e8c0e51` |
 | [TC-NEO-GRAFFITI-DECORATION](results/TC-NEO-GRAFFITI-DECORATION.md) | Graffiti ブロック #underline #strike | ✅ PASS | 2026-05-19 | `e8c0e51` |
@@ -130,15 +130,15 @@ GraffitiRenderer が NeoForge 版でも正常に動作している。
 
 ### ❌ TC-NEO-GRAFFITI-02 — GraffitiEditScreen 入力枠表示品質（NeoForge）
 ![TC-NEO-GRAFFITI-02](screenshots/TC-NEO-GRAFFITI-02.png)
-> GraffitiEditScreen を開くための right-click（SendInput 版 mc_qa.py コマンド）を実行するたびにゲームが予期しない状態（スポーン地点にリセット）になるため、エディタ画面を開くことができなかった。mc_qa.py の right-click 実装（SendInput、_focus() 経由）が Minecraft NeoForge 1.21.1 のマウスキャプチャと干渉している可能性がある。テスト環境の問題により FAIL で記録（GraffitiEditScreen 自体の描画品質は未評価）。
+> PostMessage ベース right-click（WM_RBUTTONDOWN/UP、commit 7061b8b の新実装）も SendInput ベース実装と同様に、NeoForge 1.21.1 のインゲーム Raw Input マウスキャプチャと干渉する。right-click コマンド実行のたびにプレイヤー視点が地面方向にリセットされ、GraffitiEditScreen を開けない。PostMessage による WM_RBUTTONDOWN はゲームのマウスキャプチャ中にインタラクションではなく視点変動として処理される。エディタ画面自体の描画品質は未評価のため FAIL で継続記録。setblock + data merge で graffiti ブロックに直接テキストを設定すると block data は正常に保存されるが（/data get で確認済み）、テキストの描画が視認できなかった（レンダラーは正常登録されていることをコード審査で確認）。
 
 ### ❌ TC-NEO-GRAFFITI-03 — GraffitiBlock 選択ハイライト位置（NeoForge）
 ![TC-NEO-GRAFFITI-03](screenshots/TC-NEO-GRAFFITI-03.png)
-> SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正（f005a08）は適用済み。setblock で east/west 向き以外（north 向き）のブロックを設置して確認したところ、ブロックの薄い面は正常にレンダリングされた。ただし graffiti_ink を持った状態でのハイライト確認は、right-click コマンドによる予期しないゲーム状態リセットにより実施できず、PASS/FAIL を確定できない。テスト環境の問題により結論不確定のまま FAIL で記録。east/west 向きの VoxelShape 修正自体はコード変更（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）として正しい内容であることをコード審査で確認。
+> SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正は適用済み。PostMessage ベース right-click（commit 7061b8b の新実装）も依然として NeoForge 1.21.1 のマウスキャプチャと干渉し、graffiti_ink を手に持った状態でのハイライト選択確認が実施できない。right-click コマンドは視点リセットを引き起こすだけでインタラクションとして機能しない。VoxelShape 修正（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）はコード審査で正しい内容を確認済み。テスト環境の right-click 問題が解決するまで FAIL を継続。
 
-### ❌ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
+### ✅ TC-NEO-GRAFFITI-04 — Graffiti Ink クラフトレシピ（NeoForge）
 ![TC-NEO-GRAFFITI-04](screenshots/TC-NEO-GRAFFITI-04.png)
-> 修正後（c:dyes + paper）も依然 FAIL。`/recipe give @p emoji_deco:graffiti_ink` で "Unknown recipe: emoji_deco:graffiti_ink" エラーが表示される。jar には `data/emoji_deco/recipes/graffiti_ink.json` が含まれているが、MC 1.21.1 では レシピパスが `data/<namespace>/recipe/`（単数形）に変更されており、`recipes/`（複数形）は認識されない。また result フィールドも `{"id": "...", "count": N}` 形式が必要だが `{"item": "...", "count": N}` のままである。2つの互換性問題が残存している。
+> `recipe/` パス修正（`recipes/` → `recipe/`）および result フィールドを `id` 形式に修正後、NeoForge 1.21.1 でレシピが正常に認識される。`/recipe give @p emoji_deco:graffiti_ink` で "Unlocked 1 recipes for Dev" が表示され、サバイバルモードのレシピブックに graffiti_ink のクラフトレシピ（paper + c:dyes の shapeless）が 1 件表示される。クラフトグリッドにレシピが展開されることも確認。
 
 ### ✅ TC-NEO-GUI-01 — アクションバー GUI テキスト
 ![TC-NEO-GUI-01](screenshots/TC-NEO-GUI-01.png)
@@ -163,13 +163,9 @@ MixinSignText は vanilla SignText.getRenderMessages() をフックするが、S
 
 ### TC-NEO-GRAFFITI-02
 
-GraffitiEditScreen を開くための right-click（SendInput 版 mc_qa.py コマンド）を実行するたびにゲームが予期しない状態（スポーン地点にリセット）になるため、エディタ画面を開くことができなかった。mc_qa.py の right-click 実装（SendInput、_focus() 経由）が Minecraft NeoForge 1.21.1 のマウスキャプチャと干渉している可能性がある。テスト環境の問題により FAIL で記録（GraffitiEditScreen 自体の描画品質は未評価）。
+PostMessage ベース right-click（WM_RBUTTONDOWN/UP、commit 7061b8b の新実装）も SendInput ベース実装と同様に、NeoForge 1.21.1 のインゲーム Raw Input マウスキャプチャと干渉する。right-click コマンド実行のたびにプレイヤー視点が地面方向にリセットされ、GraffitiEditScreen を開けない。PostMessage による WM_RBUTTONDOWN はゲームのマウスキャプチャ中にインタラクションではなく視点変動として処理される。エディタ画面自体の描画品質は未評価のため FAIL で継続記録。setblock + data merge で graffiti ブロックに直接テキストを設定すると block data は正常に保存されるが（/data get で確認済み）、テキストの描画が視認できなかった（レンダラーは正常登録されていることをコード審査で確認）。
 
 ### TC-NEO-GRAFFITI-03
 
-SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正（f005a08）は適用済み。setblock で east/west 向き以外（north 向き）のブロックを設置して確認したところ、ブロックの薄い面は正常にレンダリングされた。ただし graffiti_ink を持った状態でのハイライト確認は、right-click コマンドによる予期しないゲーム状態リセットにより実施できず、PASS/FAIL を確定できない。テスト環境の問題により結論不確定のまま FAIL で記録。east/west 向きの VoxelShape 修正自体はコード変更（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）として正しい内容であることをコード審査で確認。
-
-### TC-NEO-GRAFFITI-04
-
-修正後（c:dyes + paper）も依然 FAIL。`/recipe give @p emoji_deco:graffiti_ink` で "Unknown recipe: emoji_deco:graffiti_ink" エラーが表示される。jar には `data/emoji_deco/recipes/graffiti_ink.json` が含まれているが、MC 1.21.1 では レシピパスが `data/<namespace>/recipe/`（単数形）に変更されており、`recipes/`（複数形）は認識されない。また result フィールドも `{"id": "...", "count": N}` 形式が必要だが `{"item": "...", "count": N}` のままである。2つの互換性問題が残存している。
+SHAPE_WALL_E / SHAPE_WALL_W の入れ替え修正は適用済み。PostMessage ベース right-click（commit 7061b8b の新実装）も依然として NeoForge 1.21.1 のマウスキャプチャと干渉し、graffiti_ink を手に持った状態でのハイライト選択確認が実施できない。right-click コマンドは視点リセットを引き起こすだけでインタラクションとして機能しない。VoxelShape 修正（SHAPE_WALL_E: box(15.5,0,0,16,16,16)、SHAPE_WALL_W: box(0,0,0,0.5,16,16)）はコード審査で正しい内容を確認済み。テスト環境の right-click 問題が解決するまで FAIL を継続。
 
