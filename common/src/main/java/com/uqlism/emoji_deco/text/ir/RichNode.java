@@ -182,7 +182,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Scaled s) {
             wrapAffine(font, s.children(), lightMode, inherited, out, seq -> {
                 float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
-                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : 0f;
+                float baseline = font.lineHeight - 2f;
+                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : baseline * (1f - s.scaleY());
                 return new Matrix4f().translate(ox, oy, 0f).scale(s.scaleX(), s.scaleY(), 1f);
             }, false);
         } else if (node instanceof Rotated r) {
@@ -265,7 +266,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         } else if (node instanceof Scaled s) {
             wrapWordsAffine(font, s.children(), lightMode, inherited, out, seq -> {
                 float ox = s.scaleX() < 0 ? font.width(seq) * (-s.scaleX()) : 0f;
-                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : 0f;
+                float baseline = font.lineHeight - 2f;
+                float oy = s.scaleY() < 0 ? font.lineHeight * (-s.scaleY()) : baseline * (1f - s.scaleY());
                 return new Matrix4f().translate(ox, oy, 0f).scale(s.scaleX(), s.scaleY(), 1f);
             }, false);
         } else if (node instanceof Rotated r) {

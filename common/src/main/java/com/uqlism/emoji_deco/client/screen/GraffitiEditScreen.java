@@ -227,31 +227,20 @@ public class GraffitiEditScreen extends Screen {
     // ── rendering ────────────────────────────────────────────────────────────
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // NeoForge の renderMenuBackground() は guiTextured バッチを使うため、
+        // gui バッチ (fill) より後に描画され黒背景パネルの上に重なってしまう。
+        // 代わりに同じ gui バッチを使う fillGradient で暗くする。
+        renderTransparentBackground(graphics);
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFF);
 
-        // Panel
+        // Panel background (no border — EditBox sprite provides its own border)
         graphics.fill(panelLeft, panelTop, panelRight, panelBottom, 0xFF000000);
-        graphics.fill(panelLeft,    panelTop,      panelRight,    panelTop    + 1, 0xFF606060);
-        graphics.fill(panelLeft,    panelBottom-1, panelRight,    panelBottom,     0xFF606060);
-        graphics.fill(panelLeft,    panelTop,      panelLeft  +1, panelBottom,     0xFF606060);
-        graphics.fill(panelRight-1, panelTop,      panelRight,    panelBottom,     0xFF606060);
-
-        // Focused-row highlight
-        for (int i = 0; i < activeLines; i++) {
-            if (boxes[i] != null && boxes[i].isFocused()) {
-                int rowY = linesTop + i * LINE_HEIGHT;
-                graphics.fill(panelLeft + 1, rowY, panelRight - 1, rowY + LINE_HEIGHT, 0x40FFFFFF);
-                break;
-            }
-        }
-
-        // Row separators
-        for (int i = 1; i < activeLines; i++) {
-            int sepY = linesTop + i * LINE_HEIGHT;
-            graphics.fill(panelLeft + 1, sepY, panelRight - 1, sepY + 1, 0xFF222222);
-        }
 
         super.render(graphics, mouseX, mouseY, partialTick);
         renderCompletions(graphics);

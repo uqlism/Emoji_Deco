@@ -130,7 +130,6 @@ public class ClientEvents {
 
         Vec3 camPos = event.getCamera().getPosition();
         PoseStack poseStack = new PoseStack();
-        poseStack.last().pose().mul(event.getPoseStack());
         VertexConsumer consumer = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
 
         BlockPos center = mc.player.blockPosition();
