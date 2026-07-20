@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco;
 
+import com.uqlism.emoji_deco.text.registry.emoji.MisskeyEmojiProvider;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -10,7 +11,16 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = EmojiDeco.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
 
+    public enum TextParseMode { OLD, MFM }
+    public enum EmojiProviderType { RESOURCEPACK, MISSKEY }
+
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+
+    private static final ForgeConfigSpec.EnumValue<TextParseMode> MODE = BUILDER
+            .comment("Which rich text syntax to parse.",
+                     "old = this mod's existing #decorator[...] / :shortcode: syntax.",
+                     "mfm = Misskey-compatible MFM syntax (**bold**, $[fn ...], :emojiCode:, etc).")
+            .defineEnum("mode", TextParseMode.OLD);
 
     private static final ForgeConfigSpec.BooleanValue ENABLE_CHAT = BUILDER
             .comment("Enable rich text formatting in chat messages")
@@ -49,8 +59,24 @@ public class Config {
             .defineListAllowEmpty("additionalAllowedDomains", List.of(),
                     obj -> obj instanceof String s && !s.isBlank());
 
+    private static final ForgeConfigSpec.EnumValue<EmojiProviderType> EMOJI_PROVIDER_TYPE = BUILDER
+            .push("emojiProvider")
+            .comment("Where custom emoji (:name:) images come from.",
+                     "resourcepack = this mod's existing shortcodes/*.json registry.",
+                     "misskey = fetched at runtime from a Misskey server's /api/emojis.")
+            .defineEnum("type", EmojiProviderType.RESOURCEPACK);
+
+    private static final ForgeConfigSpec.ConfigValue<String> EMOJI_PROVIDER_MISSKEY_DOMAIN = BUILDER
+            .comment("Misskey server domain to fetch the emoji list from. Only used when type=misskey.")
+            .define("domain", "misskey.io");
+
+    static {
+        BUILDER.pop();
+    }
+
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
+    public static TextParseMode mode;
     public static boolean enableChat;
     public static boolean enableSigns;
     public static boolean enableItemNames;
@@ -59,9 +85,12 @@ public class Config {
     public static boolean enableGui;
     public static boolean enableUrlFetch;
     public static List<String> additionalAllowedDomains;
+    public static EmojiProviderType emojiProviderType;
+    public static String emojiProviderMisskeyDomain;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
+        mode = MODE.get();
         enableChat = ENABLE_CHAT.get();
         enableSigns = ENABLE_SIGNS.get();
         enableItemNames = ENABLE_ITEM_NAMES.get();
@@ -72,5 +101,10 @@ public class Config {
         additionalAllowedDomains = ADDITIONAL_ALLOWED_DOMAINS.get().stream()
                 .map(s -> (String) s)
                 .toList();
+        emojiProviderType = EMOJI_PROVIDER_TYPE.get();
+        emojiProviderMisskeyDomain = EMOJI_PROVIDER_MISSKEY_DOMAIN.get();
+        if (emojiProviderType == EmojiProviderType.MISSKEY) {
+            MisskeyEmojiProvider.prefetch();
+        }
     }
 }

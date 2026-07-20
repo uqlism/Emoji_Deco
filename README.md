@@ -197,6 +197,42 @@ emoji_deco_starter リソースパックを有効にすると、1800 種類以�
 | `enableEntityNames` | エンティティ名タグ | `true` |
 | `enableBooks` | 本・羊皮紙 | `true` |
 | `enableGui` | タイトル・アクションバー | `true` |
+| `mode` | テキスト装飾記法（`old` / `mfm`。下記参照） | `old` |
+| `emojiProvider.type` | 絵文字の取得元（`resourcepack` / `misskey`。下記参照） | `resourcepack` |
+| `emojiProvider.domain` | `emojiProvider.type = misskey` の時に絵文字を取得する Misskey サーバーのドメイン | `misskey.io` |
+
+---
+
+## 🐦 MFM 記法 (実験的機能)
+
+`mode = "mfm"` に設定すると、既存の `#decorator[...]` / `:shortcode:` 記法の代わりに、
+Misskey が採用している [MFM (Misskey Flavored Markdown)](https://github.com/misskey-dev/mfm.js) 構文でテキストを装飾できます。
+
+```toml
+mode = "mfm"
+```
+
+```
+**太字** *斜体* ~~取り消し線~~
+$[x2 大きい文字] $[rotate.deg=45 回転] $[rainbow 虹色アニメーション]
+:emoji_name: [リンク文字列](https://example.com)
+```
+
+`mode` は `old` と `mfm` のどちらか一方のみで、混在はできません。MFM構文の一部（`$[tada]` `$[sparkle]` `$[blur]` `$[ruby]` 数式ブロックなど）は現時点では未対応で、装飾なしのプレーンテキストとして表示されます（クラッシュはしません）。対応状況は [Issues](https://github.com/uqlism/Emoji_Deco/issues) を参照してください。
+
+### Misskeyサーバーから絵文字を自動取得する
+
+`emojiProvider.type = "misskey"` に設定すると、指定した Misskey サーバーのカスタム絵文字（`/api/emojis`）を自動的に取得し、`:shortcode:` として使えるようになります。リソースパックへの絵文字追加が不要になります。
+
+```toml
+[emojiProvider]
+    type = "misskey"
+    domain = "misskey.io"
+```
+
+- 絵文字画像はチャット等で実際に使われたタイミングで遅延取得されます（起動時に全件ダウンロードはしません）。
+- `enableUrlFetch = false` の場合は絵文字取得を含め一切の外部通信を行いません。
+- `type = "resourcepack"`（デフォルト）に戻すと、従来通りリソースパックのショートコードのみが使われます。
 
 ---
 
@@ -235,3 +271,5 @@ cd Emoji_Deco
 ## 📄 ライセンス
 
 MIT License — 詳細は [LICENSE](LICENSE) を参照してください。
+
+MFM構文パーサーは [samunohito/mfm.kt](https://github.com/samunohito/mfm.kt)（MIT License）をJavaへ移植したものを含みます。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
