@@ -300,13 +300,19 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
      * テキストリテラルを折り返し単位に分割して追加する。
      * - ラテン系: スペース区切り。maxWidth を超える連続列は1文字ずつに分解する。
      * - CJK・かな・ハングル: 1文字ずつ独立したユニット。後続スペースがあれば同ユニットに含める。
-     * 先頭スペースはスキップ（折り返し後の行頭スペース除去と同様の扱い）。
+     * 先頭スペースは out が空（行頭）ならスキップ、直前のユニットがあればその末尾に付け直す
+     * （"**bold** A" のように兄弟ノードの境目にあるスペースを保つ）。
      */
     private static void splitAtSpaces(Font font, String literal, Style style,
                                        LightMode lightMode, List<FormattedCharSequence> out, int maxWidth) {
         if (literal.isEmpty()) return;
         int i = 0, len = literal.length();
         while (i < len && literal.charAt(i) == ' ') i++;
+        if (i > 0 && !out.isEmpty()) {
+            FormattedCharSequence last = out.remove(out.size() - 1);
+            out.add(new ConcatSequence(new ArrayList<>(List.of(
+                    last, FormattedCharSequence.forward(" ".repeat(i), style)))));
+        }
 
         int wordStart = i;
         while (i < len) {

@@ -40,6 +40,14 @@ class MfmToRichNodeConverterTest extends MinecraftTestBase {
 
     @Test void plainText() { assertEquals("hello world", str("hello world")); }
 
+    // ── spaces after decorated nodes ──────────────────────────────────────────
+
+    @Test void spaceAfterBold() { assertEquals("bold A", str("**bold** A")); }
+    @Test void spaceAfterItalic() { assertEquals("italic B", str("*italic* B")); }
+    @Test void spaceAfterStrike() { assertEquals("strike C", str("~~strike~~ C")); }
+    @Test void spaceAfterFn() { assertEquals("big D", str("$[x2 big] D")); }
+    @Test void spaceAroundFn() { assertEquals("a big D", str("a $[x2 big] D")); }
+
     // ── bold / italic / strike / small ───────────────────────────────────────
 
     @Test void bold() {
