@@ -108,6 +108,15 @@ public final class ComponentConverter {
         List<FormattedCharSequence> words = new ArrayList<>();
         component.visit((style, str) -> {
             if (!str.isEmpty()) {
+                // toWordSegments は片ごとに先頭スペースを行頭扱いで捨てるため、前の片に続く先頭スペースは
+                // 直前のユニットの末尾に付け直す（翻訳メッセージの "Teleported Dev to ..." の間隔を保つ）。
+                int lead = 0;
+                while (lead < str.length() && str.charAt(lead) == ' ') lead++;
+                if (lead > 0 && !words.isEmpty()) {
+                    FormattedCharSequence last = words.remove(words.size() - 1);
+                    words.add(new ConcatSequence(new ArrayList<>(List.of(
+                            last, FormattedCharSequence.forward(" ".repeat(lead), style)))));
+                }
                 words.addAll(RichNode.toWordSegments(font, RichTextParser.parse(str), style, width));
             }
             return Optional.empty();
