@@ -128,16 +128,43 @@ public final class ComponentConverter {
                 // 直前のユニットの末尾に付け直す（翻訳メッセージの "Teleported Dev to ..." の間隔を保つ）。
                 int lead = 0;
                 while (lead < str.length() && str.charAt(lead) == ' ') lead++;
-                if (lead > 0 && !words.isEmpty()) {
+                if (lead > 0 && !words.isEmpty() && words.get(words.size() - 1) != LINE_BREAK) {
                     FormattedCharSequence last = words.remove(words.size() - 1);
                     words.add(new ConcatSequence(new ArrayList<>(List.of(
                             last, FormattedCharSequence.forward(" ".repeat(lead), style)))));
                 }
+                // パースは片全体に行う（複数行にまたがる MFM 構文を保つ）。リテラル中の '\n' は
+                // toWordSegments が LINE_BREAK 番兵として出す。
                 words.addAll(RichNode.toWordSegments(font, RichTextParser.parse(str), style, width));
             }
             return Optional.empty();
         }, Style.EMPTY);
-        return packIntoLines(font, words, width);
+
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        for (List<FormattedCharSequence> group : splitAtBreaks(words)) {
+            List<FormattedCharSequence> packed = group.isEmpty() ? List.of() : packIntoLines(font, group, width);
+            if (packed.isEmpty()) lines.add(FormattedCharSequence.EMPTY);
+            else lines.addAll(packed);
+        }
+        return lines.isEmpty() ? List.of(FormattedCharSequence.EMPTY) : lines;
+    }
+
+    private static final FormattedCharSequence LINE_BREAK = RichNode.LINE_BREAK;
+
+    /** 番兵で語リストを段落に分ける。末尾の番兵が作る空段落は捨てる（"a" + 改行 は 1 行）。 */
+    static List<List<FormattedCharSequence>> splitAtBreaks(List<FormattedCharSequence> words) {
+        List<List<FormattedCharSequence>> groups = new ArrayList<>();
+        List<FormattedCharSequence> cur = new ArrayList<>();
+        for (FormattedCharSequence w : words) {
+            if (w == LINE_BREAK) {
+                groups.add(cur);
+                cur = new ArrayList<>();
+            } else {
+                cur.add(w);
+            }
+        }
+        if (!cur.isEmpty()) groups.add(cur);
+        return groups;
     }
 
     private static List<FormattedCharSequence> packIntoLines(Font font,
@@ -163,7 +190,7 @@ public final class ComponentConverter {
             lineWidth += ww;
         }
         if (!currentLine.isEmpty()) addLine(font, lines, currentLine);
-        return lines.isEmpty() ? List.of(FormattedCharSequence.EMPTY) : lines;
+        return lines;
     }
 
     /**

@@ -190,8 +190,27 @@ class MfmToRichNodeConverterTest extends MinecraftTestBase {
         assertEquals("> abc", str("> abc"));
     }
 
+    // ── block elements keep surrounding newlines ──────────────────────────────
+
+    @Test void blockCodeKeepsSurroundingNewlines() { assertEquals("pre\ncode\npost", str("pre\n```\ncode\n```\npost")); }
+    @Test void centerKeepsSurroundingNewlines() { assertEquals("pre\nc\npost", str("pre\n<center>c</center>\npost")); }
+    @Test void quoteKeepsSurroundingNewlines() { assertEquals("a\n> q\nb", str("a\n> q\nb")); }
+    @Test void adjacentQuotesMergeIntoOneBlock() { assertEquals("a\n> q1\n> q2\nb", str("a\n> q1\n> q2\nb")); }
+    @Test void quoteAloneAtEdgesAddsNoBlankLine() {
+        assertEquals("> q\nafter", str("> q\nafter"));
+        assertEquals("before\n> q", str("before\n> q"));
+    }
+    @Test void multiLineQuoteGetsMarkerOnEachLine() { assertEquals("> a\n> b", str("> a\n> b")); }
+    @Test void consecutiveBlocksGetSingleBreak() { assertEquals("c\n> q", str("<center>c</center>\n> q")); }
+
     @Test void blockCodeRendersRawCode() {
         assertEquals("abc", str("```\nabc\n```"));
+    }
+
+    // mfm.js: a single-line ```x``` is not a block (needs newlines); the inner `x` is inline code and the
+    // leftover backticks are plain text, so "``block``" is the spec-correct rendering.
+    @Test void singleLineTripleBacktickMatchesMfmJs() {
+        assertEquals("``block``", str("```block```"));
     }
 
     @Test void inlineCodeRendersRawCode() {

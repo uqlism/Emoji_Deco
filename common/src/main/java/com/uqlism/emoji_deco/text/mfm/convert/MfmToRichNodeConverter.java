@@ -57,6 +57,41 @@ public final class MfmToRichNodeConverter {
     /** Default rotation (degrees) for {@code $[rotate]} when no {@code deg} arg is given. */
     private static final float DEFAULT_ROTATE_DEG = 90f;
 
+    /** vanilla の URL 相当（下線 + 水色）。メンション/ハッシュタグの 0x8899FF と区別できる色。 */
+    private static final Style LINK_STYLE = Style.EMPTY.withUnderlined(true).withColor(TextColor.fromRgb(0x55AAFF));
+
+    /** Misskey の {@code $[scale.x/y]} は上限 5（MkMfm の mfm-renderer.ts）。下限側も対称に -5 で止める。 */
+    static final float MAX_SCALE_ARG = 5f;
+    /** ネストを含めた累積倍率の上限。Misskey には無いが、他人のチャット欄を塞ぐ拡大を防ぐ独自上限。 */
+    static final float MAX_TOTAL_SCALE = 8f;
+    /** {@code $[position]} の移動量（px）の上限。Misskey に clamp は無いが、画面外/他行への極端な飛ばしを防ぐ独自上限。 */
+    static final float MAX_POSITION = 64f;
+
+    /** 現在の変換で外側から累積している拡大倍率。変換はスレッドごとに独立。 */
+    private static final ThreadLocal<Float> ACC_SCALE = ThreadLocal.withInitial(() -> 1f);
+
+    /** 累積倍率 acc の下で (fx, fy) を適用したとき累積が MAX_TOTAL_SCALE を超えないよう縮めた係数を返す。 */
+    static float[] clampTotalScale(float fx, float fy, float acc) {
+        float m = Math.max(Math.abs(fx), Math.abs(fy));
+        float allowed = MAX_TOTAL_SCALE / Math.max(acc, 1e-6f);
+        if (m > allowed) {
+            float k = allowed / m;
+            return new float[]{fx * k, fy * k};
+        }
+        return new float[]{fx, fy};
+    }
+
+    private static RichNode scaledNode(float fx, float fy, List<IMfmNode> children, HydrateContext.Tracked ctx) {
+        float acc = ACC_SCALE.get();
+        float[] f = clampTotalScale(fx, fy, acc);
+        ACC_SCALE.set(acc * Math.max(Math.abs(f[0]), Math.abs(f[1])));
+        try {
+            return new RichNode.Scaled(f[0], f[1], convertList(children, ctx));
+        } finally {
+            ACC_SCALE.set(acc);
+        }
+    }
+
     public static RichNode convert(List<IMfmNode> nodes, HydrateContext.Tracked ctx) {
         return convert(nodes, ctx, Style.EMPTY);
     }
@@ -67,8 +102,30 @@ public final class MfmToRichNodeConverter {
 
     private static List<RichNode> convertList(List<IMfmNode> nodes, HydrateContext.Tracked ctx) {
         List<RichNode> out = new ArrayList<>(nodes.size());
-        for (IMfmNode n : nodes) out.add(convertNode(n, ctx));
+        // mfm.js のパーサはブロック要素の前後の改行を構文の一部として消費するため、
+        // 隣接する内容があるときだけ改行を戻す（先頭/末尾に余計な空行を作らない）。
+        boolean breakEmitted = false;
+        for (int i = 0; i < nodes.size(); i++) {
+            IMfmNode n = nodes.get(i);
+            boolean block = isBlock(n);
+            if (block && i > 0 && !breakEmitted) out.add(newline());
+            out.add(convertNode(n, ctx));
+            breakEmitted = false;
+            if (block && i < nodes.size() - 1) {
+                out.add(newline());
+                breakEmitted = true;
+            }
+        }
         return out;
+    }
+
+    private static boolean isBlock(IMfmNode n) {
+        return n instanceof MfmQuote || n instanceof MfmBlockCode || n instanceof MfmCenter
+                || n instanceof MfmMathBlock || n instanceof MfmSearch;
+    }
+
+    private static RichNode newline() {
+        return new RichNode.Text("\n", Style.EMPTY, List.of());
     }
 
     private static RichNode convertNode(IMfmNode node, HydrateContext.Tracked ctx) {
@@ -80,7 +137,7 @@ public final class MfmToRichNodeConverter {
             case MfmBold b -> new RichNode.Text("", Style.EMPTY.withBold(true), convertList(b.children(), ctx));
             case MfmItalic i -> new RichNode.Text("", Style.EMPTY.withItalic(true), convertList(i.children(), ctx));
             case MfmStrike s -> new RichNode.Text("", Style.EMPTY.withStrikethrough(true), convertList(s.children(), ctx));
-            case MfmSmall s -> new RichNode.Scaled(0.5f, 0.5f, convertList(s.children(), ctx));
+            case MfmSmall s -> scaledNode(0.5f, 0.5f, s.children(), ctx);
 
             case MfmQuote q -> quoteNode(q, ctx);
             case MfmCenter c -> new RichNode.Text("", Style.EMPTY, convertList(c.children(), ctx));
@@ -91,9 +148,10 @@ public final class MfmToRichNodeConverter {
             case MfmBlockCode c -> new RichNode.Text(c.code(), Style.EMPTY.withColor(TextColor.fromRgb(0xAAAAAA)), List.of());
 
             case MfmUrl u -> new RichNode.Click(new ClickEvent(ClickEvent.Action.OPEN_URL, u.url()),
-                    List.of(new RichNode.Text(u.url(), Style.EMPTY, List.of())));
+                    List.of(new RichNode.Text(u.url(), LINK_STYLE, List.of())));
+            // ラベル内の装飾（[**bold**](url) など）は子のスタイルで維持される。
             case MfmLink l -> new RichNode.Click(new ClickEvent(ClickEvent.Action.OPEN_URL, l.url()),
-                    convertList(l.children(), ctx));
+                    List.of(new RichNode.Text("", LINK_STYLE, convertList(l.children(), ctx))));
 
             case MfmMention m -> new RichNode.Text(m.acct(), Style.EMPTY.withColor(TextColor.fromRgb(0x8899FF)), List.of());
             case MfmHashtag h -> new RichNode.Text("#" + h.hashtag(), Style.EMPTY.withColor(TextColor.fromRgb(0x8899FF)), List.of());
@@ -124,8 +182,28 @@ public final class MfmToRichNodeConverter {
     private static RichNode quoteNode(MfmQuote q, HydrateContext.Tracked ctx) {
         List<RichNode> children = new ArrayList<>();
         children.add(new RichNode.Text("> ", Style.EMPTY.withColor(TextColor.fromRgb(0xAAAAAA)), List.of()));
-        children.addAll(convertList(q.children(), ctx));
+        for (RichNode c : convertList(q.children(), ctx)) children.add(prefixLines(c));
         return new RichNode.Text("", Style.EMPTY, children);
+    }
+
+    /** 引用内の改行の直後に灰色の "> " を挿入する（Text ノードのみ辿る）。 */
+    private static RichNode prefixLines(RichNode node) {
+        if (!(node instanceof RichNode.Text t)) return node;
+        List<RichNode> kids = new ArrayList<>();
+        if (t.literal().indexOf('\n') >= 0) {
+            String[] segs = RichNode.splitNewlines(t.literal());
+            for (int k = 0; k < segs.length; k++) {
+                if (k > 0) {
+                    kids.add(newline());
+                    kids.add(new RichNode.Text("> ", Style.EMPTY.withColor(TextColor.fromRgb(0xAAAAAA)), List.of()));
+                }
+                if (!segs[k].isEmpty()) kids.add(new RichNode.Text(segs[k], Style.EMPTY, List.of()));
+            }
+            for (RichNode c : t.children()) kids.add(prefixLines(c));
+            return new RichNode.Text("", t.style(), kids);
+        }
+        for (RichNode c : t.children()) kids.add(prefixLines(c));
+        return new RichNode.Text(t.literal(), t.style(), kids);
     }
 
     /** {@code <plain>} disables nested decoration parsing; children are rendered as raw text. */
@@ -148,18 +226,20 @@ public final class MfmToRichNodeConverter {
     private static RichNode fnNode(MfmFn fn, HydrateContext.Tracked ctx) {
         List<IMfmNode> rawChildren = fn.children();
         return switch (fn.name()) {
-            case "x2" -> new RichNode.Scaled(2f, 2f, convertList(rawChildren, ctx));
-            case "x3" -> new RichNode.Scaled(3f, 3f, convertList(rawChildren, ctx));
-            case "x4" -> new RichNode.Scaled(4f, 4f, convertList(rawChildren, ctx));
+            case "x2" -> scaledNode(2f, 2f, rawChildren, ctx);
+            case "x3" -> scaledNode(3f, 3f, rawChildren, ctx);
+            case "x4" -> scaledNode(4f, 4f, rawChildren, ctx);
 
             case "rotate" -> new RichNode.Rotated(
                     argFloat(fn, "deg", DEFAULT_ROTATE_DEG), convertList(rawChildren, ctx));
 
             case "position" -> new RichNode.Offset(
-                    argFloat(fn, "x", 0f), argFloat(fn, "y", 0f), 0f, convertList(rawChildren, ctx));
+                    clamp(argFloat(fn, "x", 0f), MAX_POSITION), clamp(argFloat(fn, "y", 0f), MAX_POSITION),
+                    0f, convertList(rawChildren, ctx));
 
-            case "scale" -> new RichNode.Scaled(
-                    argFloat(fn, "x", 1f), argFloat(fn, "y", 1f), convertList(rawChildren, ctx));
+            case "scale" -> scaledNode(
+                    clamp(argFloat(fn, "x", 1f), MAX_SCALE_ARG), clamp(argFloat(fn, "y", 1f), MAX_SCALE_ARG),
+                    rawChildren, ctx);
 
             case "flip" -> flipNode(fn, ctx);
 
@@ -174,6 +254,10 @@ public final class MfmToRichNodeConverter {
             // pass children through undecorated rather than crashing or dropping text.
             default -> new RichNode.Text("", Style.EMPTY, convertList(rawChildren, ctx));
         };
+    }
+
+    static float clamp(float v, float absMax) {
+        return Math.max(-absMax, Math.min(absMax, v));
     }
 
     private static RichNode flipNode(MfmFn fn, HydrateContext.Tracked ctx) {
@@ -309,7 +393,11 @@ public final class MfmToRichNodeConverter {
     private static float argFloat(MfmFn fn, String key, float def) {
         Object v = fn.args().get(key);
         if (v instanceof String s) {
-            try { return Float.parseFloat(s); } catch (NumberFormatException ignored) { }
+            try {
+                float f = Float.parseFloat(s);
+                // "NaN" / "Infinity" は Float.parseFloat が受理するが、行列を壊すので既定値に倒す。
+                if (Float.isFinite(f)) return f;
+            } catch (NumberFormatException ignored) { }
         }
         return def;
     }

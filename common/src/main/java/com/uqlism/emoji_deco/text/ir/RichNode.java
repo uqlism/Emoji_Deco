@@ -164,8 +164,10 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                                         List<FormattedCharSequence> out) {
         if (node instanceof Text t) {
             Style combined = t.style().applyTo(inherited);
-            if (!t.literal().isEmpty())
-                addLeaf(font, Component.literal(t.literal()).withStyle(combined), lightMode, out);
+            // 単一行描画では改行を表現できない（制御文字で後続が欠落する）ため空白に置き換える。
+            String lit = normalizeNewlines(t.literal()).replace('\n', ' ');
+            if (!lit.isEmpty())
+                addLeaf(font, Component.literal(lit).withStyle(combined), lightMode, out);
             for (RichNode child : t.children())
                 collectSegments(font, child, lightMode, combined, out);
         } else if (node instanceof Glowing g) {
@@ -236,6 +238,19 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     // ── toWordSegments ────────────────────────────────────────────────────────
 
+    /** 強制改行を表す番兵（幅計測・描画されない）。toWordSegments がリテラル中の '\n' の位置に出す。 */
+    public static final FormattedCharSequence LINE_BREAK = sink -> true;
+
+    /** '\n' で分割する（連続・先頭・末尾の改行は空文字列として残す）。 */
+    public static String[] splitNewlines(String literal) {
+        return normalizeNewlines(literal).split("\n", -1);
+    }
+
+    /** "\r\n" と孤立 "\r" を "\n" に正規化する（'\r' は豆腐で描画されるため）。 */
+    public static String normalizeNewlines(String s) {
+        return s.indexOf('\r') < 0 ? s : s.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
     /**
      * RichNode ツリーをスペース区切りの「単語」FCS リストに分解する。
      * scale/glow 等のトランスフォームは各単語に個別に適用されるため、
@@ -301,8 +316,9 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         List<FormattedCharSequence> inner = new ArrayList<>();
         for (RichNode child : children)
             collectWordSegments(font, child, lightMode, inherited, inner, Integer.MAX_VALUE);
+        // 改行番兵はラッパーで包まず素通しする（ラッパーは改行で途切れるが内容は欠落しない）。
         for (FormattedCharSequence word : inner)
-            out.add(new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
+            out.add(word == LINE_BREAK ? word : new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
     }
 
     /**
@@ -315,9 +331,18 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
     private static void splitAtSpaces(Font font, String literal, Style style,
                                        LightMode lightMode, List<FormattedCharSequence> out, int maxWidth) {
         if (literal.isEmpty()) return;
+        literal = normalizeNewlines(literal);
+        if (literal.indexOf('\n') >= 0) {
+            String[] segs = splitNewlines(literal);
+            for (int k = 0; k < segs.length; k++) {
+                if (k > 0) out.add(LINE_BREAK);
+                splitAtSpaces(font, segs[k], style, lightMode, out, maxWidth);
+            }
+            return;
+        }
         int i = 0, len = literal.length();
         while (i < len && literal.charAt(i) == ' ') i++;
-        if (i > 0 && !out.isEmpty()) {
+        if (i > 0 && !out.isEmpty() && out.get(out.size() - 1) != LINE_BREAK) {
             FormattedCharSequence last = out.remove(out.size() - 1);
             out.add(new ConcatSequence(new ArrayList<>(List.of(
                     last, FormattedCharSequence.forward(" ".repeat(i), style)))));
