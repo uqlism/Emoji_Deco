@@ -133,7 +133,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         int cp = ImageGlyphPool.getOrAllocate(
                 img.imageSpec(), img.crop(), img.displayW(), img.displayH(), img.advanceOverride());
         return Component.literal(new String(Character.toChars(cp)))
-                .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT));
+                // 画像グリフは文字色が乗算されるため白固定にする（看板の黒文字などで絵文字が黒くなるのを防ぐ）
+                .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT).withColor(0xFFFFFF));
     }
 
     // ── toSequence ─────────────────────────────────────────────────────────
