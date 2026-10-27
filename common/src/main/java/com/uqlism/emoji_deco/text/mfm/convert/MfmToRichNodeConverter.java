@@ -52,6 +52,8 @@ public final class MfmToRichNodeConverter {
 
     /** Hue advances by this fraction of a full cycle per game tick, absent an explicit {@code speed} arg. */
     private static final float DEFAULT_RAINBOW_SPEED = 1f / 100f;
+    private static final int SPARKLE_PERIOD_TICKS = 24;
+    private static final int SPARKLE_FLASH_TICKS = 4;
     /** Default rotation (degrees) for {@code $[rotate]} when no {@code deg} arg is given. */
     private static final float DEFAULT_ROTATE_DEG = 90f;
 
@@ -165,8 +167,10 @@ public final class MfmToRichNodeConverter {
 
             case "rainbow" -> rainbowNode(fn, ctx);
 
+            case "sparkle" -> sparkleNode(fn, ctx);
+
             // tada (incl. Big syntax ***abc***) and the rest of the v1-unsupported effect list
-            // (jelly/twitch/shake/jump/bounce/sparkle/blur/ruby/unixtime/clickable/bg/font):
+            // (jelly/twitch/shake/jump/bounce/blur/ruby/unixtime/clickable/bg/font):
             // pass children through undecorated rather than crashing or dropping text.
             default -> new RichNode.Text("", Style.EMPTY, convertList(rawChildren, ctx));
         };
@@ -201,6 +205,25 @@ public final class MfmToRichNodeConverter {
 
         TextColor tc = TextColor.parseColor(Hydrators.hsvToHex(hue, 1f, 1f)).result().orElse(null);
         Style style = tc != null ? Style.EMPTY.withColor(tc) : Style.EMPTY;
+        return new RichNode.Text("", style, convertList(fn.children(), ctx));
+    }
+
+    /**
+     * Approximates sparkle as a short pale flash cycling white/pale-yellow, leaving the text's own
+     * colour the rest of the time. Colour-only so width and line height never change.
+     */
+    private static RichNode sparkleNode(MfmFn fn, HydrateContext.Tracked ctx) {
+        ctx.markTimeAccessed();
+
+        Minecraft mc = Minecraft.getInstance();
+        long gameTime = (mc != null && mc.level != null) ? mc.level.getGameTime() : 0L;
+        long phase = Math.floorMod(gameTime, (long) SPARKLE_PERIOD_TICKS);
+
+        Style style = Style.EMPTY;
+        if (phase < SPARKLE_FLASH_TICKS) {
+            int rgb = (phase % 2 == 0) ? 0xFFFFFF : 0xFFF2A0;
+            style = Style.EMPTY.withColor(TextColor.fromRgb(rgb));
+        }
         return new RichNode.Text("", style, convertList(fn.children(), ctx));
     }
 

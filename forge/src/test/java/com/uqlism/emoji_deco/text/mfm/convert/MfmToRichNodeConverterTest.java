@@ -143,6 +143,14 @@ class MfmToRichNodeConverterTest extends MinecraftTestBase {
         });
     }
 
+    @Test void sparklePreservesContent() {
+        assertDoesNotThrow(() -> {
+            assertEquals("abc", str("$[sparkle abc]"));
+            assertEquals("a b c", str("a $[sparkle b] c"));
+            assertEquals("ab", str("$[sparkle.speed=2s $[x2 a]b]"));
+        });
+    }
+
     // ── unsupported constructs: fallback must not drop content or throw ─────────
 
     @Test void tadaFallsBackToPlainChildren() {
