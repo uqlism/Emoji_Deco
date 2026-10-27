@@ -6,6 +6,14 @@ This repository's MFM (Misskey Flavored Markdown) support, located under
 Individual ported source files carry a comment noting the original Kotlin file they were ported
 from.
 
+The `$[sparkle]` effect (`MfmToRichNodeConverter#sparkleNode`,
+`scripts/generate_mfm_sparkle_stars.py` and the generated
+`common/src/main/resources/assets/emoji_deco/textures/mfm/sparkle_*.png`) is a re-implementation
+that references the star outline (SVG path), the colour palette, and the size / lifetime / spawn-interval
+parameters of [misskey-dev/misskey](https://github.com/misskey-dev/misskey)
+`packages/frontend/src/components/MkSparkle.vue`, licensed under AGPL-3.0-only
+(SPDX-FileCopyrightText: syuilo and misskey-project).
+
 ## samunohito/mfm.kt
 
 ```

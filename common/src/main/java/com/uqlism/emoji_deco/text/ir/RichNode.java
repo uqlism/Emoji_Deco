@@ -66,7 +66,14 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
     /** insertion wrapper。Shift+クリックでチャット欄に挿入されるテキストを保持。 */
     record Insertion(String insertion, List<RichNode> children)            implements RichNode {}
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
-    record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
+    record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {
+        /**
+         * この z を持つ Offset は「幅0の装飾オーバーレイ」（$[sparkle] の星など）。
+         * toComponent() では描画せず、チャットの行高補正・折り返しの対象外として扱う。
+         */
+        public static final float OVERLAY_Z = 0.02f;
+        public boolean isOverlay() { return z == OVERLAY_Z; }
+    }
     record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
     record Rotated(float angle, List<RichNode> children)                   implements RichNode {}
 
@@ -113,6 +120,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         // transform wrappers: render contents without transform
         if (this instanceof Offset o) {
             MutableComponent c = Component.empty();
+            if (o.isOverlay()) return c;
             for (RichNode child : o.children()) c.append(child.toComponent());
             return c;
         }

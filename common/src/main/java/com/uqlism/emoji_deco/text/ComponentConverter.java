@@ -132,7 +132,12 @@ public final class ComponentConverter {
         int lineWidth = 0;
         for (FormattedCharSequence word : words) {
             int ww = font.width(word);
-            if (ww == 0) continue;
+            // 幅0の装飾オーバーレイ（sparkle の星）は直前の語と同じ行に付ける。それ以外の幅0は捨てる。
+            if (ww == 0) {
+                if (word instanceof AffineSequence as && as.isOverlay() && !currentLine.isEmpty())
+                    currentLine.add(word);
+                continue;
+            }
             if (lineWidth > 0 && lineWidth + ww > maxWidth) {
                 addLine(font, lines, currentLine);
                 currentLine.clear();
@@ -166,6 +171,7 @@ public final class ComponentConverter {
             for (FormattedCharSequence part : cs.parts()) min = Math.min(min, minTop(font, part, m));
             return min;
         }
+        if (seq instanceof AffineSequence as && as.isOverlay()) return 0f;
         if (seq instanceof AffineSequence as) return minTop(font, as.inner(), new Matrix4f(m).mul(as.localTransform()));
         if (seq instanceof LightSequence ls) return minTop(font, ls.inner(), m);
         float w = font.width(seq), h = font.lineHeight;

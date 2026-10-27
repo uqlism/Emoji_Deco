@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -143,6 +144,20 @@ class MfmToRichNodeConverterTest extends MinecraftTestBase {
         });
     }
 
+    @Test void sparkleKeepsContentAndDoesNotThrow() {
+        assertDoesNotThrow(() -> {
+            assertEquals("abc", str("$[sparkle abc]"));
+            assertEquals("hello world", str("$[sparkle hello world]"));
+            assertEquals("a b", str("$[sparkle $[x2 a] **b**]"));
+            assertEquals("abc", component("$[sparkle abc]").getString());
+        });
+    }
+
+    @Test void sparkleStarsAreOverlayOffsets() {
+        RichNode node = MfmToRichNodeConverter.convert(Mfm.parse("$[sparkle abc]"), HydrateContext.EMPTY.track());
+        assertTrue(allOffsets(node).stream().allMatch(RichNode.Offset::isOverlay));
+    }
+
     // ── unsupported constructs: fallback must not drop content or throw ─────────
 
     @Test void tadaFallsBackToPlainChildren() {
@@ -196,6 +211,13 @@ class MfmToRichNodeConverterTest extends MinecraftTestBase {
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    private static List<RichNode.Offset> allOffsets(RichNode node) {
+        List<RichNode.Offset> out = new java.util.ArrayList<>();
+        if (node instanceof RichNode.Offset o) out.add(o);
+        for (RichNode c : childrenOf(node)) out.addAll(allOffsets(c));
+        return out;
+    }
 
     private static boolean containsScaled(RichNode node, float sx, float sy) {
         if (node instanceof RichNode.Scaled s && s.scaleX() == sx && s.scaleY() == sy) return true;
