@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco.text;
 
+import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.render.sequence.AffineSequence;
 import com.uqlism.emoji_deco.render.sequence.ConcatSequence;
 import com.uqlism.emoji_deco.render.sequence.LightSequence;
@@ -31,6 +32,21 @@ import java.util.Optional;
 public final class ComponentConverter {
 
     private ComponentConverter() {}
+
+    /**
+     * 文字列にリッチテキスト記法が含まれうるかの高速判定。
+     * 旧構文は '#' と ':'、MFM モードでは装飾・リンク・メンションなどの記号も対象にする。
+     */
+    public static boolean mayContainRichText(String s) {
+        for (int i = 0, n = s.length(); i < n; i++) {
+            char c = s.charAt(i);
+            if (c == '#' || c == ':') return true;
+            if (Config.mode == Config.TextParseMode.MFM
+                    && (c == '*' || c == '$' || c == '~' || c == '<' || c == '>' || c == '@' || c == '[' || c == '`'))
+                return true;
+        }
+        return false;
+    }
 
     /**
      * Component ツリーを走査して各 LiteralContents に RichTextParser を適用し、

@@ -72,7 +72,7 @@ public class MixinFont {
             CallbackInfoReturnable<Integer> cir) {
         if (!Config.enableEntityNames) return;
         String raw = text.getString();
-        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        if (!ComponentConverter.mayContainRichText(raw)) return;
         Font self = (Font)(Object)this;
         FormattedCharSequence seq = ComponentConverter.toSequence(self, text);
         float adj = (self.width(text) - self.width(seq)) / 2.0f;

@@ -53,7 +53,7 @@ public abstract class MixinGuiGraphics {
             Font font, Component text, int x, int y, int color, boolean dropShadow,
             CallbackInfoReturnable<Integer> cir) {
         String raw = text.getString();
-        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        if (!ComponentConverter.mayContainRichText(raw)) return;
         // 静的評価 (computeNow) で幅だけ先に取得してセンタリング補正を計算する。
         // 実際の描画は DynamicFormattedCharSequence → MixinFont が毎フレーム computeNow() を呼ぶ。
         FormattedCharSequence staticFcs = ComponentConverter.computeNow(font, text);
@@ -68,7 +68,7 @@ public abstract class MixinGuiGraphics {
             Font font, Component text, int x, int y, int color,
             CallbackInfo ci) {
         String raw = text.getString();
-        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        if (!ComponentConverter.mayContainRichText(raw)) return;
         // 幅計算は静的評価で取得し、描画は DynamicFormattedCharSequence で動的再評価する。
         FormattedCharSequence staticFcs = ComponentConverter.computeNow(font, text);
         int halfW = font.width(staticFcs) / 2;
@@ -105,7 +105,7 @@ public abstract class MixinGuiGraphics {
         boolean hasRich = false;
         for (Component c : components) {
             String s = c.getString();
-            if (s.indexOf('#') >= 0 || s.indexOf(':') >= 0) { hasRich = true; break; }
+            if (ComponentConverter.mayContainRichText(s)) { hasRich = true; break; }
         }
         if (!hasRich) return;
 
@@ -114,7 +114,7 @@ public abstract class MixinGuiGraphics {
         List<FormattedCharSequence> fcsLines = new ArrayList<>(components.size());
         for (Component c : components) {
             String s = c.getString();
-            if (s.indexOf('#') >= 0 || s.indexOf(':') >= 0) {
+            if (ComponentConverter.mayContainRichText(s)) {
                 fcsLines.add(new DynamicFormattedCharSequence(c));
             } else {
                 fcsLines.add(c.getVisualOrderText());
