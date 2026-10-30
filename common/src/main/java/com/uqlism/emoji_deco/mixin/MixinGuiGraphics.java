@@ -1,5 +1,7 @@
 package com.uqlism.emoji_deco.mixin;
 
+import com.uqlism.emoji_deco.Config;
+import com.uqlism.emoji_deco.client.GuiTextContext;
 import com.uqlism.emoji_deco.render.sequence.DynamicFormattedCharSequence;
 import com.uqlism.emoji_deco.text.ComponentConverter;
 import com.uqlism.emoji_deco.text.ir.HoverRichContents;
@@ -52,6 +54,7 @@ public abstract class MixinGuiGraphics {
     private void runicink$drawStringComponent(
             Font font, Component text, int x, int y, int color, boolean dropShadow,
             CallbackInfoReturnable<Integer> cir) {
+        if (!GuiTextContext.isEnabled(GuiTextContext.isInHotbarItemName(), Config.enableGui, Config.enableItemNames)) return;
         String raw = text.getString();
         if (!ComponentConverter.mayContainRichText(raw)) return;
         // 静的評価 (computeNow) で幅だけ先に取得してセンタリング補正を計算する。
@@ -67,6 +70,7 @@ public abstract class MixinGuiGraphics {
     private void runicink$drawCenteredStringComponent(
             Font font, Component text, int x, int y, int color,
             CallbackInfo ci) {
+        if (!GuiTextContext.isEnabled(GuiTextContext.isInHotbarItemName(), Config.enableGui, Config.enableItemNames)) return;
         String raw = text.getString();
         if (!ComponentConverter.mayContainRichText(raw)) return;
         // 幅計算は静的評価で取得し、描画は DynamicFormattedCharSequence で動的再評価する。
@@ -100,6 +104,7 @@ public abstract class MixinGuiGraphics {
             int mouseX, int mouseY, CallbackInfo ci) {
         // カスタム TooltipComponent (バンドル等のウィジェット) がある場合はバイパスする。
         if (tooltipComponent.isPresent()) return;
+        if (!Config.enableItemNames) return;
 
         boolean hasRich = false;
         for (Component c : components) {

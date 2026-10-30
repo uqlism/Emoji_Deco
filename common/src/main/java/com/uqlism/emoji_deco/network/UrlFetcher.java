@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.*;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -60,6 +61,25 @@ public final class UrlFetcher {
         }
     }
 
+    // 拒否ログは描画のたびに呼ばれ得るため、ホストごとに 1 回だけ出す。
+    private static final Set<String> WARNED_DENIED = ConcurrentHashMap.newKeySet();
+    private static final int MAX_WARNED_DENIED = 1024;
+
+    /** 未ログのキーなら true（登録も行う）。上限超過時は洪水防止のため false。 */
+    static boolean shouldLogDenied(Set<String> warned, String key) {
+        if (warned.size() >= MAX_WARNED_DENIED) return false;
+        return warned.add(key);
+    }
+
+    static String hostOf(String url) {
+        try {
+            String h = URI.create(url).getHost();
+            return h != null ? h : url;
+        } catch (IllegalArgumentException e) {
+            return url;
+        }
+    }
+
     private static final Map<BinarySource.Url, CacheEntry> CACHE = new ConcurrentHashMap<>();
 
     /**
@@ -72,7 +92,8 @@ public final class UrlFetcher {
             return CompletableFuture.failedFuture(
                     new IllegalArgumentException("Only http/https URLs are allowed: " + url));
         if (!UrlAllowlist.INSTANCE.isAllowed(url)) {
-            LOGGER.warn("[EmojiDeco] URL フェッチ拒否 (allowlist 未登録): {}", url);
+            if (shouldLogDenied(WARNED_DENIED, hostOf(url)))
+                LOGGER.warn("[EmojiDeco] URL フェッチ拒否 (allowlist 未登録): {} (同一ホストの以降の拒否はログ省略)", url);
             return CompletableFuture.failedFuture(new SecurityException("URL not permitted: " + url));
         }
 
@@ -92,7 +113,7 @@ public final class UrlFetcher {
                                 entry.failCount, MAX_RETRIES, RETRY_DELAY_MS / 1000, url);
                         entry.retryAfter = System.currentTimeMillis() + RETRY_DELAY_MS;
                     } else {
-                        LOGGER.error("[EmojiDeco] リトライ上限({})到達、永続的に失敗 [{}]",
+                        LOGGER.warn("[EmojiDeco] リトライ上限({})到達、永続的に失敗 [{}]",
                                 MAX_RETRIES, url);
                     }
                 }
@@ -122,7 +143,8 @@ public final class UrlFetcher {
                 }
                 return httpDownload(source, maxBytes);
             } catch (Exception e) {
-                LOGGER.error("[EmojiDeco] フェッチ失敗 [{}]: {}", source.url(), e.toString(), e);
+                // ネットワーク失敗 (UnknownHost 等) は想定内なので WARN・スタックトレースなし
+                LOGGER.warn("[EmojiDeco] フェッチ失敗 [{}]: {}", source.url(), e.toString());
                 throw new RuntimeException(e);
             }
         }, EXECUTOR);

@@ -56,6 +56,13 @@ public final class MisskeyEmojiProvider {
     private static volatile String fetchedForDomain = null;
     private static final AtomicBoolean fetchInFlight = new AtomicBoolean(false);
 
+    // 失敗後の再試行抑制。resolve() は描画のたびに呼ばれるため、これが無いと失敗中は毎フレーム
+    // 再フェッチとログが発生する。
+    static final long RETRY_BACKOFF_MS = 60_000L;
+    private static volatile long nextAttemptAtMs = 0L;
+    // nameToUrl が属するドメイン。Config 側のドメインが変わったら旧状態を捨てるために保持する。
+    private static volatile String activeDomain = null;
+
     /** Kicks off a background fetch if one hasn't started yet. Safe to call repeatedly. */
     public static void prefetch() {
         ensureFetchStarted();
@@ -74,7 +81,15 @@ public final class MisskeyEmojiProvider {
     private static void ensureFetchStarted() {
         String domain = Config.emojiProviderMisskeyDomain;
         if (domain == null || domain.isBlank()) return;
+        if (!domain.equals(activeDomain)) {
+            activeDomain = domain;
+            nameToUrl = Map.of();
+            fetchedForDomain = null;
+            nextAttemptAtMs = 0L;
+            RichTextParser.invalidateParseCache();
+        }
         if (domain.equals(fetchedForDomain)) return;
+        if (!canAttempt(System.currentTimeMillis(), nextAttemptAtMs)) return;
         if (!fetchInFlight.compareAndSet(false, true)) return;
 
         // The API domain itself must be allowlisted before UrlFetcher will fetch it.
@@ -85,6 +100,8 @@ public final class MisskeyEmojiProvider {
         UrlFetcher.fetch(source, MAX_BYTES)
                 .thenAccept(bytes -> {
                     Map<String, String> parsed = parseEmojiList(new String(bytes, StandardCharsets.UTF_8));
+                    // 取得中にドメインが変更された場合は古い結果を捨てる
+                    if (!domain.equals(activeDomain)) return;
                     nameToUrl = parsed;
                     fetchedForDomain = domain;
 
@@ -100,11 +117,23 @@ public final class MisskeyEmojiProvider {
                             parsed.size(), domain);
                 })
                 .exceptionally(t -> {
-                    LOGGER.warn("[EmojiDeco] Misskey emoji-provider: {} からの絵文字リスト取得に失敗しました: {}",
-                            domain, t.toString());
+                    nextAttemptAtMs = System.currentTimeMillis() + RETRY_BACKOFF_MS;
+                    LOGGER.warn("[EmojiDeco] Misskey emoji-provider: {} からの絵文字リスト取得に失敗しました ({}秒間は再試行しません): {}",
+                            domain, RETRY_BACKOFF_MS / 1000, shortMessage(t));
                     return null;
                 })
                 .whenComplete((r, t) -> fetchInFlight.set(false));
+    }
+
+    /** バックオフ期間が過ぎていれば true。 */
+    static boolean canAttempt(long nowMs, long nextAttemptAtMs) {
+        return nowMs >= nextAttemptAtMs;
+    }
+
+    private static String shortMessage(Throwable t) {
+        Throwable c = t;
+        while (c.getCause() != null && c.getCause() != c) c = c.getCause();
+        return c.toString();
     }
 
     // ── JSON parsing ─────────────────────────────────────────────────────────────

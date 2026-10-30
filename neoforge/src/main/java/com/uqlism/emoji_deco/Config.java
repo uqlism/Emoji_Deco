@@ -32,7 +32,7 @@ public class Config {
             .define("enableSigns", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_ITEM_NAMES = BUILDER
-            .comment("Enable rich text formatting in item names (tooltips)")
+            .comment("Enable rich text formatting in item names (item tooltips and the hotbar item name)")
             .define("enableItemNames", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_ENTITY_NAMES = BUILDER
@@ -44,7 +44,7 @@ public class Config {
             .define("enableBooks", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_GUI = BUILDER
-            .comment("Enable rich text formatting in titles, subtitles, and action bar")
+            .comment("Enable rich text formatting in GUI text drawn via GuiGraphics (titles, subtitles, action bar, boss bars, etc.; not the hotbar item name)")
             .define("enableGui", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_URL_FETCH = BUILDER

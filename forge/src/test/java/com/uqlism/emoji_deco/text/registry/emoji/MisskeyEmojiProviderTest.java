@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -48,5 +49,13 @@ class MisskeyEmojiProviderTest {
         assertTrue(MisskeyEmojiProvider.parseEmojiList("{}").isEmpty());
         assertTrue(MisskeyEmojiProvider.parseEmojiList("[]").isEmpty());
         assertTrue(MisskeyEmojiProvider.parseEmojiList("{\"emojis\":\"not an array\"}").isEmpty());
+    }
+
+    @Test void backoffGatesRetries() {
+        long now = 1_000_000L;
+        assertTrue(MisskeyEmojiProvider.canAttempt(now, 0L));
+        long next = now + MisskeyEmojiProvider.RETRY_BACKOFF_MS;
+        assertFalse(MisskeyEmojiProvider.canAttempt(now + 1000, next));
+        assertTrue(MisskeyEmojiProvider.canAttempt(next, next));
     }
 }
