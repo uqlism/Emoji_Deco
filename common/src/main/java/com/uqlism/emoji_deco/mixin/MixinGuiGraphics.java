@@ -101,21 +101,27 @@ public abstract class MixinGuiGraphics {
         // カスタム TooltipComponent (バンドル等のウィジェット) がある場合はバイパスする。
         if (tooltipComponent.isPresent()) return;
 
-        // いずれかの行にリッチテキスト記号が含まれるか確認する。
         boolean hasRich = false;
         for (Component c : components) {
-            String s = c.getString();
-            if (ComponentConverter.mayContainRichText(s)) { hasRich = true; break; }
+            if (ComponentConverter.mayContainRichTextOrBreak(c.getString())) { hasRich = true; break; }
         }
         if (!hasRich) return;
 
         // 各 Component を DynamicFormattedCharSequence でラップして FCS リストを構築する。
         // MixinFont.drawInBatch が毎フレーム computeNow() を呼び AffineSequence 等を処理する。
+        // ツールチップの行高は固定 (lineHeight) なので、拡大で行上端を超える分は直前に、
+        // 下へ伸びる分は直後に空行を挿入して、他行との重なりと枠外はみ出しを防ぐ。
+        // 幅は MixinFont.width が Dynamic を computeNow して拡大後の値を返す。
         List<FormattedCharSequence> fcsLines = new ArrayList<>(components.size());
         for (Component c : components) {
             String s = c.getString();
-            if (ComponentConverter.mayContainRichText(s)) {
+            if (ComponentConverter.mayContainRichTextOrBreak(s)) {
+                float[] ext = ComponentConverter.verticalExtent(font, ComponentConverter.computeNow(font, c));
+                int above = (int) Math.ceil(-ext[0] / font.lineHeight);
+                int below = (int) Math.ceil((ext[1] - font.lineHeight) / font.lineHeight);
+                for (int i = 0; i < above; i++) fcsLines.add(FormattedCharSequence.EMPTY);
                 fcsLines.add(new DynamicFormattedCharSequence(c));
+                for (int i = 0; i < below; i++) fcsLines.add(FormattedCharSequence.EMPTY);
             } else {
                 fcsLines.add(c.getVisualOrderText());
             }

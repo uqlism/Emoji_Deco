@@ -48,6 +48,50 @@ public final class ComponentConverter {
         return false;
     }
 
+    /** 改行文字（LF / CR）を含むか。 */
+    public static boolean containsLineBreak(String s) {
+        return s.indexOf(0x0A) >= 0 || s.indexOf(0x0D) >= 0;
+    }
+
+    /**
+     * ツールチップ用の判定。MFM モードでは構文なしの改行入り文字列も変換対象にして、
+     * バニラの LF 豆腐枠ではなく単一行描画（改行は空白）に流す。OLD モードは従来どおり。
+     */
+    public static boolean mayContainRichTextOrBreak(String s) {
+        return mayContainRichText(s) || (Config.mode == Config.TextParseMode.MFM && containsLineBreak(s));
+    }
+
+    /**
+     * 行の視覚的な縦の範囲 {top, bottom}（行上端を 0 とし、Affine 変換を畳み込む）。
+     * 通常行は {0, lineHeight}。ツールチップが拡大行ぶんの高さを確保するのに使う。
+     */
+    public static float[] verticalExtent(Font font, FormattedCharSequence seq) {
+        float[] r = {0f, font.lineHeight};
+        extent(font, seq, new Matrix4f(), r);
+        return r;
+    }
+
+    private static void extent(Font font, FormattedCharSequence seq, Matrix4f m, float[] r) {
+        if (seq instanceof ConcatSequence cs) {
+            for (FormattedCharSequence part : cs.parts()) extent(font, part, m, r);
+            return;
+        }
+        if (seq instanceof AffineSequence as && as.isOverlay()) return;
+        if (seq instanceof AffineSequence as) {
+            extent(font, as.inner(), new Matrix4f(m).mul(as.localTransform()), r);
+            return;
+        }
+        if (seq instanceof LightSequence ls) { extent(font, ls.inner(), m, r); return; }
+        float w = font.width(seq), h = font.lineHeight;
+        for (int i = 0; i < 4; i++) {
+            float vx = (i == 1 || i == 2) ? w : 0f;
+            float vy = (i == 2 || i == 3) ? h : 0f;
+            float y = m.m01() * vx + m.m11() * vy + m.m31();
+            r[0] = Math.min(r[0], y);
+            r[1] = Math.max(r[1], y);
+        }
+    }
+
     /**
      * Component ツリーを走査して各 LiteralContents に RichTextParser を適用し、
      * 変換済みの Component ツリーを返す。

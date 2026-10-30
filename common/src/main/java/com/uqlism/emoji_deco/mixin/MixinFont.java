@@ -256,6 +256,11 @@ public class MixinFont {
             cir.setReturnValue(w);
             return;
         }
+        // 動的 FCS は accept() 経由だと Affine の拡大が失われるため、解決後の幅を返す。
+        if (text instanceof DynamicFormattedCharSequence dfcs) {
+            cir.setReturnValue(self.width(ComponentConverter.computeNow(self, dfcs.original())));
+            return;
+        }
         if (text instanceof LightSequence gs) {
             cir.setReturnValue(self.width(gs.inner()));
             return;
