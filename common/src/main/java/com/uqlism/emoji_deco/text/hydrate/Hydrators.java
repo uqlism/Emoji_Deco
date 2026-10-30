@@ -403,7 +403,7 @@ public final class Hydrators {
     // ── Color helpers ──────────────────────────────────────────────────────────
 
     /** HSV (各 0.0〜1.0) → "#RRGGBB" 16進数カラー文字列。TextColor.parseColor() が解釈できる。 */
-    private static String hsvToHex(float h, float s, float v) {
+    public static String hsvToHex(float h, float s, float v) {
         h = ((h % 1f) + 1f) % 1f;  // [0,1) に正規化
         int r, g, b;
         if (s <= 0f) {

@@ -66,7 +66,14 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
     /** insertion wrapper。Shift+クリックでチャット欄に挿入されるテキストを保持。 */
     record Insertion(String insertion, List<RichNode> children)            implements RichNode {}
     /** x/y は描画位置オフセット。z は深度オフセット（hat オーバーレイに 0.01f を使用）。 */
-    record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {}
+    record Offset(float x, float y, float z, List<RichNode> children)     implements RichNode {
+        /**
+         * この z を持つ Offset は「幅0の装飾オーバーレイ」（$[sparkle] の星など）。
+         * toComponent() では描画せず、チャットの行高補正・折り返しの対象外として扱う。
+         */
+        public static final float OVERLAY_Z = 0.02f;
+        public boolean isOverlay() { return z == OVERLAY_Z; }
+    }
     record Scaled(float scaleX, float scaleY, List<RichNode> children)    implements RichNode {}
     record Rotated(float angle, List<RichNode> children)                   implements RichNode {}
 
@@ -113,6 +120,7 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         // transform wrappers: render contents without transform
         if (this instanceof Offset o) {
             MutableComponent c = Component.empty();
+            if (o.isOverlay()) return c;
             for (RichNode child : o.children()) c.append(child.toComponent());
             return c;
         }
@@ -133,7 +141,8 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         int cp = ImageGlyphPool.getOrAllocate(
                 img.imageSpec(), img.crop(), img.displayW(), img.displayH(), img.advanceOverride());
         return Component.literal(new String(Character.toChars(cp)))
-                .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT));
+                // 画像グリフは文字色が乗算されるため白固定にする（看板の黒文字などで絵文字が黒くなるのを防ぐ）
+                .withStyle(Style.EMPTY.withFont(ImageGlyphPool.IMAGE_FONT).withColor(0xFFFFFF));
     }
 
     // ── toSequence ─────────────────────────────────────────────────────────
@@ -155,8 +164,10 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
                                         List<FormattedCharSequence> out) {
         if (node instanceof Text t) {
             Style combined = t.style().applyTo(inherited);
-            if (!t.literal().isEmpty())
-                addLeaf(font, Component.literal(t.literal()).withStyle(combined), lightMode, out);
+            // 単一行描画では改行を表現できない（制御文字で後続が欠落する）ため空白に置き換える。
+            String lit = normalizeNewlines(t.literal()).replace('\n', ' ');
+            if (!lit.isEmpty())
+                addLeaf(font, Component.literal(lit).withStyle(combined), lightMode, out);
             for (RichNode child : t.children())
                 collectSegments(font, child, lightMode, combined, out);
         } else if (node instanceof Glowing g) {
@@ -227,6 +238,19 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
 
     // ── toWordSegments ────────────────────────────────────────────────────────
 
+    /** 強制改行を表す番兵（幅計測・描画されない）。toWordSegments がリテラル中の '\n' の位置に出す。 */
+    public static final FormattedCharSequence LINE_BREAK = sink -> true;
+
+    /** '\n' で分割する（連続・先頭・末尾の改行は空文字列として残す）。 */
+    public static String[] splitNewlines(String literal) {
+        return normalizeNewlines(literal).split("\n", -1);
+    }
+
+    /** "\r\n" と孤立 "\r" を "\n" に正規化する（'\r' は豆腐で描画されるため）。 */
+    public static String normalizeNewlines(String s) {
+        return s.indexOf('\r') < 0 ? s : s.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
     /**
      * RichNode ツリーをスペース区切りの「単語」FCS リストに分解する。
      * scale/glow 等のトランスフォームは各単語に個別に適用されるため、
@@ -292,21 +316,37 @@ public sealed interface RichNode permits RichNode.Text, RichNode.Glowing,
         List<FormattedCharSequence> inner = new ArrayList<>();
         for (RichNode child : children)
             collectWordSegments(font, child, lightMode, inherited, inner, Integer.MAX_VALUE);
+        // 改行番兵はラッパーで包まず素通しする（ラッパーは改行で途切れるが内容は欠落しない）。
         for (FormattedCharSequence word : inner)
-            out.add(new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
+            out.add(word == LINE_BREAK ? word : new AffineSequence(word, matrixFn.apply(word), useInnerWidth));
     }
 
     /**
      * テキストリテラルを折り返し単位に分割して追加する。
      * - ラテン系: スペース区切り。maxWidth を超える連続列は1文字ずつに分解する。
      * - CJK・かな・ハングル: 1文字ずつ独立したユニット。後続スペースがあれば同ユニットに含める。
-     * 先頭スペースはスキップ（折り返し後の行頭スペース除去と同様の扱い）。
+     * 先頭スペースは out が空（行頭）ならスキップ、直前のユニットがあればその末尾に付け直す
+     * （"**bold** A" のように兄弟ノードの境目にあるスペースを保つ）。
      */
     private static void splitAtSpaces(Font font, String literal, Style style,
                                        LightMode lightMode, List<FormattedCharSequence> out, int maxWidth) {
         if (literal.isEmpty()) return;
+        literal = normalizeNewlines(literal);
+        if (literal.indexOf('\n') >= 0) {
+            String[] segs = splitNewlines(literal);
+            for (int k = 0; k < segs.length; k++) {
+                if (k > 0) out.add(LINE_BREAK);
+                splitAtSpaces(font, segs[k], style, lightMode, out, maxWidth);
+            }
+            return;
+        }
         int i = 0, len = literal.length();
         while (i < len && literal.charAt(i) == ' ') i++;
+        if (i > 0 && !out.isEmpty() && out.get(out.size() - 1) != LINE_BREAK) {
+            FormattedCharSequence last = out.remove(out.size() - 1);
+            out.add(new ConcatSequence(new ArrayList<>(List.of(
+                    last, FormattedCharSequence.forward(" ".repeat(i), style)))));
+        }
 
         int wordStart = i;
         while (i < len) {

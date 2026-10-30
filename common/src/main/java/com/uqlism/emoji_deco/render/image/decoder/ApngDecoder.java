@@ -44,6 +44,7 @@ public class ApngDecoder implements ImageDecoder {
         int canvasH = readInt(ihdrChunk.data, 4);
 
         // IHDR より後、最初の IDAT/fdAT より前の ancillary チャンク (PLTE, sRGB, gAMA 等)
+        int colorType = ihdrChunk.data.length > 9 ? ihdrChunk.data[9] & 0xFF : -1;
         List<PngChunk> ancillary = new ArrayList<>();
         boolean hitData = false;
         for (PngChunk c : chunks) {
@@ -51,6 +52,7 @@ public class ApngDecoder implements ImageDecoder {
             if ("IHDR".equals(t)) continue;
             if ("IDAT".equals(t) || "fdAT".equals(t) || "IEND".equals(t)) { hitData = true; }
             if (hitData || "acTL".equals(t) || "fcTL".equals(t)) continue;
+            if (!keepAncillary(t, colorType)) continue;
             ancillary.add(c);
         }
 
@@ -122,6 +124,16 @@ public class ApngDecoder implements ImageDecoder {
         }
 
         return result;
+    }
+
+    /**
+     * フレーム PNG に引き継ぐ補助チャンクかどうか。color type 4/6 (アルファ付き) の PNG に
+     * PLTE/tRNS が付いている APNG が実在し (Misskey の一部絵文字)、STB は
+     * "tRNS with alpha" として Corrupt PNG で弾くため、その場合は除外する。
+     */
+    static boolean keepAncillary(String type, int colorType) {
+        if ((colorType == 4 || colorType == 6) && ("PLTE".equals(type) || "tRNS".equals(type))) return false;
+        return true;
     }
 
     // ── フレーム PNG 再構成 ───────────────────────────────────────────────────

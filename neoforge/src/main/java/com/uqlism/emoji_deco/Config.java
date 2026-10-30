@@ -1,5 +1,6 @@
 package com.uqlism.emoji_deco;
 
+import com.uqlism.emoji_deco.text.registry.emoji.MisskeyEmojiProvider;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.config.ModConfig;
@@ -11,7 +12,16 @@ import java.util.List;
 @EventBusSubscriber(modid = EmojiDeco.MODID, bus = EventBusSubscriber.Bus.MOD)
 public class Config {
 
+    public enum TextParseMode { OLD, MFM }
+    public enum EmojiProviderType { RESOURCEPACK, MISSKEY }
+
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+
+    private static final ModConfigSpec.EnumValue<TextParseMode> MODE = BUILDER
+            .comment("Which rich text syntax to parse.",
+                     "old = this mod's existing #decorator[...] / :shortcode: syntax.",
+                     "mfm = Misskey-compatible MFM syntax (**bold**, $[fn ...], :emojiCode:, etc).")
+            .defineEnum("mode", TextParseMode.OLD);
 
     private static final ModConfigSpec.BooleanValue ENABLE_CHAT = BUILDER
             .comment("Enable rich text formatting in chat messages")
@@ -22,7 +32,7 @@ public class Config {
             .define("enableSigns", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_ITEM_NAMES = BUILDER
-            .comment("Enable rich text formatting in item names (tooltips)")
+            .comment("Enable rich text formatting in item names (item tooltips and the hotbar item name)")
             .define("enableItemNames", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_ENTITY_NAMES = BUILDER
@@ -34,7 +44,7 @@ public class Config {
             .define("enableBooks", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_GUI = BUILDER
-            .comment("Enable rich text formatting in titles, subtitles, and action bar")
+            .comment("Enable rich text formatting in GUI text drawn via GuiGraphics (titles, subtitles, action bar, boss bars, etc.; not the hotbar item name)")
             .define("enableGui", true);
 
     private static final ModConfigSpec.BooleanValue ENABLE_URL_FETCH = BUILDER
@@ -50,8 +60,24 @@ public class Config {
             .defineListAllowEmpty("additionalAllowedDomains", List.of(),
                     obj -> obj instanceof String s && !s.isBlank());
 
+    private static final ModConfigSpec.EnumValue<EmojiProviderType> EMOJI_PROVIDER_TYPE = BUILDER
+            .push("emojiProvider")
+            .comment("Where custom emoji (:name:) images come from.",
+                     "resourcepack = this mod's existing shortcodes/*.json registry.",
+                     "misskey = fetched at runtime from a Misskey server's /api/emojis.")
+            .defineEnum("type", EmojiProviderType.RESOURCEPACK);
+
+    private static final ModConfigSpec.ConfigValue<String> EMOJI_PROVIDER_MISSKEY_DOMAIN = BUILDER
+            .comment("Misskey server domain to fetch the emoji list from. Only used when type=misskey.")
+            .define("domain", "misskey.io");
+
+    static {
+        BUILDER.pop();
+    }
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
+    public static TextParseMode mode;
     public static boolean enableChat;
     public static boolean enableSigns;
     public static boolean enableItemNames;
@@ -60,9 +86,12 @@ public class Config {
     public static boolean enableGui;
     public static boolean enableUrlFetch;
     public static List<String> additionalAllowedDomains;
+    public static EmojiProviderType emojiProviderType;
+    public static String emojiProviderMisskeyDomain;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
+        mode = MODE.get();
         enableChat = ENABLE_CHAT.get();
         enableSigns = ENABLE_SIGNS.get();
         enableItemNames = ENABLE_ITEM_NAMES.get();
@@ -73,5 +102,10 @@ public class Config {
         additionalAllowedDomains = ADDITIONAL_ALLOWED_DOMAINS.get().stream()
                 .map(s -> (String) s)
                 .toList();
+        emojiProviderType = EMOJI_PROVIDER_TYPE.get();
+        emojiProviderMisskeyDomain = EMOJI_PROVIDER_MISSKEY_DOMAIN.get();
+        if (emojiProviderType == EmojiProviderType.MISSKEY) {
+            MisskeyEmojiProvider.prefetch();
+        }
     }
 }

@@ -32,4 +32,9 @@ public final class AffineSequence implements FormattedCharSequence {
     public FormattedCharSequence inner()  { return inner; }
     public Matrix4f localTransform()      { return localTransform; }
     public boolean useInnerWidth()        { return useInnerWidth; }
+
+    /** {@link com.uqlism.emoji_deco.text.ir.RichNode.Offset#OVERLAY_Z} の Offset から作られた装飾オーバーレイか。 */
+    public boolean isOverlay() {
+        return Math.abs(localTransform.m32() - com.uqlism.emoji_deco.text.ir.RichNode.Offset.OVERLAY_Z) < 1e-5f;
+    }
 }

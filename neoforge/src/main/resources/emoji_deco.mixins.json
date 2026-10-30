@@ -3,12 +3,12 @@
   "minVersion": "0.8",
   "package": "com.uqlism.emoji_deco.mixin",
   "compatibilityLevel": "JAVA_21",
-  "refmap": "emoji_deco.refmap.json",
   "mixins": [],
   "client": [
     "MixinFont",
     "MixinChatComponent",
     "MixinGuiGraphics",
+    "MixinGui",
     "MixinFontSet",
     "MixinSignText",
     "MixinChatScreen",
