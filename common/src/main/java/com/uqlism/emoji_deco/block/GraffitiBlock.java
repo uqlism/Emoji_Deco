@@ -50,10 +50,10 @@ public class GraffitiBlock extends FaceAttachedHorizontalDirectionalBlock implem
     private static final VoxelShape SHAPE_CEILING = Block.box(0, 15.5, 0, 16, 16, 16);
     private static final VoxelShape SHAPE_WALL_N  = Block.box(0, 0, 15.5, 16, 16, 16);
     private static final VoxelShape SHAPE_WALL_S  = Block.box(0, 0, 0, 16, 16, 0.5);
-    // EAST: renderer places the surface at X≈1.0 (east face), so shape must cover the east edge
-    private static final VoxelShape SHAPE_WALL_E  = Block.box(15.5, 0, 0, 16, 16, 16);
-    // WEST: renderer places the surface at X≈0.0 (west face), so shape must cover the west edge
-    private static final VoxelShape SHAPE_WALL_W  = Block.box(0, 0, 0, 0.5, 16, 16);
+    // FACING is the outward normal; the support block is on the opposite side and the renderer
+    // draws the text against it (E: x≈0.001, W: x≈0.999, N: z≈0.999, S: z≈0.001).
+    private static final VoxelShape SHAPE_WALL_E  = Block.box(0, 0, 0, 0.5, 16, 16);
+    private static final VoxelShape SHAPE_WALL_W  = Block.box(15.5, 0, 0, 16, 16, 16);
 
     public GraffitiBlock(Properties properties) {
         super(properties);

@@ -16,10 +16,12 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 /**
@@ -43,6 +45,13 @@ public class UrlAllowlist implements PreparableReloadListener {
             ResourceLocation.fromNamespaceAndPath("emoji_deco", "url_allowlist.json");
 
     private volatile Set<String> packPatterns = Set.of();
+
+    /**
+     * ホストの動的許可リスト（完全一致のみ）。resource pack の url_allowlist.json とは別枠で、
+     * プレイヤーが emoji-provider=misskey 等を明示選択したことに基づいて実行時に追加登録される。
+     * リソースパック再読み込みではクリアしない（明示的な選択の結果のため）。
+     */
+    private static final Set<String> dynamicAllowedHosts = ConcurrentHashMap.newKeySet();
 
     @Override
     public CompletableFuture<Void> reload(
@@ -101,7 +110,17 @@ public class UrlAllowlist implements PreparableReloadListener {
         for (String pattern : Config.additionalAllowedDomains) {
             if (matches(host, pattern.strip().toLowerCase())) return true;
         }
-        return false;
+        return dynamicAllowedHosts.contains(host);
+    }
+
+    /** 単一ホストを動的許可リストに追加する（小文字化して保存、完全一致のみ）。 */
+    public void allowDynamic(String host) {
+        dynamicAllowedHosts.add(host.toLowerCase());
+    }
+
+    /** 複数ホストを動的許可リストに追加する（小文字化して保存、完全一致のみ）。 */
+    public void allowDynamic(Collection<String> hosts) {
+        for (String host : hosts) allowDynamic(host);
     }
 
     private static boolean matches(String host, String pattern) {

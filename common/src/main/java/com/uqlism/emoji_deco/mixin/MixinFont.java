@@ -72,7 +72,7 @@ public class MixinFont {
             CallbackInfoReturnable<Integer> cir) {
         if (!Config.enableEntityNames) return;
         String raw = text.getString();
-        if (raw.indexOf('#') < 0 && raw.indexOf(':') < 0) return;
+        if (!ComponentConverter.mayContainRichText(raw)) return;
         Font self = (Font)(Object)this;
         FormattedCharSequence seq = ComponentConverter.toSequence(self, text);
         float adj = (self.width(text) - self.width(seq)) / 2.0f;
@@ -254,6 +254,11 @@ public class MixinFont {
             List<FormattedCharSequence> lines = ComponentConverter.toLines(self, dls.original(), dls.width());
             int w = dls.lineIndex() < lines.size() ? self.width(lines.get(dls.lineIndex())) : 0;
             cir.setReturnValue(w);
+            return;
+        }
+        // 動的 FCS は accept() 経由だと Affine の拡大が失われるため、解決後の幅を返す。
+        if (text instanceof DynamicFormattedCharSequence dfcs) {
+            cir.setReturnValue(self.width(ComponentConverter.computeNow(self, dfcs.original())));
             return;
         }
         if (text instanceof LightSequence gs) {

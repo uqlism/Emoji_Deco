@@ -1,6 +1,7 @@
 modLoader="javafml"
 loaderVersion="[4,)"
 license="MIT"
+issueTrackerURL="https://github.com/uqlism/Emoji_Deco/issues"
 
 [[mixins]]
     config="emoji_deco.mixins.json"
@@ -11,6 +12,8 @@ license="MIT"
     displayName="Emoji & Deco"
     credits="uqlism"
     authors="uqlism"
+    displayURL="https://github.com/uqlism/Emoji_Deco"
+    logoFile="logo.png"
     description='''use emojis and richtexts in minecraft!!!'''
 
 [[dependencies.emoji_deco]]

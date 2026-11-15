@@ -36,6 +36,8 @@ public class SuggestionState {
     public List<Entry> suggestions = Collections.emptyList();
     public int selectedIndex = 0;
     public int triggerPos = 0;
+    /** true のとき '/' 始まりのコマンド入力では補完を出さない (チャット専用)。 */
+    public boolean commandAware = false;
     private long pendingAt = -1L; // -1 = 計算済み or pending なし
 
     // ── per-screen registry ───────────────────────────────────────────────────
@@ -72,6 +74,9 @@ public class SuggestionState {
 
         int colonPos = RichTextParser.findActiveColonPos(active);
         int hashPos  = RichTextParser.findActiveHashPos(active);
+
+        if (commandAware && TriggerRules.isSuppressedCommand(lastInput)) { clear(); return; }
+        if (colonPos >= 0 && !TriggerRules.isColonTriggerAllowed(active, colonPos)) colonPos = -1;
 
         if (colonPos < 0 && hashPos < 0) { clear(); return; }
 

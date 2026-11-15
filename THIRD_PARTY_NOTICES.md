@@ -1,0 +1,41 @@
+# Third-Party Notices
+
+This repository's MFM (Misskey Flavored Markdown) support, located under
+`common/src/main/java/com/uqlism/emoji_deco/text/mfm/`, is a Java port of
+[samunohito/mfm.kt](https://github.com/samunohito/mfm.kt), licensed under the MIT License.
+Individual ported source files carry a comment noting the original Kotlin file they were ported
+from.
+
+The `$[sparkle]` effect (`MfmToRichNodeConverter#sparkleNode`,
+`scripts/generate_mfm_sparkle_stars.py` and the generated
+`common/src/main/resources/assets/emoji_deco/textures/mfm/sparkle_*.png`) is a re-implementation
+that references the star outline (SVG path), the colour palette, and the size / lifetime / spawn-interval
+parameters of [misskey-dev/misskey](https://github.com/misskey-dev/misskey)
+`packages/frontend/src/components/MkSparkle.vue`, licensed under AGPL-3.0-only
+(SPDX-FileCopyrightText: syuilo and misskey-project).
+
+## samunohito/mfm.kt
+
+```
+MIT License
+
+Copyright (c) 2023 samunohito
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

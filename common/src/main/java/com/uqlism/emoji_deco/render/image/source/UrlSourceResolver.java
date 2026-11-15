@@ -24,6 +24,8 @@ public final class UrlSourceResolver {
     private static final Logger LOGGER = LogUtils.getLogger();
     static final int MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
+    static final DecodeFailureCache DECODE_FAILURES = new DecodeFailureCache();
+
     private static final AtomicInteger COUNTER = new AtomicInteger();
     private static final ClassLoader MOD_CL = UrlSourceResolver.class.getClassLoader();
 
@@ -43,6 +45,10 @@ public final class UrlSourceResolver {
      */
     public static CompletableFuture<ResolvedSource> resolve(
             BinarySource.Url source, @Nullable String format) {
+        // デコードが失敗した URL は同じバイトで再試行しても必ず失敗するため、
+        // 一定時間は即失敗を返す (ImageGlyphPool が毎フレーム resolve を呼ぶため)。
+        if (DECODE_FAILURES.isBlocked(source.url(), System.currentTimeMillis()))
+            return CompletableFuture.failedFuture(new IOException("decode failed recently: " + source.url()));
         return UrlFetcher.fetch(source, MAX_BYTES)
                 .thenCompose(bytes -> {
                     Format fmt = ImageFormatDetector.detect(bytes, format);
@@ -53,7 +59,9 @@ public final class UrlSourceResolver {
                                 throw new IOException("No frames decoded from " + source.url());
                             return frames;
                         } catch (IOException e) {
-                            LOGGER.error("[EmojiDeco] decode 失敗 [{}]: {}", source.url(), e.toString());
+                            if (DECODE_FAILURES.recordFailure(source.url(), System.currentTimeMillis()))
+                                LOGGER.warn("[EmojiDeco] decode 失敗 [{}]: {} ({}分間は再試行しません)",
+                                        source.url(), e.toString(), DecodeFailureCache.BLOCK_MS / 60_000);
                             throw new RuntimeException(e);
                         }
                     }, DECODE_EXECUTOR)

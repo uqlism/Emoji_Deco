@@ -4,9 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
+import com.uqlism.emoji_deco.text.mfm.Mfm;
+import com.uqlism.emoji_deco.text.mfm.convert.MfmToRichNodeConverter;
+import com.uqlism.emoji_deco.text.mfm.node.IMfmNode;
 import com.uqlism.emoji_deco.text.registry.DecoratorManager;
 import com.uqlism.emoji_deco.text.registry.ShortcodeManager;
 
@@ -26,7 +30,19 @@ public class RichTextParser {
 
     private static final Map<String, JsonElement> PARSE_CACHE = new ConcurrentHashMap<>();
 
-    public static void invalidateParseCache() { PARSE_CACHE.clear(); }
+    // MFM mode's raw-string → AST cache. Independent of PARSE_CACHE above (old-mode only);
+    // needed because dynamic nodes (e.g. $[rainbow ...]) are re-converted every frame via
+    // DynamicFormattedCharSequence, and without this the MFM string would be re-parsed every frame too.
+    private static final Map<String, List<IMfmNode>> MFM_PARSE_CACHE = new ConcurrentHashMap<>();
+
+    public static void invalidateParseCache() {
+        PARSE_CACHE.clear();
+        MFM_PARSE_CACHE.clear();
+    }
+
+    private static List<IMfmNode> parseMfmCached(String raw) {
+        return MFM_PARSE_CACHE.computeIfAbsent(raw, Mfm::parse);
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -47,6 +63,9 @@ public class RichTextParser {
      */
     public static RichNode parse(String raw) {
         if (raw == null || raw.isEmpty()) return RichNode.empty();
+        if (Config.mode == Config.TextParseMode.MFM) {
+            return MfmToRichNodeConverter.convert(parseMfmCached(raw), HydrateContext.EMPTY.track());
+        }
         RichNode r = Hydrators.CACHED_NODE.hydrate(
                 parseToJson(raw), HydrateContext.EMPTY.track());
         return r != null ? r : RichNode.empty();
@@ -59,6 +78,9 @@ public class RichTextParser {
      */
     public static RichNode parseTracked(String raw, HydrateContext.Tracked ctx) {
         if (raw == null || raw.isEmpty()) return RichNode.empty();
+        if (Config.mode == Config.TextParseMode.MFM) {
+            return MfmToRichNodeConverter.convert(parseMfmCached(raw), ctx);
+        }
         RichNode r = Hydrators.CACHED_NODE.hydrate(parseToJson(raw), ctx);
         return r != null ? r : RichNode.empty();
     }
@@ -68,6 +90,10 @@ public class RichTextParser {
      * where the parent component's style must be propagated to literal text.
      */
     public static RichNode parseInline(String text, Style base) {
+        if (Config.mode == Config.TextParseMode.MFM) {
+            return MfmToRichNodeConverter.convert(parseMfmCached(text), HydrateContext.EMPTY.track(), base);
+        }
+
         List<RichNode> children = new ArrayList<>();
         int pos = 0;
         int litStart = 0;

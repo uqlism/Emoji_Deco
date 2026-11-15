@@ -150,6 +150,13 @@ tasks.named('jarJar').configure {
     archiveClassifier = ''
 }
 
+// 配布 jar にライセンス表記とロゴを同梱する (jar / jarJar 共通)
+tasks.withType(Jar).configureEach {
+    from(rootProject.file('LICENSE'))
+    from(rootProject.file('THIRD_PARTY_NOTICES.md'))
+    from(rootProject.file('design/icon.png')) { rename { 'logo.png' } }
+}
+
 publishing {
     publications {
         register('mavenJava', MavenPublication) {

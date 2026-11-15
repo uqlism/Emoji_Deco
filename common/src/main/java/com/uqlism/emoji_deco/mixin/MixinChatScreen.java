@@ -24,7 +24,9 @@ public class MixinChatScreen {
 
     @Inject(method = "onEdited", at = @At("HEAD"), remap = false)
     private void runicink$onTyped(String text, CallbackInfo ci) {
-        runicink$ss().update(text, input.getCursorPosition());
+        SuggestionState ss = runicink$ss();
+        ss.commandAware = true;
+        ss.update(text, input.getCursorPosition());
     }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = false)
