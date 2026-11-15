@@ -142,6 +142,12 @@ public class ShortcodeManager implements PreparableReloadListener {
         return JSON_REGISTRY.containsKey(code);
     }
 
+    /** 引数を取る(旧構文 {@code :name.arg:} 専用の)ショートコードか。MFM の絵文字コードは引数を取れない。 */
+    public static boolean takesArgs(String code) {
+        JsonObject json = JSON_REGISTRY.get(code);
+        return json != null && !effectiveArgSpecs(json).isEmpty();
+    }
+
     public static boolean hasParsed(String code) {
         return JSON_REGISTRY.containsKey(code);
     }

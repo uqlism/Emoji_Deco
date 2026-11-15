@@ -1,6 +1,7 @@
 package com.uqlism.emoji_deco.client;
 
 import com.google.gson.JsonElement;
+import com.uqlism.emoji_deco.Config;
 import com.uqlism.emoji_deco.text.hydrate.HydrateContext;
 import com.uqlism.emoji_deco.text.hydrate.Hydrators;
 import com.uqlism.emoji_deco.text.ir.RichNode;
@@ -78,6 +79,10 @@ public class SuggestionState {
         if (commandAware && TriggerRules.isSuppressedCommand(lastInput)) { clear(); return; }
         if (colonPos >= 0 && !TriggerRules.isColonTriggerAllowed(active, colonPos)) colonPos = -1;
 
+        // MFM モード: '#' はハッシュタグ (旧デコレータ構文は無効)、':' は引数なし絵文字名のみ。
+        boolean mfm = Config.mode == Config.TextParseMode.MFM;
+        if (mfm) hashPos = -1;
+
         if (colonPos < 0 && hashPos < 0) { clear(); return; }
 
         int maxPos = Math.max(colonPos, hashPos);
@@ -102,6 +107,10 @@ public class SuggestionState {
         } else {
             String prefix = active.substring(colonPos + 1);
             int dotPos = prefix.indexOf('.');
+            if (mfm && dotPos >= 0) {
+                clear();
+                return;
+            }
             if (dotPos >= 0 && ShortcodeManager.has(prefix.substring(0, dotPos))) {
                 String code     = prefix.substring(0, dotPos);
                 String afterDot = prefix.substring(dotPos + 1);
@@ -114,7 +123,7 @@ public class SuggestionState {
                         argPrefix, TriggerType.SHORTCODE_ARG);
             } else {
                 triggerPos = colonPos;
-                suggestions = buildShortcodeSuggestions(prefix);
+                suggestions = buildShortcodeSuggestions(prefix, mfm);
             }
         }
         selectedIndex = 0;
@@ -147,13 +156,14 @@ public class SuggestionState {
         return results;
     }
 
-    private static List<Entry> buildShortcodeSuggestions(String prefix) {
+    private static List<Entry> buildShortcodeSuggestions(String prefix, boolean noArgsOnly) {
         if (prefix.isEmpty()) {
             List<String> recent = UsageHistory.getRecent(30, UsageHistory.Kind.SHORTCODE);
             if (recent.isEmpty()) return Collections.emptyList();
             List<Entry> hist = new ArrayList<>();
             for (String canonical : recent) {
                 if (!ShortcodeManager.has(canonical)) continue;
+                if (noArgsOnly && ShortcodeManager.takesArgs(canonical)) continue;
                 hist.add(new Entry(
                         ShortcodeManager.getLabel(canonical),
                         () -> ShortcodeManager.getPreview(canonical),
@@ -162,7 +172,10 @@ public class SuggestionState {
             return hist;
         }
         List<Entry> results = new ArrayList<>();
-        ShortcodeManager.searchSuggestions(prefix, 30).forEach(r -> {
+        ShortcodeManager.searchSuggestions(prefix, noArgsOnly ? 200 : 30).stream()
+                .filter(r -> !noArgsOnly || !ShortcodeManager.takesArgs(r.canonical()))
+                .limit(30)
+                .forEach(r -> {
             String canonical = r.canonical();
             String alias     = r.matchedAlias();
             // alias でヒットした場合はそのエイリアス名をラベルに表示
