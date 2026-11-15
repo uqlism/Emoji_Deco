@@ -99,6 +99,24 @@ class SuggestionStateTest extends MinecraftTestBase {
         assertNotNull(state.suggestions);
     }
 
+    // ── MFM mode: legacy syntax completion is disabled ────────────────────────
+
+    @Test
+    void mfmModeSuppressesHashAndArgCompletion() throws InterruptedException {
+        Config.TextParseMode saved = Config.mode;
+        Config.mode = Config.TextParseMode.MFM;
+        try {
+            for (String input : new String[] {"#b", "#bold.red", ":item.min", "a #b :item.x"}) {
+                state.update(input, input.length());
+                Thread.sleep(250);
+                state.computeIfReady();
+                assertTrue(state.suggestions.isEmpty(), input);
+            }
+        } finally {
+            Config.mode = saved;
+        }
+    }
+
     // ── helper ────────────────────────────────────────────────────────────────
 
     private static SuggestionState.Entry entry(String insertion, SuggestionState.TriggerType type) {
